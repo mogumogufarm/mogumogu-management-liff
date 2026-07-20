@@ -117,7 +117,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -145,6 +145,23 @@ function withTimeout(promise, ms) {
     promise,
     new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
   ]);
+}
+
+// ホーム画面の「本日の売上」タップから来た場合、指定の店舗・日付で途中経過タブを自動的に開く
+function applyUrlParams() {
+  var params = new URLSearchParams(window.location.search);
+  var tab = params.get('tab');
+  var store = params.get('store');
+  var date = params.get('date');
+  if (tab !== 'progress') return;
+
+  switchTab('progress');
+  if (!progressInit) initProgressTab();
+  setTimeout(function () {
+    if (store) document.getElementById('progressStoreSelect').value = store;
+    if (date) document.getElementById('progressDateSelect').value = date;
+    loadProgress();
+  }, 0);
 }
 
 function switchTab(tab) {
@@ -257,7 +274,10 @@ function loadProgress() {
 function initStockTab() {
   stockInit = true;
   callServer({ action: 'getVarietyList', userId: profile.userId }).then(function (result) {
-    if (result.status !== 'ok') return;
+    if (result.status !== 'ok') {
+      alert('品種一覧の取得に失敗しました：' + (result.message || '不明なエラー'));
+      return;
+    }
     varietyByCrop = result.byCrop;
     var cropSel = document.getElementById('stockCropSelect');
     result.crops.forEach(function (crop) {
@@ -267,8 +287,11 @@ function initStockTab() {
       cropSel.appendChild(opt);
     });
     onCropChange();
-    loadStockStatus();
+  }).catch(function (err) {
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
   });
+
+  loadStockStatus();
 }
 
 function onCropChange() {
@@ -327,6 +350,8 @@ function loadStockStatus() {
         '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div>';
       el.appendChild(row);
     });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
@@ -384,6 +409,7 @@ if (typeof liff === 'undefined') {
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
       loadTodayDetail();
+      applyUrlParams();
     } else {
       document.getElementById('blockedCard').style.display = 'block';
     }
