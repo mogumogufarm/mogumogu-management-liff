@@ -36,12 +36,8 @@
   .staff-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
   .staff-row { display: flex; justify-content: space-between; font-size: 12px; color: #8A897E; padding: 2px 0; }
   .staff-row b { color: #1F1F1D; font-weight: 700; }
-  .today-box {
-    margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
-    background: #F8F7F3; display: flex; justify-content: space-between; align-items: center;
-  }
-  .today-box.none { color: #B5B3A8; }
   .map-link { color: #185FA5; text-decoration: none; font-weight: 700; }
+  .ledger-inline { margin-top: 10px; max-height: 220px; overflow-y: auto; border-top: 1px solid #E3E1D9; padding-top: 6px; }
 
   .ledger-select-row { display: flex; gap: 8px; margin-bottom: 14px; }
   .ledger-select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
@@ -84,7 +80,7 @@
   <div id="mainContent" style="display:none;">
     <div class="tabs">
       <button class="tab-btn active" id="tabMonthlyBtn" onclick="switchTab('monthly')">今月の状況</button>
-      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">出勤簿確認</button>
+      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">過去出勤簿確認</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別一覧</button>
     </div>
 
@@ -105,7 +101,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.04</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.05</p>
 </div>
 
 <script>
@@ -153,43 +149,47 @@ function switchTab(tab) {
 
 function loadMonthlyStatus() {
   var el = document.getElementById('monthlyView');
-  el.innerHTML = '<p style="font-size:13px; color:#8AA391;">読み込み中...</p>';
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
 
   callServer({ action: 'getStaffMonthlyStatus', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#DC2626;">' + result.message + '</p>';
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
     if (result.staff.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#8AA391;">今月のデータはまだありません。</p>';
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">今月のデータはまだありません。</p>';
       return;
     }
     var tParts = result.today.split('-');
     var tLabel = tParts[0] + '年' + Number(tParts[1]) + '月' + Number(tParts[2]) + '日';
-    el.innerHTML = '<p style="font-size:12px; color:#8AA391; margin:0 0 10px;">' + tLabel + ' 時点</p>';
+    el.innerHTML = '<p style="font-size:12px; color:#8A897E; margin:0 0 10px;">' + tLabel + ' 時点</p>';
+
     result.staff.forEach(function (s) {
       var card = document.createElement('div');
       card.className = 'staff-card';
 
-      var todayHtml;
-      if (!s.today) {
-        todayHtml = '<div class="today-box none">本日の記録：まだありません</div>';
-      } else {
-        var parts = [];
-        if (s.today.clockIn) parts.push('出勤 ' + s.today.clockIn);
-        if (s.today.breakUsed) parts.push('休憩済み');
-        if (s.today.clockOut) parts.push('退勤 ' + s.today.clockOut);
-        var mapHtml = s.today.mapUrl ? '<a class="map-link" href="' + s.today.mapUrl + '" target="_blank">地図</a>' : '';
-        todayHtml = '<div class="today-box"><span>' + parts.join('　') + '</span>' + mapHtml + '</div>';
-      }
-
-      card.innerHTML =
+      var summaryHtml =
         '<p class="staff-name">' + s.name + '</p>' +
         '<div class="staff-row"><span>出勤日数</span><b>' + s.workDays + '日</b></div>' +
         '<div class="staff-row"><span>実働時間</span><b>' + s.totalHours.toFixed(1) + 'h</b></div>' +
         '<div class="staff-row"><span>交通費</span><b>' + s.transportFee.toLocaleString() + '円</b></div>' +
-        '<div class="staff-row"><span>給与見込み</span><b>' + s.estimatedWage.toLocaleString() + '円</b></div>' +
-        todayHtml;
+        '<div class="staff-row"><span>給与見込み</span><b>' + s.estimatedWage.toLocaleString() + '円</b></div>';
+
+      var daysHtml = '<div class="ledger-inline">';
+      s.days.forEach(function (d) {
+        if (d.noRecord) {
+          daysHtml += '<div class="ledger-day-row no-record"><span class="ledger-day-date">' + d.day + '日(' + d.weekday + ')</span><span class="ledger-day-info">記録なし</span></div>';
+        } else {
+          var breakLabel = d.breakUsed ? '休憩あり' : '';
+          var mapHtml = d.mapUrl ? '<a class="map-link" href="' + d.mapUrl + '" target="_blank">地図</a>' : '';
+          daysHtml +=
+            '<div class="ledger-day-row"><span class="ledger-day-date">' + d.day + '日(' + d.weekday + ')</span>' +
+            '<span class="ledger-day-info">' + d.clockIn + '〜' + d.clockOut + '　' + breakLabel + '　' + d.hoursLabel + (d.hoursLabel ? 'h' : '') + ' ' + mapHtml + '</span></div>';
+        }
+      });
+      daysHtml += '</div>';
+
+      card.innerHTML = summaryHtml + daysHtml;
       el.appendChild(card);
     });
   });
@@ -213,7 +213,11 @@ function initLedgerTab() {
   callServer({ action: 'getStaffNames', userId: profile.userId }).then(function (result) {
     var staffSel = document.getElementById('ledgerStaffSelect');
     staffSel.innerHTML = '';
-    if (result.status !== 'ok' || result.names.length === 0) {
+    if (result.status !== 'ok') {
+      document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#C0392B;">' + (result.message || '取得に失敗しました。') + '</p>';
+      return;
+    }
+    if (result.names.length === 0) {
       document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#8A897E;">スタッフが登録されていません。</p>';
       return;
     }
@@ -224,6 +228,8 @@ function initLedgerTab() {
       staffSel.appendChild(opt);
     });
     loadLedger();
+  }).catch(function (err) {
+    document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
