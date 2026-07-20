@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スタッフ管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #F3F2EE;
+    color: #1F1F1D;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #8A897E; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #E6F1FB; color: #185FA5;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+
+  .tabs { display: flex; border: 1px solid #E3E1D9; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 14px; cursor: pointer; }
+  .tab-btn.active { background: #1F1F1D; color: #fff; font-weight: 700; }
+
+  .staff-card { border: 1px solid #E3E1D9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .staff-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .staff-row { display: flex; justify-content: space-between; font-size: 12px; color: #8A897E; padding: 2px 0; }
+  .staff-row b { color: #1F1F1D; font-weight: 700; }
+  .today-box {
+    margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
+    background: #F8F7F3; display: flex; justify-content: space-between; align-items: center;
+  }
+  .today-box.none { color: #B5B3A8; }
+  .map-link { color: #185FA5; text-decoration: none; font-weight: 700; }
+
+  .month-select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .month-select-row select { flex: 1; padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+  .history-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding: 10px 12px; background: #FAEEDA; color: #854F0B; border-radius: 10px; margin-bottom: 12px; }
+  .history-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed #E3E1D9; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #C0392B; color: #fff; }
+  .status.loading { background: #374151; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-users" aria-hidden="true"></i></span>スタッフ管理</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabMonthlyBtn" onclick="switchTab('monthly')">今月の状況</button>
+      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別履歴</button>
+    </div>
+
+    <div id="monthlyView" class="card"></div>
+
+    <div id="historyView" class="card" style="display:none;">
+      <div class="month-select-row">
+        <select id="monthSelect" onchange="loadHistory()"></select>
+      </div>
+      <div id="historyList">月を選んでください</div>
+    </div>
+  </div>
+
+  <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
+</div>
+
+<script>
+var GAS_URL = 'YOUR_GAS_WEBAPP_URL_HERE';
+var LIFF_ID = 'YOUR_MANAGEMENT_LIFF_ID_HERE';
+
+var profile = null;
+var currentTab = 'monthly';
+var monthsLoaded = false;
+
+function callServer(payload) {
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function (res) { return res.json(); });
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
+  ]);
+}
+
+function setPageStatus(type, text) {
+  var el = document.getElementById('initStatus');
+  el.className = 'status show ' + type;
+  el.textContent = text;
+  if (type !== 'loading') setTimeout(function () { el.classList.remove('show'); }, type === 'error' ? 4500 : 2500);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabMonthlyBtn').classList.toggle('active', tab === 'monthly');
+  document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+  document.getElementById('monthlyView').style.display = (tab === 'monthly') ? 'block' : 'none';
+  document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+  if (tab === 'history' && !monthsLoaded) loadMonths();
+}
+
+function loadMonthlyStatus() {
+  var el = document.getElementById('monthlyView');
+  el.innerHTML = '<p style="font-size:13px; color:#8AA391;">読み込み中...</p>';
+
+  callServer({ action: 'getStaffMonthlyStatus', userId: profile.userId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#DC2626;">' + result.message + '</p>';
+      return;
+    }
+    if (result.staff.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8AA391;">今月のデータはまだありません。</p>';
+      return;
+    }
+    el.innerHTML = '<p style="font-size:12px; color:#8AA391; margin:0 0 10px;">' + result.today + ' 時点</p>';
+    result.staff.forEach(function (s) {
+      var card = document.createElement('div');
+      card.className = 'staff-card';
+
+      var todayHtml;
+      if (!s.today) {
+        todayHtml = '<div class="today-box none">本日の記録：まだありません</div>';
+      } else {
+        var parts = [];
+        if (s.today.clockIn) parts.push('出勤 ' + s.today.clockIn);
+        if (s.today.breakUsed) parts.push('休憩済み');
+        if (s.today.clockOut) parts.push('退勤 ' + s.today.clockOut);
+        var mapHtml = s.today.mapUrl ? '<a class="map-link" href="' + s.today.mapUrl + '" target="_blank">地図</a>' : '';
+        todayHtml = '<div class="today-box"><span>' + parts.join('　') + '</span>' + mapHtml + '</div>';
+      }
+
+      card.innerHTML =
+        '<p class="staff-name">' + s.name + '</p>' +
+        '<div class="staff-row"><span>出勤日数</span><b>' + s.workDays + '日</b></div>' +
+        '<div class="staff-row"><span>実働時間</span><b>' + s.totalHours.toFixed(1) + 'h</b></div>' +
+        '<div class="staff-row"><span>交通費</span><b>' + s.transportFee.toLocaleString() + '円</b></div>' +
+        '<div class="staff-row"><span>給与見込み</span><b>' + s.estimatedWage.toLocaleString() + '円</b></div>' +
+        todayHtml;
+      el.appendChild(card);
+    });
+  });
+}
+
+function loadMonths() {
+  callServer({ action: 'listPayslipMonths', userId: profile.userId }).then(function (result) {
+    var sel = document.getElementById('monthSelect');
+    sel.innerHTML = '';
+    if (result.status !== 'ok' || result.months.length === 0) {
+      document.getElementById('historyList').innerHTML = '<p style="font-size:13px; color:#8AA391;">まだ確定した給与明細はありません。</p>';
+      return;
+    }
+    result.months.forEach(function (m) {
+      var opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    });
+    monthsLoaded = true;
+    loadHistory();
+  });
+}
+
+function loadHistory() {
+  var yearMonth = document.getElementById('monthSelect').value;
+  var el = document.getElementById('historyList');
+  el.innerHTML = '<p style="font-size:13px; color:#8AA391;">読み込み中...</p>';
+
+  callServer({ action: 'getStaffHistory', userId: profile.userId, yearMonth: yearMonth }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#DC2626;">' + result.message + '</p>';
+      return;
+    }
+    el.innerHTML = '';
+    var totalBox = document.createElement('div');
+    totalBox.className = 'history-total';
+    totalBox.innerHTML = '<span>' + yearMonth + ' 合計人件費</span><span>' + result.totalWage.toLocaleString() + '円</span>';
+    el.appendChild(totalBox);
+
+    result.rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'history-row';
+      row.innerHTML = '<span>' + r.name + '</span><span>' + r.totalHours.toFixed(1) + 'h　' + r.totalPay.toLocaleString() + '円</span>';
+      el.appendChild(row);
+    });
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      loadMonthlyStatus();
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + ((err && err.message) ? err.message : err);
+  });
+}
+</script>
+</body>
+</html>

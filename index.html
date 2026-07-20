@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐもぐ農園 運営管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #F3F2EE;
+    color: #1F1F1D;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 28px 16px 40px; }
+  .eyebrow { font-size: 12px; color: #8A897E; margin: 0 0 2px; }
+  .site-title { font-size: 21px; font-weight: 700; margin: 0 0 20px; color: #1F1F1D; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 448px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #C0392B; color: #fff; }
+  .status.loading { background: #374151; color: #fff; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .stat-card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; }
+  .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
+  .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
+
+  .menu-list { display: flex; flex-direction: column; gap: 8px; }
+  .menu-item {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px 16px;
+    text-decoration: none; color: inherit;
+  }
+  .menu-item.disabled { opacity: 0.5; pointer-events: none; }
+  .menu-icon-badge {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .menu-text-title { font-weight: 500; font-size: 14px; margin: 0; }
+  .menu-text-sub { font-size: 12px; color: #8A897E; margin: 0; }
+  .menu-tag {
+    margin-left: auto; font-size: 10px; color: #8A897E; white-space: nowrap;
+  }
+
+  .badge-blue { background: #E6F1FB; color: #185FA5; }
+  .badge-amber { background: #FAEEDA; color: #854F0B; }
+  .badge-purple { background: #EEEDFE; color: #534AB7; }
+  .badge-green { background: #EAF3DE; color: #3B6D11; }
+  .badge-red { background: #FCEBEB; color: #A32D2D; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">もぐもぐ農園</p>
+  <h1 class="site-title">運営管理システム</h1>
+
+  <div id="blockedMessage" style="display:none; background:#fff; border:1px solid #E3E1D9; border-radius:12px; padding:24px;">
+    <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="menu" style="display:none;">
+    <div class="stat-grid" id="statGrid">
+      <div class="stat-card">
+        <p class="stat-label">稼働スタッフ</p>
+        <p class="stat-value" id="statStaffCount">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">今月の人件費</p>
+        <p class="stat-value" id="statWageTotal">-</p>
+      </div>
+    </div>
+
+    <div class="menu-list">
+      <a class="menu-item" href="staff-management.html">
+        <span class="menu-icon-badge badge-blue"><i class="ti ti-users" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">スタッフ管理</p>
+          <p class="menu-text-sub">今月の勤怠状況・過去の給与履歴</p>
+        </span>
+      </a>
+      <a class="menu-item disabled" href="#">
+        <span class="menu-icon-badge badge-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">直売所売上集計</p>
+          <p class="menu-text-sub">道の駅しらね・い～なとうぶ</p>
+        </span>
+        <span class="menu-tag">準備中</span>
+      </a>
+      <a class="menu-item disabled" href="#">
+        <span class="menu-icon-badge badge-purple"><i class="ti ti-notes" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">メモ機能</p>
+          <p class="menu-text-sub">AIが要点を整理して記録</p>
+        </span>
+        <span class="menu-tag">準備中</span>
+      </a>
+      <a class="menu-item disabled" href="#">
+        <span class="menu-icon-badge badge-green"><i class="ti ti-seeding" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">生育記録</p>
+          <p class="menu-text-sub">写真つきの観察記録</p>
+        </span>
+        <span class="menu-tag">準備中</span>
+      </a>
+      <a class="menu-item disabled" href="#">
+        <span class="menu-icon-badge badge-red"><i class="ti ti-flask" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">防除日誌</p>
+          <p class="menu-text-sub">品種別・圃場別の農薬散布記録</p>
+        </span>
+        <span class="menu-tag">準備中</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
+</div>
+
+<script>
+var GAS_URL = 'YOUR_GAS_WEBAPP_URL_HERE';
+var LIFF_ID = 'YOUR_MANAGEMENT_LIFF_ID_HERE';
+
+function callServer(payload) {
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function (res) { return res.json(); });
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
+  ]);
+}
+
+function loadStats(userId) {
+  callServer({ action: 'getStaffMonthlyStatus', userId: userId }).then(function (result) {
+    if (result.status !== 'ok') return;
+    document.getElementById('statStaffCount').textContent = result.staff.length + '人';
+    var total = result.staff.reduce(function (sum, s) { return sum + s.estimatedWage; }, 0);
+    document.getElementById('statWageTotal').textContent = '¥' + total.toLocaleString();
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
+      return { result: result, userId: p.userId };
+    });
+  }).then(function (data) {
+    document.getElementById('initStatus').style.display = 'none';
+    if (data.result.status === 'ok') {
+      document.getElementById('menu').style.display = 'block';
+      loadStats(data.userId);
+    } else {
+      document.getElementById('blockedMessage').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + ((err && err.message) ? err.message : err);
+  });
+}
+</script>
+</body>
+</html>
