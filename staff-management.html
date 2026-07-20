@@ -43,6 +43,16 @@
   .today-box.none { color: #B5B3A8; }
   .map-link { color: #185FA5; text-decoration: none; font-weight: 700; }
 
+  .ledger-select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .ledger-select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+  .ledger-day-row {
+    display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+    padding: 8px 4px; border-bottom: 1px dashed #E3E1D9;
+  }
+  .ledger-day-row.no-record { color: #B5B3A8; }
+  .ledger-day-date { font-weight: 700; width: 84px; flex-shrink: 0; }
+  .ledger-day-info { color: #5C5B54; text-align: right; flex: 1; }
+  .ledger-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding: 10px 12px; background: #FAEEDA; color: #854F0B; border-radius: 10px; margin-top: 10px; }
   .history-grid { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
   .history-grid th, .history-grid td { border: 1px solid #E3E1D9; padding: 8px 10px; text-align: right; }
   .history-grid th { background: #1F1F1D; color: #fff; font-weight: 700; }
@@ -74,19 +84,28 @@
   <div id="mainContent" style="display:none;">
     <div class="tabs">
       <button class="tab-btn active" id="tabMonthlyBtn" onclick="switchTab('monthly')">今月の状況</button>
-      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別履歴</button>
+      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">出勤簿確認</button>
+      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別一覧</button>
     </div>
 
     <div id="monthlyView" class="card"></div>
 
+    <div id="ledgerView" class="card" style="display:none;">
+      <div class="ledger-select-row">
+        <select id="ledgerStaffSelect" onchange="loadLedger()"></select>
+        <select id="ledgerMonthSelect" onchange="loadLedger()"></select>
+      </div>
+      <div id="ledgerList">スタッフと月を選んでください</div>
+    </div>
+
     <div id="historyView" class="card" style="display:none; overflow-x:auto;">
-      <div id="historyGridWrap">月別履歴を読み込み中...</div>
+      <div id="historyGridWrap">月別一覧を読み込み中...</div>
     </div>
   </div>
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.03</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.04</p>
 </div>
 
 <script>
@@ -96,6 +115,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 var profile = null;
 var currentTab = 'monthly';
 var historyLoaded = false;
+var ledgerInit = false;
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -122,9 +142,12 @@ function setPageStatus(type, text) {
 function switchTab(tab) {
   currentTab = tab;
   document.getElementById('tabMonthlyBtn').classList.toggle('active', tab === 'monthly');
+  document.getElementById('tabLedgerBtn').classList.toggle('active', tab === 'ledger');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
   document.getElementById('monthlyView').style.display = (tab === 'monthly') ? 'block' : 'none';
+  document.getElementById('ledgerView').style.display = (tab === 'ledger') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+  if (tab === 'ledger' && !ledgerInit) initLedgerTab();
   if (tab === 'history' && !historyLoaded) loadHistoryGrid();
 }
 
@@ -170,6 +193,79 @@ function loadMonthlyStatus() {
       el.appendChild(card);
     });
   });
+}
+
+function initLedgerTab() {
+  ledgerInit = true;
+
+  // 月のプルダウン：今月〜11ヶ月前までを用意
+  var monthSel = document.getElementById('ledgerMonthSelect');
+  var now = new Date();
+  for (var i = 0; i < 12; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var ym = formatYearMonthValue(d);
+    var opt = document.createElement('option');
+    opt.value = ym;
+    opt.textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+    monthSel.appendChild(opt);
+  }
+
+  callServer({ action: 'getStaffNames', userId: profile.userId }).then(function (result) {
+    var staffSel = document.getElementById('ledgerStaffSelect');
+    staffSel.innerHTML = '';
+    if (result.status !== 'ok' || result.names.length === 0) {
+      document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#8A897E;">スタッフが登録されていません。</p>';
+      return;
+    }
+    result.names.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      staffSel.appendChild(opt);
+    });
+    loadLedger();
+  });
+}
+
+function formatYearMonthValue(d) {
+  var m = d.getMonth() + 1;
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m);
+}
+
+function loadLedger() {
+  var staffName = document.getElementById('ledgerStaffSelect').value;
+  var yearMonth = document.getElementById('ledgerMonthSelect').value;
+  var el = document.getElementById('ledgerList');
+  if (!staffName || !yearMonth) return;
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getStaffAttendanceLedger', userId: profile.userId, staffName: staffName, yearMonth: yearMonth })
+    .then(function (result) {
+      if (result.status !== 'ok') {
+        el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+        return;
+      }
+      el.innerHTML = '';
+      result.days.forEach(function (d) {
+        var row = document.createElement('div');
+        var dateLabel = Number(d.date.slice(8, 10)) + '日(' + d.weekday + ')';
+        if (d.noRecord) {
+          row.className = 'ledger-day-row no-record';
+          row.innerHTML = '<span class="ledger-day-date">' + dateLabel + '</span><span class="ledger-day-info">記録なし</span>';
+        } else {
+          row.className = 'ledger-day-row';
+          var breakLabel = d.breakUsed ? '休憩あり' : '';
+          row.innerHTML =
+            '<span class="ledger-day-date">' + dateLabel + '</span>' +
+            '<span class="ledger-day-info">' + d.clockIn + '〜' + d.clockOut + '　' + breakLabel + '　' + d.hoursLabel + 'h</span>';
+        }
+        el.appendChild(row);
+      });
+      var totalBox = document.createElement('div');
+      totalBox.className = 'ledger-total';
+      totalBox.innerHTML = '<span>合計実働時間</span><span>' + result.totalHours + '時間</span>';
+      el.appendChild(totalBox);
+    });
 }
 
 function loadHistoryGrid() {
