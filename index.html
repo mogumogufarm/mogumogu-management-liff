@@ -125,13 +125,16 @@
       </div>
     </div>
 
-    <p class="section-label">品種登録</p>
+    <p class="section-label">在庫登録</p>
     <div class="card">
       <div class="variety-row">
-        <select id="varietyCropInput"></select>
-        <input type="text" id="varietyNameInput" placeholder="品種（例：あかつき）">
+        <select id="stockCropInput" onchange="onStockCropChange()"></select>
+        <select id="stockVarietyInput"></select>
       </div>
-      <button onclick="submitVariety()" class="variety-btn">登録する</button>
+      <div class="variety-row">
+        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1">
+        <button onclick="submitHomeStock()" class="variety-btn" style="flex:1;">登録する</button>
+      </div>
     </div>
 
     <p class="section-label">スタッフ・人件費</p>
@@ -208,7 +211,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.07</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.08</p>
 </div>
 
 <script>
@@ -231,31 +234,55 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-function loadVarietyCrops() {
+var homeVarietyByCrop = {};
+
+function loadHomeVarietyList() {
   callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') return;
-    var sel = document.getElementById('varietyCropInput');
-    sel.innerHTML = '';
+    if (result.status !== 'ok') {
+      console.error('品種一覧の取得に失敗：', result.message);
+      return;
+    }
+    homeVarietyByCrop = result.byCrop;
+    var cropSel = document.getElementById('stockCropInput');
+    cropSel.innerHTML = '';
     result.crops.forEach(function (crop) {
       var opt = document.createElement('option');
       opt.value = crop;
       opt.textContent = crop;
-      sel.appendChild(opt);
+      cropSel.appendChild(opt);
     });
+    onStockCropChange();
+  }).catch(function (err) {
+    console.error('通信エラー：', err);
   });
 }
 
-function submitVariety() {
-  var crop = document.getElementById('varietyCropInput').value;
-  var variety = document.getElementById('varietyNameInput').value.trim();
-  if (!crop || !variety) {
-    alert('品目と品種を入力してください。');
+function onStockCropChange() {
+  var crop = document.getElementById('stockCropInput').value;
+  var varietySel = document.getElementById('stockVarietyInput');
+  varietySel.innerHTML = '';
+  (homeVarietyByCrop[crop] || []).forEach(function (v) {
+    var opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    varietySel.appendChild(opt);
+  });
+}
+
+function submitHomeStock() {
+  var variety = document.getElementById('stockVarietyInput').value;
+  var qty = document.getElementById('stockQtyInput').value;
+  if (!variety || !qty) {
+    alert('品種と数量を入力してください。');
     return;
   }
-  callServer({ action: 'addVariety', userId: currentUserId, crop: crop, variety: variety }).then(function (result) {
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, variety: variety, qty: qty }).then(function (result) {
     alert(result.message);
     if (result.status === 'ok') {
-      document.getElementById('varietyNameInput').value = '';
+      document.getElementById('stockQtyInput').value = '';
     }
   });
 }
@@ -310,7 +337,7 @@ if (typeof liff === 'undefined') {
       document.getElementById('menu').style.display = 'block';
       currentUserId = data.userId;
       loadStats(data.userId);
-      loadVarietyCrops();
+      loadHomeVarietyList();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
