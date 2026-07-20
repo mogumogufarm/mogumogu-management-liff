@@ -128,6 +128,9 @@
     <p class="section-label">在庫登録</p>
     <div class="card">
       <div class="variety-row">
+        <select id="stockStoreInput"></select>
+      </div>
+      <div class="variety-row">
         <select id="stockCropInput" onchange="onStockCropChange()"></select>
         <select id="stockVarietyInput"></select>
       </div>
@@ -211,7 +214,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.08</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.09</p>
 </div>
 
 <script>
@@ -236,7 +239,17 @@ function withTimeout(promise, ms) {
 
 var homeVarietyByCrop = {};
 
+var STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
+
 function loadHomeVarietyList() {
+  var storeSel = document.getElementById('stockStoreInput');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+
   callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       console.error('品種一覧の取得に失敗：', result.message);
@@ -270,16 +283,17 @@ function onStockCropChange() {
 }
 
 function submitHomeStock() {
+  var store = document.getElementById('stockStoreInput').value;
   var variety = document.getElementById('stockVarietyInput').value;
   var qty = document.getElementById('stockQtyInput').value;
-  if (!variety || !qty) {
-    alert('品種と数量を入力してください。');
+  if (!store || !variety || !qty) {
+    alert('店舗と品種と数量を入力してください。');
     return;
   }
   var today = new Date();
   var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
-  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, variety: variety, qty: qty }).then(function (result) {
+  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, store: store, variety: variety, qty: qty }).then(function (result) {
     alert(result.message);
     if (result.status === 'ok') {
       document.getElementById('stockQtyInput').value = '';
