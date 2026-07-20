@@ -49,6 +49,8 @@
   .ledger-day-date { font-weight: 700; width: 84px; flex-shrink: 0; }
   .ledger-day-info { color: #5C5B54; text-align: right; flex: 1; }
   .ledger-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding: 10px 12px; background: #FAEEDA; color: #854F0B; border-radius: 10px; margin-top: 10px; }
+  .payslip-summary { background: #F8F7F3; border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
+  .payslip-summary-title { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 0 0 6px; }
   .history-grid { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
   .history-grid th, .history-grid td { border: 1px solid #E3E1D9; padding: 8px 10px; text-align: right; }
   .history-grid th { background: #1F1F1D; color: #fff; font-weight: 700; }
@@ -80,7 +82,7 @@
   <div id="mainContent" style="display:none;">
     <div class="tabs">
       <button class="tab-btn active" id="tabMonthlyBtn" onclick="switchTab('monthly')">今月の状況</button>
-      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">過去出勤簿確認</button>
+      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">過去の給与明細</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別一覧</button>
     </div>
 
@@ -88,7 +90,7 @@
 
     <div id="ledgerView" class="card" style="display:none;">
       <div class="ledger-select-row">
-        <select id="ledgerStaffSelect" onchange="loadLedger()"></select>
+        <select id="ledgerStaffSelect" onchange="onStaffChange()"></select>
         <select id="ledgerMonthSelect" onchange="loadLedger()"></select>
       </div>
       <div id="ledgerList">スタッフと月を選んでください</div>
@@ -101,7 +103,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.05</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
@@ -112,6 +114,7 @@ var profile = null;
 var currentTab = 'monthly';
 var historyLoaded = false;
 var ledgerInit = false;
+var monthsByStaff = {};
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -198,16 +201,23 @@ function loadMonthlyStatus() {
 function initLedgerTab() {
   ledgerInit = true;
 
-  // 月のプルダウン：今月〜11ヶ月前までを用意
+  // 月のプルダウン：2024年1月〜今月まで、年ごとにグループ化して用意
   var monthSel = document.getElementById('ledgerMonthSelect');
   var now = new Date();
-  for (var i = 0; i < 12; i++) {
-    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    var ym = formatYearMonthValue(d);
-    var opt = document.createElement('option');
-    opt.value = ym;
-    opt.textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
-    monthSel.appendChild(opt);
+  var startYear = 2024;
+  var years = {};
+  for (var y = now.getFullYear(); y >= startYear; y--) {
+    var maxMonth = (y === now.getFullYear()) ? now.getMonth() : 11;
+    var group = document.createElement('optgroup');
+    group.label = y + '年';
+    for (var m = maxMonth; m >= 0; m--) {
+      var ym = y + '-' + (m + 1 < 10 ? '0' + (m + 1) : (m + 1));
+      var opt = document.createElement('option');
+      opt.value = ym;
+      opt.textContent = (m + 1) + '月';
+      group.appendChild(opt);
+    }
+    monthSel.appendChild(group);
   }
 
   callServer({ action: 'getStaffNames', userId: profile.userId }).then(function (result) {
@@ -221,12 +231,14 @@ function initLedgerTab() {
       document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#8A897E;">スタッフが登録されていません。</p>';
       return;
     }
+    monthsByStaff = result.monthsByName || {};
     result.names.forEach(function (name) {
       var opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
       staffSel.appendChild(opt);
     });
+    updateMonthAvailability();
     loadLedger();
   }).catch(function (err) {
     document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
@@ -236,6 +248,32 @@ function initLedgerTab() {
 function formatYearMonthValue(d) {
   var m = d.getMonth() + 1;
   return d.getFullYear() + '-' + (m < 10 ? '0' + m : m);
+}
+
+function onStaffChange() {
+  updateMonthAvailability();
+  loadLedger();
+}
+
+// 選んだスタッフに打刻記録がない月は、選べないようグレーアウトする
+function updateMonthAvailability() {
+  var staffName = document.getElementById('ledgerStaffSelect').value;
+  var available = monthsByStaff[staffName] || [];
+  var availableSet = {};
+  available.forEach(function (ym) { availableSet[ym] = true; });
+
+  var monthSel = document.getElementById('ledgerMonthSelect');
+  var options = monthSel.querySelectorAll('option');
+  var firstAvailable = null;
+  options.forEach(function (opt) {
+    var hasData = !!availableSet[opt.value];
+    opt.disabled = !hasData;
+    opt.textContent = opt.textContent.replace(' （記録なし）', '') + (hasData ? '' : ' （記録なし）');
+    if (hasData && !firstAvailable) firstAvailable = opt.value;
+  });
+  if (firstAvailable && monthSel.options[monthSel.selectedIndex].disabled) {
+    monthSel.value = firstAvailable;
+  }
 }
 
 function loadLedger() {
@@ -252,6 +290,25 @@ function loadLedger() {
         return;
       }
       el.innerHTML = '';
+
+      if (result.payslip) {
+        var p = result.payslip;
+        var payslipBox = document.createElement('div');
+        payslipBox.className = 'payslip-summary';
+        payslipBox.innerHTML =
+          '<p class="payslip-summary-title">確定済みの給与明細</p>' +
+          '<div class="staff-row"><span>時給</span><b>' + p.hourlyWage.toLocaleString() + '円</b></div>' +
+          '<div class="staff-row"><span>勤務給与</span><b>' + p.wagePay.toLocaleString() + '円</b></div>' +
+          '<div class="staff-row"><span>交通費</span><b>' + p.transportFee.toLocaleString() + '円</b></div>' +
+          '<div class="staff-row"><span>給与額（合計）</span><b>' + p.totalPay.toLocaleString() + '円</b></div>';
+        el.appendChild(payslipBox);
+      } else {
+        var noPayslip = document.createElement('p');
+        noPayslip.style.cssText = 'font-size:12px; color:#B5B3A8; margin:0 0 12px;';
+        noPayslip.textContent = 'この月はまだ給与確定していません（打刻の記録のみ表示しています）';
+        el.appendChild(noPayslip);
+      }
+
       result.days.forEach(function (d) {
         var row = document.createElement('div');
         var dateLabel = Number(d.date.slice(8, 10)) + '日(' + d.weekday + ')';
