@@ -32,8 +32,17 @@
   .status.error { background: #C0392B; color: #fff; }
   .status.loading { background: #374151; color: #fff; }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .section-label { font-size: 12px; font-weight: 700; color: #8A897E; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
+  .section-label-tag { font-size: 10px; font-weight: 400; color: #B5B3A8; }
+  .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
+  .stat-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
   .stat-card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; }
+  .stat-card-mini { padding: 8px; border-radius: 8px; }
+  .stat-value-mini { font-size: 14px !important; }
+  .sales-placeholder { background: #fff; border: 1px dashed #D6D4C9; border-radius: 12px; padding: 12px; margin-bottom: 6px; opacity: 0.7; }
+  .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 6px; }
+  .sales-store-name:first-child { margin-top: 0; }
   .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
   .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
 
@@ -72,6 +81,7 @@
   </div>
 
   <div id="menu" style="display:none;">
+    <p class="section-label">スタッフ状況</p>
     <div class="stat-grid" id="statGrid">
       <div class="stat-card">
         <p class="stat-label">稼働スタッフ</p>
@@ -83,6 +93,48 @@
       </div>
     </div>
 
+    <p class="section-label">人件費</p>
+    <div class="stat-grid stat-grid-3" id="expenseGrid">
+      <div class="stat-card">
+        <p class="stat-label">今月</p>
+        <p class="stat-value" id="expThisMonth">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">先月</p>
+        <p class="stat-value" id="expLastMonth">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">年間</p>
+        <p class="stat-value" id="expYearTotal">-</p>
+      </div>
+    </div>
+
+    <p class="section-label">直売所売上 <span class="section-label-tag">準備中</span></p>
+    <div class="sales-placeholder">
+      <div class="sales-store-name">道の駅しらね</div>
+      <div class="stat-grid stat-grid-4">
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+      </div>
+      <div class="sales-store-name">い～なとうぶ竜王店</div>
+      <div class="stat-grid stat-grid-4">
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+      </div>
+      <div class="sales-store-name">い～なとうぶ昭和店</div>
+      <div class="stat-grid stat-grid-4">
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+      </div>
+    </div>
+
+    <p class="section-label">メニュー</p>
     <div class="menu-list">
       <a class="menu-item" href="staff-management.html">
         <span class="menu-icon-badge badge-blue"><i class="ti ti-users" aria-hidden="true"></i></span>
@@ -136,7 +188,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -164,6 +216,13 @@ function loadStats(userId) {
     document.getElementById('statStaffCount').textContent = result.staff.length + '人';
     var total = result.staff.reduce(function (sum, s) { return sum + s.estimatedWage; }, 0);
     document.getElementById('statWageTotal').textContent = '¥' + total.toLocaleString();
+  });
+
+  callServer({ action: 'getExpenseSummary', userId: userId }).then(function (result) {
+    if (result.status !== 'ok') return;
+    document.getElementById('expThisMonth').textContent = '¥' + result.thisMonth.toLocaleString();
+    document.getElementById('expLastMonth').textContent = '¥' + result.lastMonth.toLocaleString();
+    document.getElementById('expYearTotal').textContent = '¥' + result.yearTotal.toLocaleString();
   });
 }
 
