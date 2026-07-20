@@ -42,8 +42,13 @@
   .sales-box { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 6px; }
   .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 6px; }
   .sales-store-name:first-child { margin-top: 0; }
-  .sales-today-card { background: #FAEEDA; border: 1px solid #F0D9A8; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; }
+  .sales-today-card { background: #FAEEDA; border: 1px solid #F0D9A8; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; display: block; text-decoration: none; }
   .sales-today-value { font-size: 28px; font-weight: 700; color: #854F0B; margin: 0; }
+  .tap-hint { font-size: 10px; font-weight: 400; color: #A8935E; }
+  .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; margin-bottom: 6px; }
+  .variety-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .variety-row input { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+  .variety-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #1F1F1D; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
   .stat-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
   .sales-store-name:first-child { margin-top: 0; }
   .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
@@ -87,10 +92,10 @@
     <p class="section-label" id="salesSection">直売所の売上</p>
     <div class="sales-box">
       <div class="sales-store-name">道の駅しらね</div>
-      <div class="stat-card sales-today-card">
-        <p class="stat-label">本日の売上</p>
+      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
         <p class="sales-today-value" id="sales-shirane-today">-</p>
-      </div>
+      </a>
       <div class="stat-grid stat-grid-3">
         <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
@@ -98,10 +103,10 @@
       </div>
 
       <div class="sales-store-name">い～なとうぶ竜王店</div>
-      <div class="stat-card sales-today-card">
-        <p class="stat-label">本日の売上</p>
+      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
         <p class="sales-today-value" id="sales-ryuo-today">-</p>
-      </div>
+      </a>
       <div class="stat-grid stat-grid-3">
         <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
@@ -109,15 +114,24 @@
       </div>
 
       <div class="sales-store-name">い～なとうぶ昭和店</div>
-      <div class="stat-card sales-today-card">
-        <p class="stat-label">本日の売上</p>
+      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
         <p class="sales-today-value" id="sales-showa-today">-</p>
-      </div>
+      </a>
       <div class="stat-grid stat-grid-3">
         <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
         <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini" id="sales-showa-lastMonth">-</p></div>
       </div>
+    </div>
+
+    <p class="section-label">品種登録</p>
+    <div class="card">
+      <div class="variety-row">
+        <input type="text" id="varietyCropInput" placeholder="品目（例：もも）">
+        <input type="text" id="varietyNameInput" placeholder="品種（例：あかつき）">
+      </div>
+      <button onclick="submitVariety()" class="variety-btn">登録する</button>
     </div>
 
     <p class="section-label">スタッフ・人件費</p>
@@ -194,12 +208,13 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.05</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxgph5-tz3McwR9P-TWIl9rWwsP1MDu5PIhSd_UBZ6jUmS25HYUC2Qh4PNVgtSwHtUqnw/exec';
 var LIFF_ID = '2010745560-GD4XbdoK';
+var currentUserId = null;
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -214,6 +229,22 @@ function withTimeout(promise, ms) {
     promise,
     new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
   ]);
+}
+
+function submitVariety() {
+  var crop = document.getElementById('varietyCropInput').value.trim();
+  var variety = document.getElementById('varietyNameInput').value.trim();
+  if (!crop || !variety) {
+    alert('品目と品種を入力してください。');
+    return;
+  }
+  callServer({ action: 'addVariety', userId: currentUserId, crop: crop, variety: variety }).then(function (result) {
+    alert(result.message);
+    if (result.status === 'ok') {
+      document.getElementById('varietyCropInput').value = '';
+      document.getElementById('varietyNameInput').value = '';
+    }
+  });
 }
 
 function loadStats(userId) {
@@ -232,6 +263,9 @@ function loadStats(userId) {
   callServer({ action: 'getSalesSummary', userId: userId }).then(function (result) {
     if (result.status !== 'ok') return;
     var idMap = { '道の駅しらね': 'shirane', 'い～なとうぶ竜王店': 'ryuo', 'い～なとうぶ昭和店': 'showa' };
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
     Object.keys(idMap).forEach(function (storeName) {
       var s = result.stores[storeName];
       if (!s) return;
@@ -240,6 +274,8 @@ function loadStats(userId) {
         var el = document.getElementById('sales-' + prefix + '-' + period);
         if (el) el.textContent = '¥' + s[period].toLocaleString();
       });
+      var link = document.getElementById('sales-' + prefix + '-link');
+      if (link) link.href = 'sales-management.html?tab=progress&store=' + encodeURIComponent(storeName) + '&date=' + todayStr;
     });
   });
 }
@@ -259,6 +295,7 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     if (data.result.status === 'ok') {
       document.getElementById('menu').style.display = 'block';
+      currentUserId = data.userId;
       loadStats(data.userId);
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
