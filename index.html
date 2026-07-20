@@ -55,6 +55,7 @@
   }
 
   .badge-blue { background: #E6F1FB; color: #185FA5; }
+  .badge-teal { background: #E1F5EE; color: #0F6E56; }
   .badge-amber { background: #FAEEDA; color: #854F0B; }
   .badge-purple { background: #EEEDFE; color: #534AB7; }
   .badge-green { background: #EAF3DE; color: #3B6D11; }
@@ -89,6 +90,14 @@
           <p class="menu-text-title">スタッフ管理</p>
           <p class="menu-text-sub">今月の勤怠状況・過去の給与履歴</p>
         </span>
+      </a>
+      <a class="menu-item" href="https://liff.line.me/2010745560-uXP5sKwZ">
+        <span class="menu-icon-badge badge-teal"><i class="ti ti-calendar-time" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">シフト管理</p>
+          <p class="menu-text-sub">確定・急募・名簿の管理（タイムカード側）</p>
+        </span>
+        <i class="ti ti-external-link" style="color:#8A897E; font-size:16px;" aria-hidden="true"></i>
       </a>
       <a class="menu-item disabled" href="#">
         <span class="menu-icon-badge badge-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
@@ -129,8 +138,8 @@
 </div>
 
 <script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxgph5-tz3McwR9P-TWIl9rWwsP1MDu5PIhSd_UBZ6jUmS25HYUC2Qh4PNVgtSwHtUqnw/exec';
-var LIFF_ID = '2010745560-GD4XbdoK';
+var GAS_URL = 'YOUR_GAS_WEBAPP_URL_HERE';
+var LIFF_ID = 'YOUR_MANAGEMENT_LIFF_ID_HERE';
 
 function callServer(payload) {
   return fetch(GAS_URL, {
