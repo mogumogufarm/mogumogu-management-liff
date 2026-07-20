@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>売上管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #F3F2EE;
+    color: #1F1F1D;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #8A897E; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #FAEEDA; color: #854F0B;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+
+  .tabs { display: flex; border: 1px solid #E3E1D9; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .tab-btn.active { background: #1F1F1D; color: #fff; font-weight: 700; }
+
+  .store-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .store-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .store-name .report-time { font-size: 11px; font-weight: 400; color: #8A897E; }
+  .item-row { display: flex; justify-content: space-between; font-size: 12px; color: #5C5B54; padding: 3px 0; }
+  .store-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #E3E1D9; }
+
+  .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+
+  .report-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .report-time-label { font-size: 12px; font-weight: 700; color: #185FA5; margin: 0 0 4px; }
+
+  .history-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 4px; border-bottom: 1px dashed #E3E1D9; }
+  .history-date { font-weight: 700; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #C0392B; color: #fff; }
+  .status.loading { background: #374151; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>売上管理</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabTodayBtn" onclick="switchTab('today')">本日の詳細</button>
+      <button class="tab-btn" id="tabProgressBtn" onclick="switchTab('progress')">途中経過</button>
+      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
+    </div>
+
+    <div id="todayView" class="card"></div>
+
+    <div id="progressView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="progressStoreSelect" onchange="loadProgress()"></select>
+        <select id="progressDateSelect" onchange="loadProgress()"></select>
+      </div>
+      <div id="progressList">店舗と日付を選んでください</div>
+    </div>
+
+    <div id="historyView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="historyStoreSelect" onchange="loadDailyHistory()"></select>
+      </div>
+      <div id="historyList">店舗を選んでください</div>
+    </div>
+  </div>
+
+  <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
+
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxgph5-tz3McwR9P-TWIl9rWwsP1MDu5PIhSd_UBZ6jUmS25HYUC2Qh4PNVgtSwHtUqnw/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentTab = 'today';
+var progressInit = false;
+var historyInit = false;
+var STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
+
+function callServer(payload) {
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function (res) { return res.json(); });
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
+  ]);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabTodayBtn').classList.toggle('active', tab === 'today');
+  document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
+  document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+  document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
+  document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
+  document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+  if (tab === 'progress' && !progressInit) initProgressTab();
+  if (tab === 'history' && !historyInit) initHistoryTab();
+}
+
+function loadTodayDetail() {
+  var el = document.getElementById('todayView');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getTodaySalesDetail', userId: profile.userId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    el.innerHTML = '<p style="font-size:12px; color:#8A897E; margin:0 0 10px;">' + result.today + '</p>';
+
+    STORES.forEach(function (store) {
+      var s = result.stores[store];
+      var block = document.createElement('div');
+      block.className = 'store-block';
+
+      var timeLabel = s.reportTime ? s.reportTime + '時点' : '本日の報告なし';
+      var itemsHtml = s.items.length === 0
+        ? '<p style="font-size:12px; color:#B5B3A8; margin:0;">記録なし</p>'
+        : s.items.map(function (it) {
+            return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+          }).join('');
+
+      block.innerHTML =
+        '<p class="store-name">' + store + '<span class="report-time">' + timeLabel + '</span></p>' +
+        itemsHtml +
+        '<div class="store-total"><span>合計</span><span>¥' + s.total.toLocaleString() + '</span></div>';
+      el.appendChild(block);
+    });
+  });
+}
+
+function initProgressTab() {
+  progressInit = true;
+  var storeSel = document.getElementById('progressStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+
+  var dateSel = document.getElementById('progressDateSelect');
+  var now = new Date();
+  for (var i = 0; i < 31; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    var ds = Utilities_formatDate(d);
+    var opt2 = document.createElement('option');
+    opt2.value = ds;
+    opt2.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    dateSel.appendChild(opt2);
+  }
+  loadProgress();
+}
+
+function Utilities_formatDate(d) {
+  var m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+function loadProgress() {
+  var store = document.getElementById('progressStoreSelect').value;
+  var date = document.getElementById('progressDateSelect').value;
+  var el = document.getElementById('progressList');
+  if (!store || !date) return;
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getIntradayProgress', userId: profile.userId, store: store, date: date }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.reports.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">この日の報告はまだありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.reports.forEach(function (r) {
+      var block = document.createElement('div');
+      block.className = 'report-block';
+      var itemsHtml = r.items.map(function (it) {
+        return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+      }).join('');
+      block.innerHTML =
+        '<p class="report-time-label">' + r.time + ' 時点</p>' +
+        itemsHtml +
+        '<div class="store-total"><span>合計</span><span>¥' + r.total.toLocaleString() + '</span></div>';
+      el.appendChild(block);
+    });
+  });
+}
+
+function initHistoryTab() {
+  historyInit = true;
+  var storeSel = document.getElementById('historyStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+  loadDailyHistory();
+}
+
+function loadDailyHistory() {
+  var store = document.getElementById('historyStoreSelect').value;
+  var el = document.getElementById('historyList');
+  if (!store) return;
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getDailyHistory', userId: profile.userId, store: store }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">まだデータがありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.rows.forEach(function (r) {
+      var parts = r.date.split('-');
+      var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
+      var row = document.createElement('div');
+      row.className = 'history-row';
+      row.innerHTML = '<span class="history-date">' + label + '</span><span>¥' + r.total.toLocaleString() + '</span>';
+      el.appendChild(row);
+    });
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      loadTodayDetail();
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + ((err && err.message) ? err.message : err);
+  });
+}
+</script>
+</body>
+</html>
