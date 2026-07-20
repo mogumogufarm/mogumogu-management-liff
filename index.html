@@ -40,7 +40,7 @@
   .stat-card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; }
   .stat-card-mini { padding: 8px; border-radius: 8px; }
   .stat-value-mini { font-size: 14px !important; }
-  .sales-placeholder { background: #fff; border: 1px dashed #D6D4C9; border-radius: 12px; padding: 12px; margin-bottom: 6px; opacity: 0.7; }
+  .sales-box { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 6px; }
   .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 6px; }
   .sales-store-name:first-child { margin-top: 0; }
   .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
@@ -109,28 +109,28 @@
       </div>
     </div>
 
-    <p class="section-label">直売所売上 <span class="section-label-tag">準備中</span></p>
-    <div class="sales-placeholder">
+    <p class="section-label">直売所売上</p>
+    <div class="sales-box">
       <div class="sales-store-name">道の駅しらね</div>
       <div class="stat-grid stat-grid-4">
-        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini" id="sales-shirane-today">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini" id="sales-shirane-lastMonth">-</p></div>
       </div>
       <div class="sales-store-name">い～なとうぶ竜王店</div>
       <div class="stat-grid stat-grid-4">
-        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini" id="sales-ryuo-today">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini" id="sales-ryuo-lastMonth">-</p></div>
       </div>
       <div class="sales-store-name">い～なとうぶ昭和店</div>
       <div class="stat-grid stat-grid-4">
-        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">本日</p><p class="stat-value stat-value-mini" id="sales-showa-today">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">先月</p><p class="stat-value stat-value-mini" id="sales-showa-lastMonth">-</p></div>
       </div>
     </div>
 
@@ -188,7 +188,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -223,6 +223,20 @@ function loadStats(userId) {
     document.getElementById('expThisMonth').textContent = '¥' + result.thisMonth.toLocaleString();
     document.getElementById('expLastMonth').textContent = '¥' + result.lastMonth.toLocaleString();
     document.getElementById('expYearTotal').textContent = '¥' + result.yearTotal.toLocaleString();
+  });
+
+  callServer({ action: 'getSalesSummary', userId: userId }).then(function (result) {
+    if (result.status !== 'ok') return;
+    var idMap = { '道の駅しらね': 'shirane', 'い～なとうぶ竜王店': 'ryuo', 'い～なとうぶ昭和店': 'showa' };
+    Object.keys(idMap).forEach(function (storeName) {
+      var s = result.stores[storeName];
+      if (!s) return;
+      var prefix = idMap[storeName];
+      ['today', 'yesterday', 'thisMonth', 'lastMonth'].forEach(function (period) {
+        var el = document.getElementById('sales-' + prefix + '-' + period);
+        if (el) el.textContent = '¥' + s[period].toLocaleString();
+      });
+    });
   });
 }
 
