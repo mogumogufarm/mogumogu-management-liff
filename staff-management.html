@@ -86,7 +86,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -141,7 +141,9 @@ function loadMonthlyStatus() {
       el.innerHTML = '<p style="font-size:13px; color:#8AA391;">今月のデータはまだありません。</p>';
       return;
     }
-    el.innerHTML = '<p style="font-size:12px; color:#8AA391; margin:0 0 10px;">' + result.today + ' 時点</p>';
+    var tParts = result.today.split('-');
+    var tLabel = tParts[0] + '年' + Number(tParts[1]) + '月' + Number(tParts[2]) + '日';
+    el.innerHTML = '<p style="font-size:12px; color:#8AA391; margin:0 0 10px;">' + tLabel + ' 時点</p>';
     result.staff.forEach(function (s) {
       var card = document.createElement('div');
       card.className = 'staff-card';
@@ -181,7 +183,8 @@ function loadMonths() {
     result.months.forEach(function (m) {
       var opt = document.createElement('option');
       opt.value = m;
-      opt.textContent = m;
+      var parts = m.split('-');
+      opt.textContent = parts[0] + '年' + Number(parts[1]) + '月';
       sel.appendChild(opt);
     });
     monthsLoaded = true;
@@ -200,9 +203,11 @@ function loadHistory() {
       return;
     }
     el.innerHTML = '';
+    var ymParts = yearMonth.split('-');
+    var ymLabel = ymParts[0] + '年' + Number(ymParts[1]) + '月';
     var totalBox = document.createElement('div');
     totalBox.className = 'history-total';
-    totalBox.innerHTML = '<span>' + yearMonth + ' 合計人件費</span><span>' + result.totalWage.toLocaleString() + '円</span>';
+    totalBox.innerHTML = '<span>' + ymLabel + ' 合計人件費</span><span>' + result.totalWage.toLocaleString() + '円</span>';
     el.appendChild(totalBox);
 
     result.rows.forEach(function (r) {
