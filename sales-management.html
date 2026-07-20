@@ -103,6 +103,9 @@
     <div id="stockView" class="card" style="display:none;">
       <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:0 0 8px;">入荷を登録する</p>
       <div class="select-row">
+        <select id="stockStoreSelect"></select>
+      </div>
+      <div class="select-row">
         <select id="stockCropSelect" onchange="onCropChange()"></select>
         <select id="stockVarietySelect"></select>
       </div>
@@ -117,7 +120,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.02</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.03</p>
 </div>
 
 <script>
@@ -273,6 +276,15 @@ function loadProgress() {
 
 function initStockTab() {
   stockInit = true;
+
+  var storeSel = document.getElementById('stockStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+
   callServer({ action: 'getVarietyList', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') {
       alert('品種一覧の取得に失敗しました：' + (result.message || '不明なエラー'));
@@ -307,16 +319,17 @@ function onCropChange() {
 }
 
 function submitStock() {
+  var store = document.getElementById('stockStoreSelect').value;
   var variety = document.getElementById('stockVarietySelect').value;
   var qty = document.getElementById('stockQtyInput').value;
-  if (!variety || !qty) {
-    alert('品種と数量を入力してください。');
+  if (!store || !variety || !qty) {
+    alert('店舗と品種と数量を入力してください。');
     return;
   }
   var today = new Date();
   var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
-  callServer({ action: 'submitStockEntry', userId: profile.userId, date: todayStr, variety: variety, qty: qty }).then(function (result) {
+  callServer({ action: 'submitStockEntry', userId: profile.userId, date: todayStr, store: store, variety: variety, qty: qty }).then(function (result) {
     if (result.status === 'ok') {
       document.getElementById('stockQtyInput').value = '';
       loadStockStatus();
@@ -340,7 +353,15 @@ function loadStockStatus() {
       return;
     }
     el.innerHTML = '';
+    var currentStore = null;
     result.items.forEach(function (it) {
+      if (it.store !== currentStore) {
+        currentStore = it.store;
+        var storeHeader = document.createElement('p');
+        storeHeader.style.cssText = 'font-size:12px; font-weight:700; color:#185FA5; margin:10px 0 6px;';
+        storeHeader.textContent = currentStore;
+        el.appendChild(storeHeader);
+      }
       var row = document.createElement('div');
       row.className = 'stock-row';
       var lowClass = it.remaining <= 0 ? ' low' : '';
