@@ -16,6 +16,7 @@
     background: #F3F2EE;
     color: #1F1F1D;
     min-height: 100vh;
+    overflow-x: hidden;
   }
   .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
   .top-nav { text-align: left; margin-bottom: 10px; }
@@ -42,10 +43,12 @@
   .today-box.none { color: #B5B3A8; }
   .map-link { color: #185FA5; text-decoration: none; font-weight: 700; }
 
-  .month-select-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .month-select-row select { flex: 1; padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
-  .history-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding: 10px 12px; background: #FAEEDA; color: #854F0B; border-radius: 10px; margin-bottom: 12px; }
-  .history-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed #E3E1D9; }
+  .history-grid { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  .history-grid th, .history-grid td { border: 1px solid #E3E1D9; padding: 8px 10px; text-align: right; }
+  .history-grid th { background: #1F1F1D; color: #fff; font-weight: 700; }
+  .history-grid td.month-cell { text-align: left; font-weight: 700; background: #F8F7F3; position: sticky; left: 0; }
+  .history-grid th.month-head { position: sticky; left: 0; z-index: 2; }
+  .history-grid tr.total-row td { background: #FAEEDA; color: #854F0B; font-weight: 700; }
 
   .status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -76,17 +79,14 @@
 
     <div id="monthlyView" class="card"></div>
 
-    <div id="historyView" class="card" style="display:none;">
-      <div class="month-select-row">
-        <select id="monthSelect" onchange="loadHistory()"></select>
-      </div>
-      <div id="historyList">月を選んでください</div>
+    <div id="historyView" class="card" style="display:none; overflow-x:auto;">
+      <div id="historyGridWrap">月別履歴を読み込み中...</div>
     </div>
   </div>
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.02</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.03</p>
 </div>
 
 <script>
@@ -95,7 +95,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
 var currentTab = 'monthly';
-var monthsLoaded = false;
+var historyLoaded = false;
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -125,7 +125,7 @@ function switchTab(tab) {
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
   document.getElementById('monthlyView').style.display = (tab === 'monthly') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
-  if (tab === 'history' && !monthsLoaded) loadMonths();
+  if (tab === 'history' && !historyLoaded) loadHistoryGrid();
 }
 
 function loadMonthlyStatus() {
@@ -172,51 +172,43 @@ function loadMonthlyStatus() {
   });
 }
 
-function loadMonths() {
-  callServer({ action: 'listPayslipMonths', userId: profile.userId }).then(function (result) {
-    var sel = document.getElementById('monthSelect');
-    sel.innerHTML = '';
-    if (result.status !== 'ok' || result.months.length === 0) {
-      document.getElementById('historyList').innerHTML = '<p style="font-size:13px; color:#8AA391;">まだ確定した給与明細はありません。</p>';
-      return;
-    }
-    result.months.forEach(function (m) {
-      if (!/^\d{4}-\d{2}$/.test(m)) return; // 想定外の形式は表示しない
-      var opt = document.createElement('option');
-      opt.value = m;
-      var parts = m.split('-');
-      opt.textContent = parts[0] + '年' + Number(parts[1]) + '月';
-      sel.appendChild(opt);
-    });
-    monthsLoaded = true;
-    loadHistory();
-  });
-}
+function loadHistoryGrid() {
+  var wrap = document.getElementById('historyGridWrap');
+  wrap.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
 
-function loadHistory() {
-  var yearMonth = document.getElementById('monthSelect').value;
-  var el = document.getElementById('historyList');
-  el.innerHTML = '<p style="font-size:13px; color:#8AA391;">読み込み中...</p>';
-
-  callServer({ action: 'getStaffHistory', userId: profile.userId, yearMonth: yearMonth }).then(function (result) {
+  callServer({ action: 'getAllStaffHistory', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#DC2626;">' + result.message + '</p>';
+      wrap.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
-    el.innerHTML = '';
-    var ymParts = yearMonth.split('-');
-    var ymLabel = ymParts[0] + '年' + Number(ymParts[1]) + '月';
-    var totalBox = document.createElement('div');
-    totalBox.className = 'history-total';
-    totalBox.innerHTML = '<span>' + ymLabel + ' 合計人件費</span><span>' + result.totalWage.toLocaleString() + '円</span>';
-    el.appendChild(totalBox);
+    if (result.rows.length === 0) {
+      wrap.innerHTML = '<p style="font-size:13px; color:#8A897E;">まだ確定した給与明細はありません。</p>';
+      return;
+    }
+    historyLoaded = true;
 
-    result.rows.forEach(function (r) {
-      var row = document.createElement('div');
-      row.className = 'history-row';
-      row.innerHTML = '<span>' + r.name + '</span><span>' + r.totalHours.toFixed(1) + 'h　' + r.totalPay.toLocaleString() + '円</span>';
-      el.appendChild(row);
+    var html = '<table class="history-grid"><thead><tr><th class="month-head">年月</th>';
+    result.names.forEach(function (name) { html += '<th>' + name + '</th>'; });
+    html += '<th>合計</th></tr></thead><tbody>';
+
+    result.rows.forEach(function (row) {
+      var parts = row.yearMonth.split('-');
+      var label = parts[0] + '年' + Number(parts[1]) + '月';
+      html += '<tr><td class="month-cell">' + label + '</td>';
+      row.cells.forEach(function (v) { html += '<td>' + (v ? v.toLocaleString() + '円' : '-') + '</td>'; });
+      html += '<td>' + row.total.toLocaleString() + '円</td></tr>';
     });
+
+    var grandTotal = result.rows.reduce(function (sum, r) { return sum + r.total; }, 0);
+    html += '<tr class="total-row"><td class="month-cell">総合計</td>';
+    result.names.forEach(function (name, idx) {
+      var colTotal = result.rows.reduce(function (sum, r) { return sum + r.cells[idx]; }, 0);
+      html += '<td>' + colTotal.toLocaleString() + '円</td>';
+    });
+    html += '<td>' + grandTotal.toLocaleString() + '円</td></tr>';
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
   });
 }
 
