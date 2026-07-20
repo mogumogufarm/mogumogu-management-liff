@@ -29,7 +29,7 @@
   .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
 
   .tabs { display: flex; border: 1px solid #E3E1D9; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-  .tab-btn { flex: 1; padding: 10px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .tab-btn { flex: 1; padding: 9px 4px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 11px; cursor: pointer; }
   .tab-btn.active { background: #1F1F1D; color: #fff; font-weight: 700; }
 
   .store-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
@@ -45,6 +45,13 @@
   .report-time-label { font-size: 12px; font-weight: 700; color: #185FA5; margin: 0 0 4px; }
 
   .history-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 4px; border-bottom: 1px dashed #E3E1D9; }
+  .stock-row { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .stock-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .stock-variety { font-size: 13px; font-weight: 700; }
+  .stock-crop { font-size: 11px; color: #8A897E; }
+  .stock-remaining { font-size: 16px; font-weight: 700; }
+  .stock-remaining.low { color: #C0392B; }
+  .stock-sub { font-size: 11px; color: #8A897E; }
   .history-date { font-weight: 700; }
 
   .status {
@@ -73,6 +80,7 @@
       <button class="tab-btn active" id="tabTodayBtn" onclick="switchTab('today')">本日の詳細</button>
       <button class="tab-btn" id="tabProgressBtn" onclick="switchTab('progress')">途中経過</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
+      <button class="tab-btn" id="tabStockBtn" onclick="switchTab('stock')">在庫管理</button>
     </div>
 
     <div id="todayView" class="card"></div>
@@ -91,11 +99,25 @@
       </div>
       <div id="historyList">店舗を選んでください</div>
     </div>
+
+    <div id="stockView" class="card" style="display:none;">
+      <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:0 0 8px;">入荷を登録する</p>
+      <div class="select-row">
+        <select id="stockCropSelect" onchange="onCropChange()"></select>
+        <select id="stockVarietySelect"></select>
+      </div>
+      <div class="select-row">
+        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1" style="flex:1; padding:10px; font-size:13px; border-radius:8px; border:1px solid #E3E1D9; font-family:inherit;">
+        <button onclick="submitStock()" style="padding:0 16px; border:none; border-radius:8px; background:#1F1F1D; color:#fff; font-family:inherit; font-size:13px; cursor:pointer;">登録</button>
+      </div>
+      <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:16px 0 8px;">本日の在庫状況</p>
+      <div id="stockStatusList">読み込み中...</div>
+    </div>
   </div>
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -106,6 +128,8 @@ var profile = null;
 var currentTab = 'today';
 var progressInit = false;
 var historyInit = false;
+var stockInit = false;
+var varietyByCrop = {};
 var STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
 
 function callServer(payload) {
@@ -128,11 +152,14 @@ function switchTab(tab) {
   document.getElementById('tabTodayBtn').classList.toggle('active', tab === 'today');
   document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+  document.getElementById('tabStockBtn').classList.toggle('active', tab === 'stock');
   document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
   document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+  document.getElementById('stockView').style.display = (tab === 'stock') ? 'block' : 'none';
   if (tab === 'progress' && !progressInit) initProgressTab();
   if (tab === 'history' && !historyInit) initHistoryTab();
+  if (tab === 'stock' && !stockInit) initStockTab();
 }
 
 function loadTodayDetail() {
@@ -223,6 +250,82 @@ function loadProgress() {
         itemsHtml +
         '<div class="store-total"><span>合計</span><span>¥' + r.total.toLocaleString() + '</span></div>';
       el.appendChild(block);
+    });
+  });
+}
+
+function initStockTab() {
+  stockInit = true;
+  callServer({ action: 'getVarietyList', userId: profile.userId }).then(function (result) {
+    if (result.status !== 'ok') return;
+    varietyByCrop = result.byCrop;
+    var cropSel = document.getElementById('stockCropSelect');
+    result.crops.forEach(function (crop) {
+      var opt = document.createElement('option');
+      opt.value = crop;
+      opt.textContent = crop;
+      cropSel.appendChild(opt);
+    });
+    onCropChange();
+    loadStockStatus();
+  });
+}
+
+function onCropChange() {
+  var crop = document.getElementById('stockCropSelect').value;
+  var varietySel = document.getElementById('stockVarietySelect');
+  varietySel.innerHTML = '';
+  (varietyByCrop[crop] || []).forEach(function (v) {
+    var opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    varietySel.appendChild(opt);
+  });
+}
+
+function submitStock() {
+  var variety = document.getElementById('stockVarietySelect').value;
+  var qty = document.getElementById('stockQtyInput').value;
+  if (!variety || !qty) {
+    alert('品種と数量を入力してください。');
+    return;
+  }
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+  callServer({ action: 'submitStockEntry', userId: profile.userId, date: todayStr, variety: variety, qty: qty }).then(function (result) {
+    if (result.status === 'ok') {
+      document.getElementById('stockQtyInput').value = '';
+      loadStockStatus();
+    } else {
+      alert(result.message);
+    }
+  });
+}
+
+function loadStockStatus() {
+  var el = document.getElementById('stockStatusList');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getStockStatus', userId: profile.userId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.items.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">本日はまだ入荷・販売の記録がありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.items.forEach(function (it) {
+      var row = document.createElement('div');
+      row.className = 'stock-row';
+      var lowClass = it.remaining <= 0 ? ' low' : '';
+      row.innerHTML =
+        '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
+        '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
+        '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div>';
+      el.appendChild(row);
     });
   });
 }
