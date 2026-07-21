@@ -98,80 +98,6 @@
   </div>
 
   <div id="menu" style="display:none;">
-    <p class="section-label" id="salesSection">直売所の売上</p>
-    <div class="sales-box">
-      <div class="sales-store-name">道の駅しらね</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-shirane-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
-        </div>
-
-      <div class="sales-store-name">い～なとうぶ竜王店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-ryuo-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
-        </div>
-
-      <div class="sales-store-name">い～なとうぶ昭和店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-showa-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
-        </div>
-    </div>
-
-    <p class="section-label">在庫登録</p>
-    <div class="card">
-      <div class="variety-row">
-        <select id="stockStoreInput"></select>
-      </div>
-      <div class="variety-row">
-        <select id="stockCropInput" onchange="onStockCropChange()"></select>
-        <select id="stockVarietyInput"></select>
-      </div>
-      <div class="variety-row">
-        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1">
-        <button onclick="submitHomeStock()" class="variety-btn" style="flex:1;">登録する</button>
-      </div>
-    </div>
-
-    <p class="section-label">本日の在庫状況</p>
-    <div class="card">
-      <div id="homeStockStatusList">読み込み中...</div>
-    </div>
-
-    <p class="section-label">スタッフ・人件費</p>
-    <div class="stat-grid">
-      <div class="stat-card">
-        <p class="stat-label">稼働スタッフ</p>
-        <p class="stat-value" id="statStaffCount">-</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">今月の人件費</p>
-        <p class="stat-value" id="expThisMonth">-</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">先月の人件費</p>
-        <p class="stat-value" id="expLastMonth">-</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">年間の人件費</p>
-        <p class="stat-value" id="expYearTotal">-</p>
-      </div>
-    </div>
-
-
     <p class="section-label">メニュー</p>
     <div class="menu-list">
       <a class="menu-item" href="staff-management.html">
@@ -221,11 +147,84 @@
         <span class="menu-tag">準備中</span>
       </a>
     </div>
+
+    <p class="section-label">在庫登録</p>
+    <div class="card">
+      <div class="variety-row">
+        <select id="stockStoreInput"></select>
+      </div>
+      <div class="variety-row">
+        <select id="stockCropInput" onchange="onStockCropChange()"></select>
+        <select id="stockVarietyInput"></select>
+      </div>
+      <div class="variety-row">
+        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1">
+        <button onclick="submitHomeStock()" class="variety-btn" style="flex:1;" id="stockSubmitBtn">登録する</button>
+      </div>
+    </div>
+
+    <p class="section-label">本日の在庫状況</p>
+    <div class="card">
+      <div id="homeStockStatusList">読み込み中...</div>
+    </div>
+
+    <p class="section-label" id="salesSection">直売所の売上</p>
+    <div class="sales-box">
+      <div class="sales-store-name">道の駅しらね</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-shirane-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
+        </div>
+
+      <div class="sales-store-name">い～なとうぶ竜王店</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-ryuo-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
+        </div>
+
+      <div class="sales-store-name">い～なとうぶ昭和店</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-showa-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
+        </div>
+    </div>
+
+    <p class="section-label">スタッフ・人件費</p>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <p class="stat-label">稼働スタッフ</p>
+        <p class="stat-value" id="statStaffCount">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">今月の人件費</p>
+        <p class="stat-value" id="expThisMonth">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">先月の人件費</p>
+        <p class="stat-value" id="expLastMonth">-</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">年間の人件費</p>
+        <p class="stat-value" id="expYearTotal">-</p>
+      </div>
+    </div>
   </div>
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.10</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.11</p>
 </div>
 
 <script>
@@ -304,12 +303,22 @@ function submitHomeStock() {
   var today = new Date();
   var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
+  var btn = document.getElementById('stockSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '登録中...';
+
   callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, store: store, variety: variety, qty: qty }).then(function (result) {
+    btn.disabled = false;
+    btn.textContent = '登録する';
     alert(result.message);
     if (result.status === 'ok') {
       document.getElementById('stockQtyInput').value = '';
       loadHomeStockStatus();
     }
+  }).catch(function (err) {
+    btn.disabled = false;
+    btn.textContent = '登録する';
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
   });
 }
 
