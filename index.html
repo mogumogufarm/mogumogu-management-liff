@@ -52,6 +52,7 @@
   .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
   .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
   .stock-store-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px; }
+  .store-stock-list { margin-bottom: 6px; }
   .stock-store-header:first-child { margin-top: 0; }
   .stock-store-header span { font-size: 12px; font-weight: 700; color: #185FA5; }
   .clear-stock-btn { font-size: 11px; padding: 4px 10px; border: 1px solid #C0392B; border-radius: 999px; background: #fff; color: #C0392B; font-family: inherit; cursor: pointer; }
@@ -148,6 +149,42 @@
       </a>
     </div>
 
+    <p class="section-label" id="salesSection">直売所の売上</p>
+    <div class="sales-box">
+      <div class="sales-store-name">道の駅しらね</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-shirane-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
+        </div>
+      <div id="stock-shirane-list" class="store-stock-list"></div>
+
+      <div class="sales-store-name">い～なとうぶ竜王店</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-ryuo-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
+        </div>
+      <div id="stock-ryuo-list" class="store-stock-list"></div>
+
+      <div class="sales-store-name">い～なとうぶ昭和店</div>
+      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
+        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
+        <p class="sales-today-value" id="sales-showa-today">-</p>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
+        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
+        </div>
+      <div id="stock-showa-list" class="store-stock-list"></div>
+    </div>
+
     <p class="section-label">在庫登録</p>
     <div class="card">
       <div class="variety-row">
@@ -161,44 +198,6 @@
         <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1">
         <button onclick="submitHomeStock()" class="variety-btn" style="flex:1;" id="stockSubmitBtn">登録する</button>
       </div>
-    </div>
-
-    <p class="section-label">本日の在庫状況</p>
-    <div class="card">
-      <div id="homeStockStatusList">読み込み中...</div>
-    </div>
-
-    <p class="section-label" id="salesSection">直売所の売上</p>
-    <div class="sales-box">
-      <div class="sales-store-name">道の駅しらね</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-shirane-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
-        </div>
-
-      <div class="sales-store-name">い～なとうぶ竜王店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-ryuo-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
-        </div>
-
-      <div class="sales-store-name">い～なとうぶ昭和店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-showa-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
-        </div>
     </div>
 
     <p class="section-label">スタッフ・人件費</p>
@@ -224,7 +223,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.11</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.13</p>
 </div>
 
 <script>
@@ -323,41 +322,43 @@ function submitHomeStock() {
 }
 
 function loadHomeStockStatus() {
-  var el = document.getElementById('homeStockStatusList');
-  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+  var storeIdMap = { '道の駅しらね': 'stock-shirane-list', 'い～なとうぶ竜王店': 'stock-ryuo-list', 'い～なとうぶ昭和店': 'stock-showa-list' };
+  Object.values(storeIdMap).forEach(function (id) {
+    document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8A897E;">読み込み中...</p>';
+  });
 
   callServer({ action: 'getStockStatus', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      Object.values(storeIdMap).forEach(function (id) {
+        document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#C0392B;">' + result.message + '</p>';
+      });
       return;
     }
-    if (result.items.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">本日はまだ入荷・販売の記録がありません。</p>';
-      return;
-    }
-    el.innerHTML = '';
-    var currentStore = null;
-    result.items.forEach(function (it) {
-      if (it.store !== currentStore) {
-        currentStore = it.store;
-        var header = document.createElement('div');
-        header.className = 'stock-store-header';
-        header.innerHTML =
-          '<span>' + currentStore + '</span>' +
-          '<button class="clear-stock-btn" onclick="confirmClearStock(\'' + currentStore.replace(/'/g, "\\'") + '\')">在庫クリア</button>';
-        el.appendChild(header);
+
+    Object.keys(storeIdMap).forEach(function (storeName) {
+      var container = document.getElementById(storeIdMap[storeName]);
+      var items = result.items.filter(function (it) { return it.store === storeName; });
+      if (items.length === 0) {
+        container.innerHTML = '';
+        return;
       }
-      var row = document.createElement('div');
-      row.className = 'stock-row';
-      var lowClass = it.remaining <= 0 ? ' low' : '';
-      row.innerHTML =
-        '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
-        '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
-        '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div>';
-      el.appendChild(row);
+      var html =
+        '<div class="stock-store-header"><span>本日の在庫</span>' +
+        '<button class="clear-stock-btn" onclick="confirmClearStock(\'' + storeName.replace(/'/g, "\\'") + '\')">在庫クリア</button></div>';
+      items.forEach(function (it) {
+        var lowClass = it.remaining <= 0 ? ' low' : '';
+        html +=
+          '<div class="stock-row">' +
+          '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
+          '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
+          '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div></div>';
+      });
+      container.innerHTML = html;
     });
   }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    Object.values(storeIdMap).forEach(function (id) {
+      document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    });
   });
 }
 
