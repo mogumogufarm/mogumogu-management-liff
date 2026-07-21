@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スタッフ管理</title>
+<title>売上管理</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
@@ -23,40 +23,39 @@
   .top-nav a { font-size: 12px; color: #8A897E; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
   .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
   .site-title .icon-badge {
-    width: 32px; height: 32px; border-radius: 9px; background: #E6F1FB; color: #185FA5;
+    width: 32px; height: 32px; border-radius: 9px; background: #FAEEDA; color: #854F0B;
     display: flex; align-items: center; justify-content: center; font-size: 17px;
   }
   .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
 
   .tabs { display: flex; border: 1px solid #E3E1D9; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-  .tab-btn { flex: 1; padding: 10px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 14px; cursor: pointer; }
+  .tab-btn { flex: 1; padding: 9px 4px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 11px; cursor: pointer; }
   .tab-btn.active { background: #1F1F1D; color: #fff; font-weight: 700; }
 
-  .staff-card { border: 1px solid #E3E1D9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
-  .staff-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
-  .staff-row { display: flex; justify-content: space-between; font-size: 12px; color: #8A897E; padding: 2px 0; }
-  .staff-row b { color: #1F1F1D; font-weight: 700; }
-  .map-link { color: #185FA5; text-decoration: none; font-weight: 700; }
-  .ledger-inline { margin-top: 10px; max-height: 220px; overflow-y: auto; border-top: 1px solid #E3E1D9; padding-top: 6px; }
+  .store-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .store-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .store-name .report-time { font-size: 11px; font-weight: 400; color: #8A897E; }
+  .item-row { display: flex; justify-content: space-between; font-size: 12px; color: #5C5B54; padding: 3px 0; }
+  .store-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #E3E1D9; }
 
-  .ledger-select-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .ledger-select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
-  .ledger-day-row {
-    display: flex; justify-content: space-between; align-items: center; font-size: 13px;
-    padding: 8px 4px; border-bottom: 1px dashed #E3E1D9;
-  }
-  .ledger-day-row.no-record { color: #B5B3A8; }
-  .ledger-day-date { font-weight: 700; width: 84px; flex-shrink: 0; }
-  .ledger-day-info { color: #5C5B54; text-align: right; flex: 1; }
-  .ledger-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding: 10px 12px; background: #FAEEDA; color: #854F0B; border-radius: 10px; margin-top: 10px; }
-  .payslip-summary { background: #F8F7F3; border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
-  .payslip-summary-title { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 0 0 6px; }
-  .history-grid { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
-  .history-grid th, .history-grid td { border: 1px solid #E3E1D9; padding: 8px 10px; text-align: right; }
-  .history-grid th { background: #1F1F1D; color: #fff; font-weight: 700; }
-  .history-grid td.month-cell { text-align: left; font-weight: 700; background: #F8F7F3; position: sticky; left: 0; }
-  .history-grid th.month-head { position: sticky; left: 0; z-index: 2; }
-  .history-grid tr.total-row td { background: #FAEEDA; color: #854F0B; font-weight: 700; }
+  .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+
+  .report-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .report-time-label { font-size: 12px; font-weight: 700; color: #185FA5; margin: 0 0 4px; }
+  .stock-hint { font-size: 11px; font-weight: 400; color: #854F0B; }
+
+  .history-block { border-bottom: 1px solid #E3E1D9; padding: 8px 0; }
+  .history-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding: 0 4px 4px; }
+  .history-items { padding: 0 4px; }
+  .stock-row { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .stock-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .stock-variety { font-size: 13px; font-weight: 700; }
+  .stock-crop { font-size: 11px; color: #8A897E; }
+  .stock-remaining { font-size: 16px; font-weight: 700; }
+  .stock-remaining.low { color: #C0392B; }
+  .stock-sub { font-size: 11px; color: #8A897E; }
+  .history-date { font-weight: 700; }
 
   .status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -78,7 +77,7 @@
 <body>
 <div class="wrap">
   <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
-  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-users" aria-hidden="true"></i></span>スタッフ管理</h1>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>売上管理</h1>
 
   <div id="blockedCard" class="card" style="text-align:center; display:none;">
     <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
@@ -86,23 +85,44 @@
 
   <div id="mainContent" style="display:none;">
     <div class="tabs">
-      <button class="tab-btn active" id="tabMonthlyBtn" onclick="switchTab('monthly')">今月の状況</button>
-      <button class="tab-btn" id="tabLedgerBtn" onclick="switchTab('ledger')">過去の給与明細</button>
-      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">月別一覧</button>
+      <button class="tab-btn active" id="tabTodayBtn" onclick="switchTab('today')">本日の詳細</button>
+      <button class="tab-btn" id="tabProgressBtn" onclick="switchTab('progress')">途中経過</button>
+      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
+      <button class="tab-btn" id="tabStockBtn" onclick="switchTab('stock')">在庫管理</button>
     </div>
 
-    <div id="monthlyView" class="card"></div>
+    <div id="todayView" class="card"></div>
 
-    <div id="ledgerView" class="card" style="display:none;">
-      <div class="ledger-select-row">
-        <select id="ledgerStaffSelect" onchange="onStaffChange()"></select>
-        <select id="ledgerMonthSelect" onchange="loadLedger()"></select>
+    <div id="progressView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="progressStoreSelect" onchange="loadProgress()"></select>
+        <select id="progressDateSelect" onchange="loadProgress()"></select>
       </div>
-      <div id="ledgerList">スタッフと月を選んでください</div>
+      <div id="progressList">店舗と日付を選んでください</div>
     </div>
 
-    <div id="historyView" class="card" style="display:none; overflow-x:auto;">
-      <div id="historyGridWrap">月別一覧を読み込み中...</div>
+    <div id="historyView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="historyStoreSelect" onchange="loadDailyHistory()"></select>
+      </div>
+      <div id="historyList">店舗を選んでください</div>
+    </div>
+
+    <div id="stockView" class="card" style="display:none;">
+      <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:0 0 8px;">入荷を登録する</p>
+      <div class="select-row">
+        <select id="stockStoreSelect"></select>
+      </div>
+      <div class="select-row">
+        <select id="stockCropSelect" onchange="onCropChange()"></select>
+        <select id="stockVarietySelect"></select>
+      </div>
+      <div class="select-row">
+        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1" style="flex:1; padding:10px; font-size:13px; border-radius:8px; border:1px solid #E3E1D9; font-family:inherit;">
+        <button onclick="submitStock()" id="stockSubmitBtn" style="padding:0 16px; border:none; border-radius:8px; background:#1F1F1D; color:#fff; font-family:inherit; font-size:13px; cursor:pointer;">登録</button>
+      </div>
+      <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:16px 0 8px;">本日の在庫状況</p>
+      <div id="stockStatusList">読み込み中...</div>
     </div>
   </div>
 
@@ -115,7 +135,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.07</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
@@ -123,18 +143,12 @@ var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6l
 var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
-var currentTab = 'monthly';
-var historyLoaded = false;
-var ledgerInit = false;
-var monthsByStaff = {};
-
-function showProcessing(text) {
-  document.getElementById('processingText').textContent = text;
-  document.getElementById('processingOverlay').style.display = 'flex';
-}
-function hideProcessing() {
-  document.getElementById('processingOverlay').style.display = 'none';
-}
+var currentTab = 'today';
+var progressInit = false;
+var historyInit = false;
+var stockInit = false;
+var varietyByCrop = {};
+var STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -151,243 +165,295 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-function setPageStatus(type, text) {
-  var el = document.getElementById('initStatus');
-  el.className = 'status show ' + type;
-  el.textContent = text;
-  if (type !== 'loading') setTimeout(function () { el.classList.remove('show'); }, type === 'error' ? 4500 : 2500);
+// ホーム画面の「本日の売上」タップから来た場合、指定の店舗・日付で途中経過タブを自動的に開く
+function applyUrlParams() {
+  var params = new URLSearchParams(window.location.search);
+  var tab = params.get('tab');
+  var store = params.get('store');
+  var date = params.get('date');
+  if (tab !== 'progress') return;
+
+  switchTab('progress');
+  if (!progressInit) initProgressTab();
+  setTimeout(function () {
+    if (store) document.getElementById('progressStoreSelect').value = store;
+    if (date) document.getElementById('progressDateSelect').value = date;
+    loadProgress();
+  }, 0);
 }
 
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById('tabMonthlyBtn').classList.toggle('active', tab === 'monthly');
-  document.getElementById('tabLedgerBtn').classList.toggle('active', tab === 'ledger');
+  document.getElementById('tabTodayBtn').classList.toggle('active', tab === 'today');
+  document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
-  document.getElementById('monthlyView').style.display = (tab === 'monthly') ? 'block' : 'none';
-  document.getElementById('ledgerView').style.display = (tab === 'ledger') ? 'block' : 'none';
+  document.getElementById('tabStockBtn').classList.toggle('active', tab === 'stock');
+  document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
+  document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
-  if (tab === 'ledger' && !ledgerInit) initLedgerTab();
-  if (tab === 'history' && !historyLoaded) loadHistoryGrid();
+  document.getElementById('stockView').style.display = (tab === 'stock') ? 'block' : 'none';
+  if (tab === 'progress' && !progressInit) initProgressTab();
+  if (tab === 'history' && !historyInit) initHistoryTab();
+  if (tab === 'stock' && !stockInit) initStockTab();
 }
 
-function loadMonthlyStatus() {
-  var el = document.getElementById('monthlyView');
+function loadTodayDetail() {
+  var el = document.getElementById('todayView');
   el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
 
-  callServer({ action: 'getStaffMonthlyStatus', userId: profile.userId }).then(function (result) {
+  callServer({ action: 'getTodaySalesDetail', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
-    if (result.staff.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">今月のデータはまだありません。</p>';
-      return;
-    }
-    var tParts = result.today.split('-');
-    var tLabel = tParts[0] + '年' + Number(tParts[1]) + '月' + Number(tParts[2]) + '日';
-    el.innerHTML = '<p style="font-size:12px; color:#8A897E; margin:0 0 10px;">' + tLabel + ' 時点</p>';
+    el.innerHTML = '<p style="font-size:12px; color:#8A897E; margin:0 0 10px;">' + result.today + '</p>';
 
-    result.staff.forEach(function (s) {
-      var card = document.createElement('div');
-      card.className = 'staff-card';
+    STORES.forEach(function (store) {
+      var s = result.stores[store];
+      var block = document.createElement('div');
+      block.className = 'store-block';
 
-      var summaryHtml =
-        '<p class="staff-name">' + s.name + '</p>' +
-        '<div class="staff-row"><span>出勤日数</span><b>' + s.workDays + '日</b></div>' +
-        '<div class="staff-row"><span>実働時間</span><b>' + s.totalHours.toFixed(1) + 'h</b></div>' +
-        '<div class="staff-row"><span>交通費</span><b>' + s.transportFee.toLocaleString() + '円</b></div>' +
-        '<div class="staff-row"><span>給与見込み</span><b>' + s.estimatedWage.toLocaleString() + '円</b></div>';
+      var timeLabel = s.reportTime ? s.reportTime + '時点' : '本日の報告なし';
+      var itemsHtml = s.items.length === 0
+        ? '<p style="font-size:12px; color:#B5B3A8; margin:0;">記録なし</p>'
+        : s.items.map(function (it) {
+            return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+          }).join('');
 
-      var daysHtml = '<div class="ledger-inline">';
-      s.days.forEach(function (d) {
-        if (d.noRecord) {
-          daysHtml += '<div class="ledger-day-row no-record"><span class="ledger-day-date">' + d.day + '日(' + d.weekday + ')</span><span class="ledger-day-info">記録なし</span></div>';
-        } else {
-          var breakLabel = d.breakUsed ? '休憩あり' : '';
-          var mapHtml = d.mapUrl ? '<a class="map-link" href="' + d.mapUrl + '" target="_blank">地図</a>' : '';
-          daysHtml +=
-            '<div class="ledger-day-row"><span class="ledger-day-date">' + d.day + '日(' + d.weekday + ')</span>' +
-            '<span class="ledger-day-info">' + d.clockIn + '〜' + d.clockOut + '　' + breakLabel + '　' + d.hoursLabel + (d.hoursLabel ? 'h' : '') + ' ' + mapHtml + '</span></div>';
-        }
-      });
-      daysHtml += '</div>';
-
-      card.innerHTML = summaryHtml + daysHtml;
-      el.appendChild(card);
+      block.innerHTML =
+        '<p class="store-name">' + store + '<span class="report-time">' + timeLabel + '</span></p>' +
+        itemsHtml +
+        '<div class="store-total"><span>合計</span><span>¥' + s.total.toLocaleString() + '</span></div>';
+      el.appendChild(block);
     });
   });
 }
 
-function initLedgerTab() {
-  ledgerInit = true;
+function initProgressTab() {
+  progressInit = true;
+  var storeSel = document.getElementById('progressStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
 
-  // 月のプルダウン：2024年1月〜今月まで、年ごとにグループ化して用意
-  var monthSel = document.getElementById('ledgerMonthSelect');
+  var dateSel = document.getElementById('progressDateSelect');
   var now = new Date();
-  var startYear = 2024;
-  var years = {};
-  for (var y = now.getFullYear(); y >= startYear; y--) {
-    var maxMonth = (y === now.getFullYear()) ? now.getMonth() : 11;
-    var group = document.createElement('optgroup');
-    group.label = y + '年';
-    for (var m = maxMonth; m >= 0; m--) {
-      var ym = y + '-' + (m + 1 < 10 ? '0' + (m + 1) : (m + 1));
-      var opt = document.createElement('option');
-      opt.value = ym;
-      opt.textContent = (m + 1) + '月';
-      group.appendChild(opt);
-    }
-    monthSel.appendChild(group);
+  for (var i = 0; i < 31; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    var ds = Utilities_formatDate(d);
+    var opt2 = document.createElement('option');
+    opt2.value = ds;
+    opt2.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    dateSel.appendChild(opt2);
   }
-
-  callServer({ action: 'getStaffNames', userId: profile.userId }).then(function (result) {
-    var staffSel = document.getElementById('ledgerStaffSelect');
-    staffSel.innerHTML = '';
-    if (result.status !== 'ok') {
-      document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#C0392B;">' + (result.message || '取得に失敗しました。') + '</p>';
-      return;
-    }
-    if (result.names.length === 0) {
-      document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#8A897E;">スタッフが登録されていません。</p>';
-      return;
-    }
-    monthsByStaff = result.monthsByName || {};
-    result.names.forEach(function (name) {
-      var opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      staffSel.appendChild(opt);
-    });
-    updateMonthAvailability();
-    loadLedger();
-  }).catch(function (err) {
-    document.getElementById('ledgerList').innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
-  });
+  loadProgress();
 }
 
-function formatYearMonthValue(d) {
-  var m = d.getMonth() + 1;
-  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m);
+function Utilities_formatDate(d) {
+  var m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
 }
 
-function onStaffChange() {
-  updateMonthAvailability();
-  loadLedger();
-}
-
-// 選んだスタッフに打刻記録がない月は、選べないようグレーアウトする
-function updateMonthAvailability() {
-  var staffName = document.getElementById('ledgerStaffSelect').value;
-  var available = monthsByStaff[staffName] || [];
-  var availableSet = {};
-  available.forEach(function (ym) { availableSet[ym] = true; });
-
-  var monthSel = document.getElementById('ledgerMonthSelect');
-  var options = monthSel.querySelectorAll('option');
-  var firstAvailable = null;
-  options.forEach(function (opt) {
-    var hasData = !!availableSet[opt.value];
-    opt.disabled = !hasData;
-    opt.textContent = opt.textContent.replace(' （記録なし）', '') + (hasData ? '' : ' （記録なし）');
-    if (hasData && !firstAvailable) firstAvailable = opt.value;
-  });
-  if (firstAvailable && monthSel.options[monthSel.selectedIndex].disabled) {
-    monthSel.value = firstAvailable;
-  }
-}
-
-function loadLedger() {
-  var staffName = document.getElementById('ledgerStaffSelect').value;
-  var yearMonth = document.getElementById('ledgerMonthSelect').value;
-  var el = document.getElementById('ledgerList');
-  if (!staffName || !yearMonth) return;
+function loadProgress() {
+  var store = document.getElementById('progressStoreSelect').value;
+  var date = document.getElementById('progressDateSelect').value;
+  var el = document.getElementById('progressList');
+  if (!store || !date) return;
   el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
 
-  callServer({ action: 'getStaffAttendanceLedger', userId: profile.userId, staffName: staffName, yearMonth: yearMonth })
-    .then(function (result) {
-      if (result.status !== 'ok') {
-        el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-        return;
-      }
-      el.innerHTML = '';
-
-      if (result.payslip) {
-        var p = result.payslip;
-        var payslipBox = document.createElement('div');
-        payslipBox.className = 'payslip-summary';
-        payslipBox.innerHTML =
-          '<p class="payslip-summary-title">確定済みの給与明細</p>' +
-          '<div class="staff-row"><span>時給</span><b>' + p.hourlyWage.toLocaleString() + '円</b></div>' +
-          '<div class="staff-row"><span>勤務給与</span><b>' + p.wagePay.toLocaleString() + '円</b></div>' +
-          '<div class="staff-row"><span>交通費</span><b>' + p.transportFee.toLocaleString() + '円</b></div>' +
-          '<div class="staff-row"><span>給与額（合計）</span><b>' + p.totalPay.toLocaleString() + '円</b></div>';
-        el.appendChild(payslipBox);
-      } else {
-        var noPayslip = document.createElement('p');
-        noPayslip.style.cssText = 'font-size:12px; color:#B5B3A8; margin:0 0 12px;';
-        noPayslip.textContent = 'この月はまだ給与確定していません（打刻の記録のみ表示しています）';
-        el.appendChild(noPayslip);
-      }
-
-      result.days.forEach(function (d) {
-        var row = document.createElement('div');
-        var dateLabel = Number(d.date.slice(8, 10)) + '日(' + d.weekday + ')';
-        if (d.noRecord) {
-          row.className = 'ledger-day-row no-record';
-          row.innerHTML = '<span class="ledger-day-date">' + dateLabel + '</span><span class="ledger-day-info">記録なし</span>';
-        } else {
-          row.className = 'ledger-day-row';
-          var breakLabel = d.breakUsed ? '休憩あり' : '';
-          row.innerHTML =
-            '<span class="ledger-day-date">' + dateLabel + '</span>' +
-            '<span class="ledger-day-info">' + d.clockIn + '〜' + d.clockOut + '　' + breakLabel + '　' + d.hoursLabel + 'h</span>';
-        }
-        el.appendChild(row);
-      });
-      var totalBox = document.createElement('div');
-      totalBox.className = 'ledger-total';
-      totalBox.innerHTML = '<span>合計実働時間</span><span>' + result.totalHours + '時間</span>';
-      el.appendChild(totalBox);
+  callServer({ action: 'getIntradayProgress', userId: profile.userId, store: store, date: date }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.reports.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">この日の報告はまだありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.reports.forEach(function (r) {
+      var block = document.createElement('div');
+      block.className = 'report-block';
+      var itemsHtml = r.items.map(function (it) {
+        return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+      }).join('');
+      var stockHtml = (r.stockSummary && r.stockSummary.length > 0)
+        ? ' <span class="stock-hint">' + r.stockSummary.map(function (s) { return s.variety + '残り' + s.remaining + '個'; }).join('　') + '</span>'
+        : '';
+      block.innerHTML =
+        '<p class="report-time-label">' + r.time + ' 時点' + stockHtml + '</p>' +
+        itemsHtml +
+        '<div class="store-total"><span>合計</span><span>¥' + r.total.toLocaleString() + '</span></div>';
+      el.appendChild(block);
     });
+  });
 }
 
-function loadHistoryGrid() {
-  var wrap = document.getElementById('historyGridWrap');
-  wrap.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+function initStockTab() {
+  stockInit = true;
 
-  callServer({ action: 'getAllStaffHistory', userId: profile.userId }).then(function (result) {
+  var storeSel = document.getElementById('stockStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+
+  callServer({ action: 'getVarietyList', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') {
-      wrap.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      alert('品種一覧の取得に失敗しました：' + (result.message || '不明なエラー'));
+      return;
+    }
+    varietyByCrop = result.byCrop;
+    var cropSel = document.getElementById('stockCropSelect');
+    result.crops.forEach(function (crop) {
+      var opt = document.createElement('option');
+      opt.value = crop;
+      opt.textContent = crop;
+      cropSel.appendChild(opt);
+    });
+    onCropChange();
+  }).catch(function (err) {
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+
+  loadStockStatus();
+}
+
+function onCropChange() {
+  var crop = document.getElementById('stockCropSelect').value;
+  var varietySel = document.getElementById('stockVarietySelect');
+  varietySel.innerHTML = '';
+  (varietyByCrop[crop] || []).forEach(function (v) {
+    var opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    varietySel.appendChild(opt);
+  });
+}
+
+function showProcessing(text) {
+  document.getElementById('processingText').textContent = text;
+  document.getElementById('processingOverlay').style.display = 'flex';
+}
+function hideProcessing() {
+  document.getElementById('processingOverlay').style.display = 'none';
+}
+
+function submitStock() {
+  var store = document.getElementById('stockStoreSelect').value;
+  var variety = document.getElementById('stockVarietySelect').value;
+  var qty = document.getElementById('stockQtyInput').value;
+  if (!store || !variety || !qty) {
+    alert('店舗と品種と数量を入力してください。');
+    return;
+  }
+  var ok = confirm(store + 'に「' + variety + '」を' + qty + '個、入荷登録します。\nよろしいですか？');
+  if (!ok) return;
+
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+  showProcessing('登録中...');
+
+  callServer({ action: 'submitStockEntry', userId: profile.userId, date: todayStr, store: store, variety: variety, qty: qty }).then(function (result) {
+    hideProcessing();
+    if (result.status === 'ok') {
+      document.getElementById('stockQtyInput').value = '';
+      loadStockStatus();
+    } else {
+      alert(result.message);
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadStockStatus() {
+  var el = document.getElementById('stockStatusList');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getStockStatus', userId: profile.userId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.items.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">本日はまだ入荷・販売の記録がありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    var currentStore = null;
+    result.items.forEach(function (it) {
+      if (it.store !== currentStore) {
+        currentStore = it.store;
+        var storeHeader = document.createElement('p');
+        storeHeader.style.cssText = 'font-size:12px; font-weight:700; color:#185FA5; margin:10px 0 6px;';
+        storeHeader.textContent = currentStore;
+        el.appendChild(storeHeader);
+      }
+      var row = document.createElement('div');
+      row.className = 'stock-row';
+      var lowClass = it.remaining <= 0 ? ' low' : '';
+      row.innerHTML =
+        '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
+        '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
+        '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div>';
+      el.appendChild(row);
+    });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function initHistoryTab() {
+  historyInit = true;
+  var storeSel = document.getElementById('historyStoreSelect');
+  STORES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSel.appendChild(opt);
+  });
+  loadDailyHistory();
+}
+
+function loadDailyHistory() {
+  var store = document.getElementById('historyStoreSelect').value;
+  var el = document.getElementById('historyList');
+  if (!store) return;
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getDailyHistory', userId: profile.userId, store: store }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
     if (result.rows.length === 0) {
-      wrap.innerHTML = '<p style="font-size:13px; color:#8A897E;">まだ確定した給与明細はありません。</p>';
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">まだデータがありません。</p>';
       return;
     }
-    historyLoaded = true;
+    el.innerHTML = '';
+    result.rows.forEach(function (r) {
+      var parts = r.date.split('-');
+      var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
+      var block = document.createElement('div');
+      block.className = 'history-block';
 
-    var html = '<table class="history-grid"><thead><tr><th class="month-head">年月</th>';
-    result.names.forEach(function (name) { html += '<th>' + name + '</th>'; });
-    html += '<th>合計</th></tr></thead><tbody>';
+      var itemsHtml = r.items.map(function (it) {
+        return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+      }).join('');
 
-    result.rows.forEach(function (row) {
-      var parts = row.yearMonth.split('-');
-      var label = parts[0] + '年' + Number(parts[1]) + '月';
-      html += '<tr><td class="month-cell">' + label + '</td>';
-      row.cells.forEach(function (v) { html += '<td>' + (v ? v.toLocaleString() + '円' : '-') + '</td>'; });
-      html += '<td>' + row.total.toLocaleString() + '円</td></tr>';
+      block.innerHTML =
+        '<div class="history-row"><span class="history-date">' + label + '</span><span>¥' + r.total.toLocaleString() + '</span></div>' +
+        '<div class="history-items">' + itemsHtml + '</div>';
+      el.appendChild(block);
     });
-
-    var grandTotal = result.rows.reduce(function (sum, r) { return sum + r.total; }, 0);
-    html += '<tr class="total-row"><td class="month-cell">総合計</td>';
-    result.names.forEach(function (name, idx) {
-      var colTotal = result.rows.reduce(function (sum, r) { return sum + r.cells[idx]; }, 0);
-      html += '<td>' + colTotal.toLocaleString() + '円</td>';
-    });
-    html += '<td>' + grandTotal.toLocaleString() + '円</td></tr>';
-
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
   });
 }
 
@@ -407,7 +473,8 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
-      loadMonthlyStatus();
+      loadTodayDetail();
+      applyUrlParams();
     } else {
       document.getElementById('blockedCard').style.display = 'block';
     }
