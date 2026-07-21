@@ -39,7 +39,7 @@
   .store-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #E3E1D9; }
 
   .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .select-row select { flex: 1; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+  .select-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
 
   .report-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .report-time-label { font-size: 12px; font-weight: 700; color: #185FA5; margin: 0 0 4px; }
@@ -118,8 +118,8 @@
         <select id="stockVarietySelect"></select>
       </div>
       <div class="select-row">
-        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1" style="flex:1; padding:10px; font-size:13px; border-radius:8px; border:1px solid #E3E1D9; font-family:inherit;">
-        <button onclick="submitStock()" id="stockSubmitBtn" style="padding:0 16px; border:none; border-radius:8px; background:#1F1F1D; color:#fff; font-family:inherit; font-size:13px; cursor:pointer;">登録</button>
+        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1" style="flex:1; min-width:0; padding:10px; font-size:13px; border-radius:8px; border:1px solid #E3E1D9; font-family:inherit;">
+        <button onclick="submitStock()" id="stockSubmitBtn" style="flex-shrink:0; white-space:nowrap; padding:0 16px; border:none; border-radius:8px; background:#1F1F1D; color:#fff; font-family:inherit; font-size:13px; cursor:pointer;">登録</button>
       </div>
       <p style="font-size:12px; font-weight:700; color:#6B6A61; margin:16px 0 8px;">本日の在庫状況</p>
       <div id="stockStatusList">読み込み中...</div>
@@ -135,7 +135,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.06</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.07</p>
 </div>
 
 <script>
