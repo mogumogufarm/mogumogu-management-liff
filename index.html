@@ -45,6 +45,16 @@
   .stat-card-mini { padding: 8px; border-radius: 8px; }
   .stat-value-mini { font-size: 14px !important; }
   .store-group { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .sanchoku-site-block { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .sanchoku-site-title { font-size: 15px; font-weight: 700; color: #3B6D11; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #E3E1D9; }
+  .sanchoku-period-label { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 4px; }
+  .sanchoku-period-label:first-of-type { margin-top: 0; }
+  .sanchoku-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .sanchoku-table th, .sanchoku-table td { padding: 4px 3px; text-align: right; border-bottom: 1px dashed #E3E1D9; }
+  .sanchoku-table th:first-child, .sanchoku-table td:first-child { text-align: left; }
+  .sanchoku-table th { color: #8A897E; font-weight: 500; }
+  .sanchoku-table tr.total-row td { font-weight: 700; border-top: 1px solid #E3E1D9; border-bottom: none; }
+  .sanchoku-unfilled { color: #C0392B; }
   .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 6px; }
   .sales-store-name:first-child { margin-top: 0; }
   .sales-today-card { background: #FAEEDA; border: 1px solid #F0D9A8; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; display: block; text-decoration: none; }
@@ -128,6 +138,13 @@
           <p class="menu-text-sub">道の駅しらね・い～なとうぶ</p>
         </span>
       </a>
+      <a class="menu-item" href="sanchoku-management.html">
+        <span class="menu-icon-badge badge-green"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">産直サイト集計</p>
+          <p class="menu-text-sub">食べチョク・ポケットマルシェ・アウル</p>
+        </span>
+      </a>
       <a class="menu-item disabled" href="#">
         <span class="menu-icon-badge badge-purple"><i class="ti ti-notes" aria-hidden="true"></i></span>
         <span>
@@ -137,7 +154,7 @@
         <span class="menu-tag">準備中</span>
       </a>
       <a class="menu-item disabled" href="#">
-        <span class="menu-icon-badge badge-green"><i class="ti ti-seeding" aria-hidden="true"></i></span>
+        <span class="menu-icon-badge badge-teal"><i class="ti ti-seeding" aria-hidden="true"></i></span>
         <span>
           <p class="menu-text-title">生育記録</p>
           <p class="menu-text-sub">写真つきの観察記録</p>
@@ -194,6 +211,11 @@
       <div id="stock-showa-list" class="store-stock-list"></div>
     </div>
 
+    <p class="section-label">産直サイトの受注</p>
+    <div id="sanchokuSummary">
+      <p style="font-size:13px; color:#8A897E;">読み込み中...</p>
+    </div>
+
     <p class="section-label">在庫登録</p>
     <div class="card">
       <div class="variety-row">
@@ -241,7 +263,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.17</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.18</p>
 </div>
 
 <script>
@@ -343,6 +365,49 @@ function submitHomeStock() {
   }).catch(function (err) {
     hideProcessing();
     alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadSanchokuSummary() {
+  var el = document.getElementById('sanchokuSummary');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getSanchokuMonthlySummary', userId: currentUserId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    el.innerHTML = '';
+    var sites = ['食べチョク', 'ポケットマルシェ', 'アウル'];
+    sites.forEach(function (site) {
+      var data = result.sites[site];
+      var block = document.createElement('div');
+      block.className = 'sanchoku-site-block';
+      var html = '<p class="sanchoku-site-title">' + site + '</p>';
+
+      ['thisMonth', 'lastMonth'].forEach(function (period) {
+        var p = data[period];
+        var label = (period === 'thisMonth') ? '今月' : '先月';
+        html += '<p class="sanchoku-period-label">' + label + '</p>';
+        if (p.rows.length === 0) {
+          html += '<p style="font-size:12px; color:#B5B3A8; margin:0;">受注なし</p>';
+          return;
+        }
+        html += '<table class="sanchoku-table"><thead><tr><th>品種</th><th>数量</th><th>件数</th><th>合計</th><th>金額</th></tr></thead><tbody>';
+        p.rows.forEach(function (r) {
+          html += '<tr><td>' + r.variety + '</td><td>' + r.qtyLabel + '</td><td>' + r.count + '件</td><td>' + r.weightKg + 'kg</td>' +
+            '<td>' + (r.hasUnfilled ? '<span class="sanchoku-unfilled">¥' + r.amount.toLocaleString() + '＋未入力</span>' : '¥' + r.amount.toLocaleString()) + '</td></tr>';
+        });
+        html += '<tr class="total-row"><td>合計</td><td></td><td>' + p.totalCount + '件</td><td>' + p.totalWeight + 'kg</td>' +
+          '<td>' + (p.hasUnfilled ? '<span class="sanchoku-unfilled">¥' + p.totalAmount.toLocaleString() + '＋未入力</span>' : '¥' + p.totalAmount.toLocaleString()) + '</td></tr>';
+        html += '</tbody></table>';
+      });
+
+      block.innerHTML = html;
+      el.appendChild(block);
+    });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
@@ -462,6 +527,7 @@ if (typeof liff === 'undefined') {
       loadStats(data.userId);
       loadHomeVarietyList();
       loadHomeStockStatus();
+      loadSanchokuSummary();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
