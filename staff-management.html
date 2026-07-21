@@ -68,6 +68,11 @@
   .status.show { display: block; }
   .status.error { background: #C0392B; color: #fff; }
   .status.loading { background: #374151; color: #fff; }
+  .processing-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+  .processing-box { background: #fff; border-radius: 16px; padding: 28px 36px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .processing-box p { font-size: 14px; font-weight: 700; color: #1F1F1D; margin: 0; }
+  .spinner { width: 36px; height: 36px; border: 4px solid #E3E1D9; border-top-color: #1F1F1D; border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -101,13 +106,20 @@
     </div>
   </div>
 
-  <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">処理中...</p>
+    </div>
+  </div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.06</p>
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.07</p>
 </div>
 
 <script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxgph5-tz3McwR9P-TWIl9rWwsP1MDu5PIhSd_UBZ6jUmS25HYUC2Qh4PNVgtSwHtUqnw/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
 var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
@@ -115,6 +127,14 @@ var currentTab = 'monthly';
 var historyLoaded = false;
 var ledgerInit = false;
 var monthsByStaff = {};
+
+function showProcessing(text) {
+  document.getElementById('processingText').textContent = text;
+  document.getElementById('processingOverlay').style.display = 'flex';
+}
+function hideProcessing() {
+  document.getElementById('processingOverlay').style.display = 'none';
+}
 
 function callServer(payload) {
   return fetch(GAS_URL, {
@@ -375,6 +395,7 @@ if (typeof liff === 'undefined') {
   document.getElementById('initStatus').className = 'status show error';
   document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
 } else {
+  showProcessing('読み込み中...しばらくお待ちください');
   withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
     if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
     return withTimeout(liff.getProfile(), 10000);
@@ -382,6 +403,7 @@ if (typeof liff === 'undefined') {
     profile = p;
     return callServer({ action: 'checkAdmin', userId: p.userId });
   }).then(function (result) {
+    hideProcessing();
     document.getElementById('initStatus').style.display = 'none';
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
@@ -391,6 +413,7 @@ if (typeof liff === 'undefined') {
     }
   }).catch(function (err) {
     if (err === 'LOGIN_REDIRECT') return;
+    hideProcessing();
     var el = document.getElementById('initStatus');
     el.className = 'status show error';
     el.textContent = '初期化エラー：' + ((err && err.message) ? err.message : err);
