@@ -43,8 +43,11 @@
 
   .report-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .report-time-label { font-size: 12px; font-weight: 700; color: #185FA5; margin: 0 0 4px; }
+  .stock-hint { font-size: 11px; font-weight: 400; color: #854F0B; }
 
-  .history-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 4px; border-bottom: 1px dashed #E3E1D9; }
+  .history-block { border-bottom: 1px solid #E3E1D9; padding: 8px 0; }
+  .history-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding: 0 4px 4px; }
+  .history-items { padding: 0 4px; }
   .stock-row { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .stock-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .stock-variety { font-size: 13px; font-weight: 700; }
@@ -120,7 +123,7 @@
 
   <div class="status show loading" id="initStatus">読み込み中...しばらくお待ちください</div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.03</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.04</p>
 </div>
 
 <script>
@@ -265,8 +268,11 @@ function loadProgress() {
       var itemsHtml = r.items.map(function (it) {
         return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
       }).join('');
+      var stockHtml = (r.stockSummary && r.stockSummary.length > 0)
+        ? ' <span class="stock-hint">' + r.stockSummary.map(function (s) { return s.variety + '残り' + s.remaining + '個'; }).join('　') + '</span>'
+        : '';
       block.innerHTML =
-        '<p class="report-time-label">' + r.time + ' 時点</p>' +
+        '<p class="report-time-label">' + r.time + ' 時点' + stockHtml + '</p>' +
         itemsHtml +
         '<div class="store-total"><span>合計</span><span>¥' + r.total.toLocaleString() + '</span></div>';
       el.appendChild(block);
@@ -407,10 +413,17 @@ function loadDailyHistory() {
     result.rows.forEach(function (r) {
       var parts = r.date.split('-');
       var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
-      var row = document.createElement('div');
-      row.className = 'history-row';
-      row.innerHTML = '<span class="history-date">' + label + '</span><span>¥' + r.total.toLocaleString() + '</span>';
-      el.appendChild(row);
+      var block = document.createElement('div');
+      block.className = 'history-block';
+
+      var itemsHtml = r.items.map(function (it) {
+        return '<div class="item-row"><span>' + it.item + '（' + it.qty + '）</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+      }).join('');
+
+      block.innerHTML =
+        '<div class="history-row"><span class="history-date">' + label + '</span><span>¥' + r.total.toLocaleString() + '</span></div>' +
+        '<div class="history-items">' + itemsHtml + '</div>';
+      el.appendChild(block);
     });
   });
 }
