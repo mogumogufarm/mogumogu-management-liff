@@ -38,6 +38,12 @@
     padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; width: 100%;
   }
   .pesticide-info { font-size: 11px; color: #8A897E; margin-top: 4px; }
+  .pesticide-row { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px; margin-bottom: 8px; position: relative; }
+  .pesticide-row select { margin-bottom: 6px; }
+  .pesticide-row-remove {
+    position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: #F3F2EE; color: #8A897E; font-size: 12px; cursor: pointer; line-height: 1;
+  }
   .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1F1F1D; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 
   .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -104,12 +110,7 @@
       </div>
       <div class="form-row">
         <label>使用薬剤</label>
-        <select id="sprayPesticideSelect" onchange="onPesticideChange()"></select>
-        <p class="pesticide-info" id="pesticideInfo"></p>
-      </div>
-      <div class="form-row">
-        <label>散布量</label>
-        <input type="text" id="sprayAmountInput" placeholder="例：10L">
+        <div id="pesticideRows"></div>
       </div>
       <div class="form-row">
         <label>備考（任意）</label>
@@ -143,7 +144,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -239,6 +240,8 @@ function onFieldChange() {
   onCropChange();
 }
 
+var pesticideRowCount = 0;
+
 function onCropChange() {
   var fieldName = document.getElementById('sprayFieldSelect').value;
   var field = fieldsData.filter(function (f) { return f.name === fieldName; })[0];
@@ -254,24 +257,10 @@ function onCropChange() {
     varietySel.appendChild(opt);
   });
 
-  // 農薬プルダウン（対象品目候補にcropが含まれるものを優先的に表示）
-  var pestSel = document.getElementById('sprayPesticideSelect');
-  pestSel.innerHTML = '';
-  var matched = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) !== -1; });
-  var others = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) === -1; });
-
-  if (matched.length > 0) {
-    var g1 = document.createElement('optgroup');
-    g1.label = crop + '向け候補';
-    matched.forEach(function (p) { g1.appendChild(makePesticideOption(p)); });
-    pestSel.appendChild(g1);
-  }
-  var g2 = document.createElement('optgroup');
-  g2.label = 'その他の薬剤';
-  others.forEach(function (p) { g2.appendChild(makePesticideOption(p)); });
-  pestSel.appendChild(g2);
-
-  onPesticideChange();
+  // 品目が変わったら、薬剤の入力行は1行目だけ残してリセットする
+  pesticideRowCount = 0;
+  document.getElementById('pesticideRows').innerHTML = '';
+  addPesticideRow();
 }
 
 function makePesticideOption(p) {
@@ -279,6 +268,24 @@ function makePesticideOption(p) {
   opt.value = p.name;
   opt.textContent = '[' + p.category + '] ' + p.name;
   return opt;
+}
+
+function populatePesticideSelect(selectEl) {
+  var crop = document.getElementById('sprayCropSelect').value;
+  selectEl.innerHTML = '<option value="">（薬剤を選択）</option>';
+  var matched = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) !== -1; });
+  var others = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) === -1; });
+
+  if (matched.length > 0) {
+    var g1 = document.createElement('optgroup');
+    g1.label = crop + '向け候補';
+    matched.forEach(function (p) { g1.appendChild(makePesticideOption(p)); });
+    selectEl.appendChild(g1);
+  }
+  var g2 = document.createElement('optgroup');
+  g2.label = 'その他の薬剤';
+  others.forEach(function (p) { g2.appendChild(makePesticideOption(p)); });
+  selectEl.appendChild(g2);
 }
 
 // データ側の表記ゆれ（おうとう＝さくらんぼ、すもも＝スモモ、ぶどう＝葡萄、かき＝柿）を吸収するための対応表
@@ -303,16 +310,44 @@ function extractCropSpecificText(text, crop) {
   return text; // 品目名が見つからない場合は、念のため全体をそのまま表示
 }
 
-function onPesticideChange() {
-  var name = document.getElementById('sprayPesticideSelect').value;
+function addPesticideRow() {
+  var rowId = pesticideRowCount++;
+  var container = document.getElementById('pesticideRows');
+  var row = document.createElement('div');
+  row.className = 'pesticide-row';
+  row.id = 'pesticideRow_' + rowId;
+  row.innerHTML =
+    '<button type="button" class="pesticide-row-remove" onclick="removePesticideRow(' + rowId + ')">✕</button>' +
+    '<select id="pesticideSelect_' + rowId + '" onchange="onPesticideRowChange(' + rowId + ')"></select>' +
+    '<input type="text" id="pesticideAmount_' + rowId + '" placeholder="散布量（例：10L）">' +
+    '<p class="pesticide-info" id="pesticideInfo_' + rowId + '"></p>';
+  container.appendChild(row);
+  populatePesticideSelect(document.getElementById('pesticideSelect_' + rowId));
+}
+
+function removePesticideRow(rowId) {
+  var row = document.getElementById('pesticideRow_' + rowId);
+  if (row) row.remove();
+  // 全部消してしまった場合は、空の1行を出し直す
+  if (document.getElementById('pesticideRows').children.length === 0) addPesticideRow();
+}
+
+function onPesticideRowChange(rowId) {
+  var name = document.getElementById('pesticideSelect_' + rowId).value;
   var crop = document.getElementById('sprayCropSelect').value;
   var p = pesticidesData.filter(function (x) { return x.name === name; })[0];
-  var info = document.getElementById('pesticideInfo');
+  var info = document.getElementById('pesticideInfo_' + rowId);
+
   if (!p) { info.textContent = ''; return; }
   var parts = [];
   if (p.dilution) parts.push('希釈倍率：' + extractCropSpecificText(p.dilution, crop));
   if (p.preHarvestDays) parts.push('収穫前日数：' + extractCropSpecificText(p.preHarvestDays, crop));
   info.textContent = parts.join('　');
+
+  // 一番下の行で薬剤を選んだら、次の入力欄を自動で追加する
+  var rows = document.getElementById('pesticideRows').children;
+  var isLastRow = rows[rows.length - 1].id === 'pesticideRow_' + rowId;
+  if (name && isLastRow) addPesticideRow();
 }
 
 function submitSpray() {
@@ -320,18 +355,31 @@ function submitSpray() {
   var field = document.getElementById('sprayFieldSelect').value;
   var crop = document.getElementById('sprayCropSelect').value;
   var variety = document.getElementById('sprayVarietySelect').value;
-  var pesticideName = document.getElementById('sprayPesticideSelect').value;
-  var amount = document.getElementById('sprayAmountInput').value;
   var note = document.getElementById('sprayNoteInput').value;
 
-  if (!date || !field || !crop || !pesticideName) {
-    alert('記録日・圃場・品目・薬剤を入力してください。');
+  if (!date || !field || !crop) {
+    alert('記録日・圃場・品目を入力してください。');
     return;
   }
-  var pesticide = pesticidesData.filter(function (p) { return p.name === pesticideName; })[0];
-  var category = pesticide ? pesticide.category : '';
 
-  var confirmMsg = field + '（' + crop + (variety ? '・' + variety : '') + '）に\n「' + pesticideName + '」を散布したと記録します。\nよろしいですか？';
+  var items = [];
+  var rows = document.getElementById('pesticideRows').children;
+  for (var i = 0; i < rows.length; i++) {
+    var rowId = rows[i].id.replace('pesticideRow_', '');
+    var pesticideName = document.getElementById('pesticideSelect_' + rowId).value;
+    if (!pesticideName) continue; // 未選択の空行は無視する
+    var amount = document.getElementById('pesticideAmount_' + rowId).value;
+    var pesticide = pesticidesData.filter(function (p) { return p.name === pesticideName; })[0];
+    items.push({ pesticide: pesticideName, category: pesticide ? pesticide.category : '', amount: amount });
+  }
+
+  if (items.length === 0) {
+    alert('薬剤を1つ以上選んでください。');
+    return;
+  }
+
+  var pesticideNames = items.map(function (it) { return it.pesticide; }).join('・');
+  var confirmMsg = field + '（' + crop + (variety ? '・' + variety : '') + '）に\n「' + pesticideNames + '」（' + items.length + '剤）を散布したと記録します。\nよろしいですか？';
   var ok = confirm(confirmMsg);
   if (!ok) return;
 
@@ -339,13 +387,15 @@ function submitSpray() {
 
   callServer({
     action: 'submitSprayRecord', userId: profile.userId, date: date, field: field, crop: crop,
-    variety: variety, pesticide: pesticideName, category: category, amount: amount, note: note
+    variety: variety, note: note, items: items
   }).then(function (result) {
     hideProcessing();
     alert(result.message);
     if (result.status === 'ok') {
-      document.getElementById('sprayAmountInput').value = '';
       document.getElementById('sprayNoteInput').value = '';
+      pesticideRowCount = 0;
+      document.getElementById('pesticideRows').innerHTML = '';
+      addPesticideRow();
     }
   }).catch(function (err) {
     hideProcessing();
