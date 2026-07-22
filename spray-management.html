@@ -143,7 +143,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -281,14 +281,37 @@ function makePesticideOption(p) {
   return opt;
 }
 
+// データ側の表記ゆれ（おうとう＝さくらんぼ、すもも＝スモモ、ぶどう＝葡萄、かき＝柿）を吸収するための対応表
+var cropAliases = {
+  'さくらんぼ': ['さくらんぼ', 'おうとう', 'さくら'],
+  'スモモ': ['スモモ', 'すもも', '李'],
+  '葡萄': ['葡萄', 'ぶどう'],
+  '柿': ['柿', 'かき'],
+  'もも': ['もも', '桃']
+};
+
+// 「もも：前日まで/3回以内、ぶどう：30日前まで/3回以内」のような文字列から、選んだ品目の部分だけを抜き出す
+function extractCropSpecificText(text, crop) {
+  if (!text) return '';
+  var aliases = cropAliases[crop] || [crop];
+  var segments = text.split(/[、,]/);
+  var matched = segments.filter(function (seg) {
+    var beforeColon = seg.split(/[：:]/)[0];
+    return aliases.some(function (alias) { return beforeColon.indexOf(alias) !== -1; });
+  });
+  if (matched.length > 0) return matched.join('、');
+  return text; // 品目名が見つからない場合は、念のため全体をそのまま表示
+}
+
 function onPesticideChange() {
   var name = document.getElementById('sprayPesticideSelect').value;
+  var crop = document.getElementById('sprayCropSelect').value;
   var p = pesticidesData.filter(function (x) { return x.name === name; })[0];
   var info = document.getElementById('pesticideInfo');
   if (!p) { info.textContent = ''; return; }
   var parts = [];
-  if (p.dilution) parts.push('希釈倍率：' + p.dilution);
-  if (p.preHarvestDays) parts.push('収穫前日数：' + p.preHarvestDays);
+  if (p.dilution) parts.push('希釈倍率：' + extractCropSpecificText(p.dilution, crop));
+  if (p.preHarvestDays) parts.push('収穫前日数：' + extractCropSpecificText(p.preHarvestDays, crop));
   info.textContent = parts.join('　');
 }
 
