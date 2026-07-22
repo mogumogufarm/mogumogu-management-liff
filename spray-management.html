@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>防除日誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #F3F2EE;
+    color: #1F1F1D;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #8A897E; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #FCEBEB; color: #A32D2D;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+
+  .tabs { display: flex; border: 1px solid #E3E1D9; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 9px 4px; border: none; background: #fff; color: #8A897E; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .tab-btn.active { background: #1F1F1D; color: #fff; font-weight: 700; }
+
+  .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .form-row label { font-size: 12px; font-weight: 700; color: #6B6A61; }
+  .form-row select, .form-row input, .form-row textarea {
+    padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; width: 100%;
+  }
+  .pesticide-info { font-size: 11px; color: #8A897E; margin-top: 4px; }
+  .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1F1F1D; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .select-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
+
+  .record-row { border-bottom: 1px dashed #E3E1D9; padding: 8px 4px; }
+  .record-top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; }
+  .record-sub { font-size: 12px; color: #8A897E; margin-top: 2px; }
+
+  .usage-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 4px; border-bottom: 1px dashed #E3E1D9; }
+  .usage-row .name-col b { font-weight: 700; }
+  .usage-row .name-col span { font-size: 11px; color: #8A897E; margin-left: 6px; }
+  .usage-crop-detail { font-size: 11px; color: #8A897E; padding: 0 4px 8px; border-bottom: 1px dashed #E3E1D9; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #C0392B; color: #fff; }
+  .status.loading { background: #374151; color: #fff; }
+  .processing-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+  .processing-box { background: #fff; border-radius: 16px; padding: 28px 36px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .processing-box p { font-size: 14px; font-weight: 700; color: #1F1F1D; margin: 0; }
+  .spinner { width: 36px; height: 36px; border: 4px solid #E3E1D9; border-top-color: #1F1F1D; border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-flask" aria-hidden="true"></i></span>防除日誌</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabInputBtn" onclick="switchTab('input')">記録入力</button>
+      <button class="tab-btn" id="tabListBtn" onclick="switchTab('list')">記録一覧</button>
+      <button class="tab-btn" id="tabUsageBtn" onclick="switchTab('usage')">使用薬剤まとめ</button>
+    </div>
+
+    <div id="inputView" class="card">
+      <div class="form-row">
+        <label>記録日</label>
+        <input type="date" id="sprayDateInput">
+      </div>
+      <div class="form-row">
+        <label>圃場</label>
+        <select id="sprayFieldSelect" onchange="onFieldChange()"></select>
+      </div>
+      <div class="form-row">
+        <label>品目</label>
+        <select id="sprayCropSelect" onchange="onCropChange()"></select>
+      </div>
+      <div class="form-row">
+        <label>品種（任意）</label>
+        <select id="sprayVarietySelect"></select>
+      </div>
+      <div class="form-row">
+        <label>使用薬剤</label>
+        <select id="sprayPesticideSelect" onchange="onPesticideChange()"></select>
+        <p class="pesticide-info" id="pesticideInfo"></p>
+      </div>
+      <div class="form-row">
+        <label>散布量</label>
+        <input type="text" id="sprayAmountInput" placeholder="例：10L">
+      </div>
+      <div class="form-row">
+        <label>備考（任意）</label>
+        <textarea id="sprayNoteInput" rows="2"></textarea>
+      </div>
+      <button class="submit-btn" onclick="submitSpray()">登録する</button>
+    </div>
+
+    <div id="listView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="listFieldSelect" onchange="loadRecords()"></select>
+        <select id="listCropSelect" onchange="loadRecords()"></select>
+      </div>
+      <div id="recordList">読み込み中...</div>
+    </div>
+
+    <div id="usageView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="usageYearSelect" onchange="loadUsage()"></select>
+      </div>
+      <div id="usageList">読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">処理中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentTab = 'input';
+var listInit = false, usageInit = false;
+var fieldsData = [];
+var pesticidesData = [];
+
+function callServer(payload) {
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function (res) { return res.json(); });
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('TIMEOUT')); }, ms); })
+  ]);
+}
+
+function showProcessing(text) {
+  document.getElementById('processingText').textContent = text;
+  document.getElementById('processingOverlay').style.display = 'flex';
+}
+function hideProcessing() {
+  document.getElementById('processingOverlay').style.display = 'none';
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabInputBtn').classList.toggle('active', tab === 'input');
+  document.getElementById('tabListBtn').classList.toggle('active', tab === 'list');
+  document.getElementById('tabUsageBtn').classList.toggle('active', tab === 'usage');
+  document.getElementById('inputView').style.display = (tab === 'input') ? 'block' : 'none';
+  document.getElementById('listView').style.display = (tab === 'list') ? 'block' : 'none';
+  document.getElementById('usageView').style.display = (tab === 'usage') ? 'block' : 'none';
+  if (tab === 'list' && !listInit) initListTab();
+  if (tab === 'usage' && !usageInit) initUsageTab();
+}
+
+function initInputForm() {
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  document.getElementById('sprayDateInput').value = todayStr;
+
+  Promise.all([
+    callServer({ action: 'getFieldList', userId: profile.userId }),
+    callServer({ action: 'getPesticideList', userId: profile.userId })
+  ]).then(function (results) {
+    var fieldResult = results[0], pesticideResult = results[1];
+    if (fieldResult.status !== 'ok') {
+      alert('圃場一覧の取得に失敗しました：' + fieldResult.message);
+      return;
+    }
+    if (pesticideResult.status !== 'ok') {
+      alert('農薬一覧の取得に失敗しました：' + pesticideResult.message);
+      return;
+    }
+    fieldsData = fieldResult.fields;
+    pesticidesData = pesticideResult.pesticides;
+
+    var fieldSel = document.getElementById('sprayFieldSelect');
+    fieldsData.forEach(function (f) {
+      var opt = document.createElement('option');
+      opt.value = f.name;
+      opt.textContent = f.name;
+      fieldSel.appendChild(opt);
+    });
+    onFieldChange();
+  }).catch(function (err) {
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function onFieldChange() {
+  var fieldName = document.getElementById('sprayFieldSelect').value;
+  var field = fieldsData.filter(function (f) { return f.name === fieldName; })[0];
+  var cropSel = document.getElementById('sprayCropSelect');
+  cropSel.innerHTML = '';
+  (field ? field.crops : []).forEach(function (c) {
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    cropSel.appendChild(opt);
+  });
+  onCropChange();
+}
+
+function onCropChange() {
+  var fieldName = document.getElementById('sprayFieldSelect').value;
+  var field = fieldsData.filter(function (f) { return f.name === fieldName; })[0];
+  var crop = document.getElementById('sprayCropSelect').value;
+
+  // 品種プルダウン（その圃場の登録品種のうち、選んだ品目に関係しそうなものを表示。判別できない場合は圃場の全品種を出す）
+  var varietySel = document.getElementById('sprayVarietySelect');
+  varietySel.innerHTML = '<option value="">（指定なし）</option>';
+  (field ? field.varieties : []).forEach(function (v) {
+    var opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    varietySel.appendChild(opt);
+  });
+
+  // 農薬プルダウン（対象品目候補にcropが含まれるものを優先的に表示）
+  var pestSel = document.getElementById('sprayPesticideSelect');
+  pestSel.innerHTML = '';
+  var matched = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) !== -1; });
+  var others = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) === -1; });
+
+  if (matched.length > 0) {
+    var g1 = document.createElement('optgroup');
+    g1.label = crop + '向け候補';
+    matched.forEach(function (p) { g1.appendChild(makePesticideOption(p)); });
+    pestSel.appendChild(g1);
+  }
+  var g2 = document.createElement('optgroup');
+  g2.label = 'その他の薬剤';
+  others.forEach(function (p) { g2.appendChild(makePesticideOption(p)); });
+  pestSel.appendChild(g2);
+
+  onPesticideChange();
+}
+
+function makePesticideOption(p) {
+  var opt = document.createElement('option');
+  opt.value = p.name;
+  opt.textContent = '[' + p.category + '] ' + p.name;
+  return opt;
+}
+
+function onPesticideChange() {
+  var name = document.getElementById('sprayPesticideSelect').value;
+  var p = pesticidesData.filter(function (x) { return x.name === name; })[0];
+  var info = document.getElementById('pesticideInfo');
+  if (!p) { info.textContent = ''; return; }
+  var parts = [];
+  if (p.dilution) parts.push('希釈倍率：' + p.dilution);
+  if (p.preHarvestDays) parts.push('収穫前日数：' + p.preHarvestDays);
+  info.textContent = parts.join('　');
+}
+
+function submitSpray() {
+  var date = document.getElementById('sprayDateInput').value;
+  var field = document.getElementById('sprayFieldSelect').value;
+  var crop = document.getElementById('sprayCropSelect').value;
+  var variety = document.getElementById('sprayVarietySelect').value;
+  var pesticideName = document.getElementById('sprayPesticideSelect').value;
+  var amount = document.getElementById('sprayAmountInput').value;
+  var note = document.getElementById('sprayNoteInput').value;
+
+  if (!date || !field || !crop || !pesticideName) {
+    alert('記録日・圃場・品目・薬剤を入力してください。');
+    return;
+  }
+  var pesticide = pesticidesData.filter(function (p) { return p.name === pesticideName; })[0];
+  var category = pesticide ? pesticide.category : '';
+
+  var confirmMsg = field + '（' + crop + (variety ? '・' + variety : '') + '）に\n「' + pesticideName + '」を散布したと記録します。\nよろしいですか？';
+  var ok = confirm(confirmMsg);
+  if (!ok) return;
+
+  showProcessing('登録中...');
+
+  callServer({
+    action: 'submitSprayRecord', userId: profile.userId, date: date, field: field, crop: crop,
+    variety: variety, pesticide: pesticideName, category: category, amount: amount, note: note
+  }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      document.getElementById('sprayAmountInput').value = '';
+      document.getElementById('sprayNoteInput').value = '';
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function initListTab() {
+  listInit = true;
+  var fieldSel = document.getElementById('listFieldSelect');
+  fieldSel.innerHTML = '<option value="">すべての圃場</option>';
+  fieldsData.forEach(function (f) {
+    var opt = document.createElement('option');
+    opt.value = f.name;
+    opt.textContent = f.name;
+    fieldSel.appendChild(opt);
+  });
+
+  var cropSet = {};
+  fieldsData.forEach(function (f) { f.crops.forEach(function (c) { cropSet[c] = true; }); });
+  var cropSel = document.getElementById('listCropSelect');
+  cropSel.innerHTML = '<option value="">すべての品目</option>';
+  Object.keys(cropSet).forEach(function (c) {
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    cropSel.appendChild(opt);
+  });
+
+  loadRecords();
+}
+
+function loadRecords() {
+  var field = document.getElementById('listFieldSelect').value;
+  var crop = document.getElementById('listCropSelect').value;
+  var el = document.getElementById('recordList');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getSprayRecords', userId: profile.userId, field: field, crop: crop }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">記録がありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.rows.forEach(function (r) {
+      var parts = r.date.split('-');
+      var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
+      var row = document.createElement('div');
+      row.className = 'record-row';
+      row.innerHTML =
+        '<div class="record-top"><span>' + label + '　' + r.field + '</span><span>' + r.pesticide + '</span></div>' +
+        '<div class="record-sub">' + r.crop + (r.variety ? '・' + r.variety : '') + (r.amount ? '　' + r.amount : '') + (r.note ? '　' + r.note : '') + '</div>';
+      el.appendChild(row);
+    });
+  });
+}
+
+function initUsageTab() {
+  usageInit = true;
+  var sel = document.getElementById('usageYearSelect');
+  var thisYear = new Date().getFullYear();
+  for (var y = thisYear; y >= thisYear - 3; y--) {
+    var opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = y + '年';
+    sel.appendChild(opt);
+  }
+  loadUsage();
+}
+
+function loadUsage() {
+  var year = document.getElementById('usageYearSelect').value;
+  var el = document.getElementById('usageList');
+  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+
+  callServer({ action: 'getPesticideUsageSummary', userId: profile.userId, year: year }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#8A897E;">この年の記録がありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'usage-row';
+      row.innerHTML =
+        '<span class="name-col"><b>' + r.name + '</b><span>[' + r.category + ']</span></span>' +
+        '<span>' + r.count + '回' + (r.totalAmount ? '　' + r.totalAmount : '') + '</span>';
+      el.appendChild(row);
+      if (r.cropSummary) {
+        var detail = document.createElement('div');
+        detail.className = 'usage-crop-detail';
+        detail.textContent = r.cropSummary;
+        el.appendChild(detail);
+      }
+    });
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      initInputForm();
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + ((err && err.message) ? err.message : err);
+  });
+}
+</script>
+</body>
+</html>
