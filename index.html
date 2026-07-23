@@ -13,13 +13,13 @@
   body {
     margin: 0;
     font-family: 'Noto Sans JP', sans-serif;
-    background: #F3F2EE;
-    color: #1F1F1D;
+    background: #EFE8D8;
+    color: #2E3B22;
     min-height: 100vh;
   }
   .wrap { max-width: 480px; margin: 0 auto; padding: 28px 16px 40px; }
-  .eyebrow { font-size: 12px; color: #8A897E; margin: 0 0 2px; }
-  .site-title { font-size: 21px; font-weight: 700; margin: 0 0 20px; color: #1F1F1D; }
+  .eyebrow { font-size: 12px; color: #7A7256; margin: 0 0 2px; }
+  .site-title { font-size: 21px; font-weight: 700; margin: 0 0 20px; color: #2E3B22; }
 
   .status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -29,61 +29,61 @@
     box-shadow: 0 10px 28px rgba(0,0,0,0.25);
   }
   .status.show { display: block; }
-  .status.error { background: #C0392B; color: #fff; }
-  .status.loading { background: #374151; color: #fff; }
+  .status.error { background: #8B3A2E; color: #fff; }
+  .status.loading { background: #4A4436; color: #fff; }
   .processing-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 3000; }
-  .processing-box { background: #fff; border-radius: 16px; padding: 28px 36px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-  .processing-box p { font-size: 14px; font-weight: 700; color: #1F1F1D; margin: 0; }
-  .spinner { width: 36px; height: 36px; border: 4px solid #E3E1D9; border-top-color: #1F1F1D; border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
+  .processing-box { background: #F7F3E9; border-radius: 16px; padding: 28px 36px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .processing-box p { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0; }
+  .spinner { width: 36px; height: 36px; border: 4px solid #D6CBAA; border-top-color: #2E3B22; border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .section-label { font-size: 12px; font-weight: 700; color: #8A897E; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
-  .section-label-tag { font-size: 10px; font-weight: 400; color: #B5B3A8; }
+  .section-label { font-size: 12px; font-weight: 700; color: #7A7256; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
+  .section-label-tag { font-size: 10px; font-weight: 400; color: #A69B7A; }
   .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
   .stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
-  .stat-card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; }
+  .stat-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px; }
   .stat-card-mini { padding: 8px; border-radius: 8px; }
   .stat-value-mini { font-size: 14px !important; }
-  .store-group { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-  .sanchoku-site-block { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-  .sanchoku-site-title { font-size: 15px; font-weight: 700; color: #3B6D11; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #E3E1D9; }
-  .sanchoku-period-label { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 4px; }
+  .store-group { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .sanchoku-site-block { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .sanchoku-site-title { font-size: 15px; font-weight: 700; color: #3E5A1F; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #D6CBAA; }
+  .sanchoku-period-label { font-size: 12px; font-weight: 700; color: #6B6048; margin: 8px 0 4px; }
   .sanchoku-period-label:first-of-type { margin-top: 0; }
   .sanchoku-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .sanchoku-table th, .sanchoku-table td { padding: 4px 3px; text-align: right; border-bottom: 1px dashed #E3E1D9; }
+  .sanchoku-table th, .sanchoku-table td { padding: 4px 3px; text-align: right; border-bottom: 1px dashed #D6CBAA; }
   .sanchoku-table th:first-child, .sanchoku-table td:first-child { text-align: left; }
-  .sanchoku-table th { color: #8A897E; font-weight: 500; }
-  .sanchoku-table tr.total-row td { font-weight: 700; border-top: 1px solid #E3E1D9; border-bottom: none; }
-  .sanchoku-unfilled { color: #C0392B; }
-  .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6A61; margin: 8px 0 6px; }
+  .sanchoku-table th { color: #7A7256; font-weight: 500; }
+  .sanchoku-table tr.total-row td { font-weight: 700; border-top: 1px solid #D6CBAA; border-bottom: none; }
+  .sanchoku-unfilled { color: #8B3A2E; }
+  .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6048; margin: 8px 0 6px; }
   .sales-store-name:first-child { margin-top: 0; }
-  .sales-today-card { background: #FAEEDA; border: 1px solid #F0D9A8; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; display: block; text-decoration: none; }
-  .sales-today-value { font-size: 28px; font-weight: 700; color: #854F0B; margin: 0; }
-  .tap-hint { font-size: 10px; font-weight: 400; color: #A8935E; }
-  .card { background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px; margin-bottom: 6px; }
+  .sales-today-card { background: #F0DEB8; border: 1px solid #E0CC9E; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; display: block; text-decoration: none; }
+  .sales-today-value { font-size: 28px; font-weight: 700; color: #8A5A2A; margin: 0; }
+  .tap-hint { font-size: 10px; font-weight: 400; color: #9B8B5E; }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px; margin-bottom: 6px; }
   .variety-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .variety-row input, .variety-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
-  .variety-btn { flex-shrink: 0; padding: 10px 14px; border: none; border-radius: 8px; background: #1F1F1D; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
-  .stat-label { font-size: 12px; color: #8A897E; margin: 0 0 4px; }
+  .variety-row input, .variety-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
+  .variety-btn { flex-shrink: 0; padding: 10px 14px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .stat-label { font-size: 12px; color: #7A7256; margin: 0 0 4px; }
   .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
   .stock-store-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px; }
   .store-stock-list { margin-bottom: 6px; }
-  .stock-entry-mini { border-top: 1px dashed #E3E1D9; padding-top: 10px; margin-top: 4px; }
+  .stock-entry-mini { border-top: 1px dashed #D6CBAA; padding-top: 10px; margin-top: 4px; }
   .stock-store-header:first-child { margin-top: 0; }
-  .stock-store-header span { font-size: 12px; font-weight: 700; color: #185FA5; }
-  .clear-stock-btn { font-size: 11px; padding: 4px 10px; border: 1px solid #C0392B; border-radius: 999px; background: #fff; color: #C0392B; font-family: inherit; cursor: pointer; }
-  .stock-row { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .stock-store-header span { font-size: 12px; font-weight: 700; color: #3D5A75; }
+  .clear-stock-btn { font-size: 11px; padding: 4px 10px; border: 1px solid #8B3A2E; border-radius: 999px; background: #F7F3E9; color: #8B3A2E; font-family: inherit; cursor: pointer; }
+  .stock-row { border: 1px solid #D6CBAA; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
   .stock-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .stock-variety { font-size: 13px; font-weight: 700; }
-  .stock-crop { font-size: 11px; color: #8A897E; font-weight: 400; }
+  .stock-crop { font-size: 11px; color: #7A7256; font-weight: 400; }
   .stock-remaining { font-size: 16px; font-weight: 700; }
-  .stock-remaining.low { color: #C0392B; }
-  .stock-sub { font-size: 11px; color: #8A897E; }
+  .stock-remaining.low { color: #8B3A2E; }
+  .stock-sub { font-size: 11px; color: #7A7256; }
 
   .menu-list { display: flex; flex-direction: column; gap: 8px; }
   .menu-item {
     display: flex; align-items: center; gap: 12px;
-    background: #fff; border: 1px solid #E3E1D9; border-radius: 12px; padding: 14px 16px;
+    background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px;
     text-decoration: none; color: inherit;
   }
   .menu-item.disabled { opacity: 0.5; pointer-events: none; }
@@ -92,17 +92,17 @@
     display: flex; align-items: center; justify-content: center; font-size: 20px;
   }
   .menu-text-title { font-weight: 500; font-size: 14px; margin: 0; }
-  .menu-text-sub { font-size: 12px; color: #8A897E; margin: 0; }
+  .menu-text-sub { font-size: 12px; color: #7A7256; margin: 0; }
   .menu-tag {
-    margin-left: auto; font-size: 10px; color: #8A897E; white-space: nowrap;
+    margin-left: auto; font-size: 10px; color: #7A7256; white-space: nowrap;
   }
 
-  .badge-blue { background: #E6F1FB; color: #185FA5; }
-  .badge-teal { background: #E1F5EE; color: #0F6E56; }
-  .badge-amber { background: #FAEEDA; color: #854F0B; }
-  .badge-purple { background: #EEEDFE; color: #534AB7; }
-  .badge-green { background: #EAF3DE; color: #3B6D11; }
-  .badge-red { background: #FCEBEB; color: #A32D2D; }
+  .badge-blue { background: #DCE6EA; color: #3D5A75; }
+  .badge-teal { background: #DCEAE0; color: #2E5A4A; }
+  .badge-amber { background: #F0DEB8; color: #8A5A2A; }
+  .badge-purple { background: #EAE0E8; color: #6A4A5E; }
+  .badge-green { background: #E3ECD3; color: #3E5A1F; }
+  .badge-red { background: #F0DAD0; color: #8B3A2E; }
 </style>
 </head>
 <body>
@@ -110,8 +110,8 @@
   <p class="eyebrow">もぐもぐ農園</p>
   <h1 class="site-title">運営管理システム</h1>
 
-  <div id="blockedMessage" style="display:none; background:#fff; border:1px solid #E3E1D9; border-radius:12px; padding:24px;">
-    <p style="font-weight:700; color:#A32D2D;">この画面は管理者のみ利用できます</p>
+  <div id="blockedMessage" style="display:none; background: #F7F3E9; border:1px solid #D6CBAA; border-radius:12px; padding:24px;">
+    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
   </div>
 
   <div id="menu" style="display:none;">
@@ -130,7 +130,7 @@
           <p class="menu-text-title">シフト管理</p>
           <p class="menu-text-sub">確定・急募・名簿の管理（タイムカード側）</p>
         </span>
-        <i class="ti ti-external-link" style="color:#8A897E; font-size:16px;" aria-hidden="true"></i>
+        <i class="ti ti-external-link" style="color:#7A7256; font-size:16px;" aria-hidden="true"></i>
       </a>
       <a class="menu-item" href="sales-management.html">
         <span class="menu-icon-badge badge-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
@@ -243,7 +243,7 @@
 
     <p class="section-label">産直サイトの受注</p>
     <div id="sanchokuSummary">
-      <p style="font-size:13px; color:#8A897E;">読み込み中...</p>
+      <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
     </div>
 
     <p class="section-label">スタッフ・人件費</p>
@@ -278,7 +278,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.20</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.21</p>
 </div>
 
 <script>
@@ -379,11 +379,11 @@ function submitHomeStock(key, storeName) {
 
 function loadSanchokuSummary() {
   var el = document.getElementById('sanchokuSummary');
-  el.innerHTML = '<p style="font-size:13px; color:#8A897E;">読み込み中...</p>';
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
   callServer({ action: 'getSanchokuMonthlySummary', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
       return;
     }
     el.innerHTML = '';
@@ -399,7 +399,7 @@ function loadSanchokuSummary() {
         var label = (period === 'thisMonth') ? '今月' : '先月';
         html += '<p class="sanchoku-period-label">' + label + '</p>';
         if (p.rows.length === 0) {
-          html += '<p style="font-size:12px; color:#B5B3A8; margin:0;">受注なし</p>';
+          html += '<p style="font-size:12px; color:#A69B7A; margin:0;">受注なし</p>';
           return;
         }
         html += '<table class="sanchoku-table"><thead><tr><th>品種</th><th>数量</th><th>件数</th><th>合計</th><th>金額</th></tr></thead><tbody>';
@@ -416,20 +416,20 @@ function loadSanchokuSummary() {
       el.appendChild(block);
     });
   }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
 function loadHomeStockStatus() {
   var storeIdMap = { '道の駅しらね': 'stock-shirane-list', 'い～なとうぶ竜王店': 'stock-ryuo-list', 'い～なとうぶ昭和店': 'stock-showa-list' };
   Object.values(storeIdMap).forEach(function (id) {
-    document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8A897E;">読み込み中...</p>';
+    document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#7A7256;">読み込み中...</p>';
   });
 
   callServer({ action: 'getStockStatus', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       Object.values(storeIdMap).forEach(function (id) {
-        document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#C0392B;">' + result.message + '</p>';
+        document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8B3A2E;">' + result.message + '</p>';
       });
       return;
     }
@@ -456,7 +456,7 @@ function loadHomeStockStatus() {
     });
   }).catch(function (err) {
     Object.values(storeIdMap).forEach(function (id) {
-      document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+      document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
     });
   });
 }
