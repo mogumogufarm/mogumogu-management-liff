@@ -68,6 +68,7 @@
   .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
   .stock-store-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px; }
   .store-stock-list { margin-bottom: 6px; }
+  .stock-entry-mini { border-top: 1px dashed #E3E1D9; padding-top: 10px; margin-top: 4px; }
   .stock-store-header:first-child { margin-top: 0; }
   .stock-store-header span { font-size: 12px; font-weight: 700; color: #185FA5; }
   .clear-stock-btn { font-size: 11px; padding: 4px 10px; border: 1px solid #C0392B; border-radius: 999px; background: #fff; color: #C0392B; font-family: inherit; cursor: pointer; }
@@ -182,6 +183,16 @@
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
         </div>
       <div id="stock-shirane-list" class="store-stock-list"></div>
+      <div class="stock-entry-mini">
+        <div class="variety-row">
+          <select id="cropInput-shirane" onchange="onStockCropChangeFor('shirane')"></select>
+          <select id="varietyInput-shirane"></select>
+        </div>
+        <div class="variety-row">
+          <input type="number" id="qtyInput-shirane" placeholder="入荷数量" min="1">
+          <button onclick="submitHomeStock('shirane', '道の駅しらね')" class="variety-btn">登録する</button>
+        </div>
+      </div>
     </div>
 
     <div class="store-group">
@@ -195,6 +206,16 @@
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
         </div>
       <div id="stock-ryuo-list" class="store-stock-list"></div>
+      <div class="stock-entry-mini">
+        <div class="variety-row">
+          <select id="cropInput-ryuo" onchange="onStockCropChangeFor('ryuo')"></select>
+          <select id="varietyInput-ryuo"></select>
+        </div>
+        <div class="variety-row">
+          <input type="number" id="qtyInput-ryuo" placeholder="入荷数量" min="1">
+          <button onclick="submitHomeStock('ryuo', 'い～なとうぶ竜王店')" class="variety-btn">登録する</button>
+        </div>
+      </div>
     </div>
 
     <div class="store-group">
@@ -208,26 +229,21 @@
         <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
         </div>
       <div id="stock-showa-list" class="store-stock-list"></div>
+      <div class="stock-entry-mini">
+        <div class="variety-row">
+          <select id="cropInput-showa" onchange="onStockCropChangeFor('showa')"></select>
+          <select id="varietyInput-showa"></select>
+        </div>
+        <div class="variety-row">
+          <input type="number" id="qtyInput-showa" placeholder="入荷数量" min="1">
+          <button onclick="submitHomeStock('showa', 'い～なとうぶ昭和店')" class="variety-btn">登録する</button>
+        </div>
+      </div>
     </div>
 
     <p class="section-label">産直サイトの受注</p>
     <div id="sanchokuSummary">
       <p style="font-size:13px; color:#8A897E;">読み込み中...</p>
-    </div>
-
-    <p class="section-label">在庫登録</p>
-    <div class="card">
-      <div class="variety-row">
-        <select id="stockStoreInput"></select>
-      </div>
-      <div class="variety-row">
-        <select id="stockCropInput" onchange="onStockCropChange()"></select>
-        <select id="stockVarietyInput"></select>
-      </div>
-      <div class="variety-row">
-        <input type="number" id="stockQtyInput" placeholder="入荷数量" min="1">
-        <button onclick="submitHomeStock()" class="variety-btn" id="stockSubmitBtn">登録する</button>
-      </div>
     </div>
 
     <p class="section-label">スタッフ・人件費</p>
@@ -262,7 +278,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.19</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.20</p>
 </div>
 
 <script>
@@ -286,41 +302,36 @@ function withTimeout(promise, ms) {
 }
 
 var homeVarietyByCrop = {};
-
-var STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
+var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
 
 function loadHomeVarietyList() {
-  var storeSel = document.getElementById('stockStoreInput');
-  STORES.forEach(function (s) {
-    var opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    storeSel.appendChild(opt);
-  });
-
   callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       console.error('品種一覧の取得に失敗：', result.message);
       return;
     }
     homeVarietyByCrop = result.byCrop;
-    var cropSel = document.getElementById('stockCropInput');
-    cropSel.innerHTML = '';
-    result.crops.forEach(function (crop) {
-      var opt = document.createElement('option');
-      opt.value = crop;
-      opt.textContent = crop;
-      cropSel.appendChild(opt);
+
+    STORE_KEYS.forEach(function (key) {
+      var cropSel = document.getElementById('cropInput-' + key);
+      if (!cropSel) return;
+      cropSel.innerHTML = '';
+      result.crops.forEach(function (crop) {
+        var opt = document.createElement('option');
+        opt.value = crop;
+        opt.textContent = crop;
+        cropSel.appendChild(opt);
+      });
+      onStockCropChangeFor(key);
     });
-    onStockCropChange();
   }).catch(function (err) {
     console.error('通信エラー：', err);
   });
 }
 
-function onStockCropChange() {
-  var crop = document.getElementById('stockCropInput').value;
-  var varietySel = document.getElementById('stockVarietyInput');
+function onStockCropChangeFor(key) {
+  var crop = document.getElementById('cropInput-' + key).value;
+  var varietySel = document.getElementById('varietyInput-' + key);
   varietySel.innerHTML = '';
   (homeVarietyByCrop[crop] || []).forEach(function (v) {
     var opt = document.createElement('option');
@@ -338,15 +349,14 @@ function hideProcessing() {
   document.getElementById('processingOverlay').style.display = 'none';
 }
 
-function submitHomeStock() {
-  var store = document.getElementById('stockStoreInput').value;
-  var variety = document.getElementById('stockVarietyInput').value;
-  var qty = document.getElementById('stockQtyInput').value;
-  if (!store || !variety || !qty) {
-    alert('店舗と品種と数量を入力してください。');
+function submitHomeStock(key, storeName) {
+  var variety = document.getElementById('varietyInput-' + key).value;
+  var qty = document.getElementById('qtyInput-' + key).value;
+  if (!variety || !qty) {
+    alert('品種と数量を入力してください。');
     return;
   }
-  var ok = confirm(store + 'に「' + variety + '」を' + qty + '個、入荷登録します。\nよろしいですか？');
+  var ok = confirm(storeName + 'に「' + variety + '」を' + qty + '個、入荷登録します。\nよろしいですか？');
   if (!ok) return;
 
   var today = new Date();
@@ -354,11 +364,11 @@ function submitHomeStock() {
 
   showProcessing('登録中...');
 
-  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, store: store, variety: variety, qty: qty }).then(function (result) {
+  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, store: storeName, variety: variety, qty: qty }).then(function (result) {
     hideProcessing();
     alert(result.message);
     if (result.status === 'ok') {
-      document.getElementById('stockQtyInput').value = '';
+      document.getElementById('qtyInput-' + key).value = '';
       loadHomeStockStatus();
     }
   }).catch(function (err) {
