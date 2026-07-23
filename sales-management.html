@@ -45,6 +45,7 @@
     background: #fff; color: #5C5B54; font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
   }
   .store-tab-btn.active { background: #854F0B; border-color: #854F0B; color: #fff; font-weight: 700; }
+  .store-tab-amount { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; opacity: 0.85; }
   .select-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #E3E1D9; font-family: inherit; }
 
   .report-block { border: 1px solid #E3E1D9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
@@ -139,7 +140,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.08</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.09</p>
 </div>
 
 <script>
@@ -261,25 +262,52 @@ function initProgressTab() {
 }
 
 // 店舗タブを描画する共通関数。押した店舗でonSelectを呼び出す
+var todaySalesByStore = null;
+
+function loadTodaySalesForTabs() {
+  if (todaySalesByStore) return Promise.resolve(todaySalesByStore);
+  return callServer({ action: 'getSalesSummary', userId: profile.userId }).then(function (result) {
+    todaySalesByStore = {};
+    if (result.status === 'ok') {
+      STORES.forEach(function (store) {
+        todaySalesByStore[store] = result.stores[store] ? result.stores[store].today : 0;
+      });
+    }
+    return todaySalesByStore;
+  }).catch(function () {
+    todaySalesByStore = {};
+    return todaySalesByStore;
+  });
+}
+
 function renderStoreTabs(containerId, onSelect) {
   var container = document.getElementById(containerId);
   container.innerHTML = '';
   STORES.forEach(function (store) {
     var btn = document.createElement('button');
     btn.className = 'store-tab-btn';
-    btn.textContent = store;
+    btn.dataset.store = store;
+    btn.innerHTML = store + '<span class="store-tab-amount">読み込み中</span>';
     btn.onclick = function () {
       setActiveStoreTab(containerId, store);
       onSelect(store);
     };
     container.appendChild(btn);
   });
+
+  loadTodaySalesForTabs().then(function (sales) {
+    Array.prototype.forEach.call(container.children, function (btn) {
+      var amount = sales[btn.dataset.store] || 0;
+      var span = btn.querySelector('.store-tab-amount');
+      if (span) span.textContent = '本日 ¥' + amount.toLocaleString();
+    });
+  });
 }
 
 function setActiveStoreTab(containerId, store) {
   var container = document.getElementById(containerId);
   Array.prototype.forEach.call(container.children, function (btn) {
-    btn.classList.toggle('active', btn.textContent === store);
+    btn.classList.toggle('active', btn.dataset.store === store);
   });
 }
 
