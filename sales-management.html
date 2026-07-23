@@ -101,10 +101,10 @@
     <div id="todayView" class="card"></div>
 
     <div id="progressView" class="card" style="display:none;">
-      <div class="store-tabs" id="progressStoreTabs"></div>
       <div class="select-row">
-        <select id="progressDateSelect" onchange="loadProgress()"></select>
+        <select id="progressDateSelect" onchange="onProgressDateChange()"></select>
       </div>
+      <div class="store-tabs" id="progressStoreTabs"></div>
       <div id="progressList">店舗と日付を選んでください</div>
     </div>
 
@@ -140,7 +140,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.09</p>
+  <p style="text-align:center; font-size:10px; color:#B5B3A8; margin-top:20px;">v1.10</p>
 </div>
 
 <script>
@@ -186,6 +186,7 @@ function applyUrlParams() {
       setActiveStoreTab('progressStoreTabs', store);
     }
     if (date) document.getElementById('progressDateSelect').value = date;
+    updateStoreTabAmounts('progressStoreTabs', document.getElementById('progressDateSelect').value);
     loadProgress();
   }, 0);
 }
@@ -241,10 +242,6 @@ var progressStore = null;
 
 function initProgressTab() {
   progressInit = true;
-  renderStoreTabs('progressStoreTabs', function (store) {
-    progressStore = store;
-    loadProgress();
-  });
   if (!progressStore) progressStore = STORES[0];
 
   var dateSel = document.getElementById('progressDateSelect');
@@ -257,49 +254,56 @@ function initProgressTab() {
     opt2.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日';
     dateSel.appendChild(opt2);
   }
+
+  renderStoreTabs('progressStoreTabs', function (store) {
+    progressStore = store;
+    loadProgress();
+  }, true);
   setActiveStoreTab('progressStoreTabs', progressStore);
+  updateStoreTabAmounts('progressStoreTabs', dateSel.value);
   loadProgress();
 }
 
-// 店舗タブを描画する共通関数。押した店舗でonSelectを呼び出す
-var todaySalesByStore = null;
-
-function loadTodaySalesForTabs() {
-  if (todaySalesByStore) return Promise.resolve(todaySalesByStore);
-  return callServer({ action: 'getSalesSummary', userId: profile.userId }).then(function (result) {
-    todaySalesByStore = {};
-    if (result.status === 'ok') {
-      STORES.forEach(function (store) {
-        todaySalesByStore[store] = result.stores[store] ? result.stores[store].today : 0;
-      });
-    }
-    return todaySalesByStore;
-  }).catch(function () {
-    todaySalesByStore = {};
-    return todaySalesByStore;
-  });
+function onProgressDateChange() {
+  var date = document.getElementById('progressDateSelect').value;
+  updateStoreTabAmounts('progressStoreTabs', date);
+  loadProgress();
 }
 
-function renderStoreTabs(containerId, onSelect) {
+// 店舗タブを描画する共通関数。showAmountsがtrueなら、各タブの下に日付・金額を表示する
+function renderStoreTabs(containerId, onSelect, showAmounts) {
   var container = document.getElementById(containerId);
   container.innerHTML = '';
   STORES.forEach(function (store) {
     var btn = document.createElement('button');
     btn.className = 'store-tab-btn';
     btn.dataset.store = store;
-    btn.innerHTML = store + '<span class="store-tab-amount">読み込み中</span>';
+    btn.innerHTML = store + (showAmounts ? '<span class="store-tab-amount">読み込み中...</span>' : '');
     btn.onclick = function () {
       setActiveStoreTab(containerId, store);
       onSelect(store);
     };
     container.appendChild(btn);
   });
+}
 
-  loadTodaySalesForTabs().then(function (sales) {
+// 指定した日付の、各店舗タブの金額表示を更新する
+function updateStoreTabAmounts(containerId, date) {
+  var container = document.getElementById(containerId);
+  callServer({ action: 'getDailyTotalsForAllStores', userId: profile.userId, date: date }).then(function (result) {
+    if (result.status !== 'ok') return;
+    var parts = date.split('-');
+    var label = Number(parts[1]) + '/' + Number(parts[2]);
     Array.prototype.forEach.call(container.children, function (btn) {
-      var amount = sales[btn.dataset.store] || 0;
       var span = btn.querySelector('.store-tab-amount');
-      if (span) span.textContent = '本日 ¥' + amount.toLocaleString();
+      if (!span) return;
+      var amount = result.totals[btn.dataset.store] || 0;
+      span.textContent = label + '　¥' + amount.toLocaleString();
+    });
+  }).catch(function () {
+    Array.prototype.forEach.call(container.children, function (btn) {
+      var span = btn.querySelector('.store-tab-amount');
+      if (span) span.textContent = '取得失敗';
     });
   });
 }
