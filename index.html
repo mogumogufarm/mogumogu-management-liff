@@ -506,6 +506,7 @@ if (typeof liff === 'undefined') {
   }).then(function (data) {
     hideProcessing();
     document.getElementById('initStatus').style.display = 'none';
+    alert('認証チェックの詳細：\n' + (data.result.authDebug || '(情報なし)'));
     if (data.result.status === 'ok') {
       document.getElementById('menu').style.display = 'block';
       currentUserId = data.userId;
