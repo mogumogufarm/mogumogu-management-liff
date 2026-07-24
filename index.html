@@ -488,6 +488,7 @@ function loadStats(userId) {
   });
 }
 
+alert('スクリプト開始。liffは：' + (typeof liff));
 if (typeof liff === 'undefined') {
   document.getElementById('initStatus').style.display = 'none';
   hideProcessing();
