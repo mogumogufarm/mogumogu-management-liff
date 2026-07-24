@@ -500,6 +500,7 @@ if (typeof liff === 'undefined') {
     return withTimeout(liff.getProfile(), 10000);
   }).then(function (p) {
     currentIdToken = liff.getIDToken();
+    alert('あなたのuserId：' + p.userId);
     return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
       return { result: result, userId: p.userId };
     });
