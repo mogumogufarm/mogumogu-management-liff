@@ -275,7 +275,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.24</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.25</p>
 </div>
 
 <script>
@@ -500,7 +500,6 @@ if (typeof liff === 'undefined') {
     return withTimeout(liff.getProfile(), 10000);
   }).then(function (p) {
     currentIdToken = liff.getIDToken();
-    alert('あなたのuserId：' + p.userId);
     return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
       return { result: result, userId: p.userId };
     });
@@ -515,7 +514,6 @@ if (typeof liff === 'undefined') {
       loadHomeStockStatus();
       loadSanchokuSummary();
     } else {
-      alert(data.result.message);
       document.getElementById('blockedMessage').style.display = 'block';
     }
   }).catch(function (err) {
