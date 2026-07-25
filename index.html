@@ -56,6 +56,10 @@
   .crop-row-muted { color: #A69B7A; font-weight: 500; cursor: pointer; }
   .crop-row-clickable { cursor: pointer; }
   .crop-row-clickable:active, .crop-row-muted:active { opacity: 0.6; }
+  .crop-mode-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+  .crop-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+  .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
   .crop-row-muted:active { opacity: 0.7; }
   .crop-row-total { border-bottom: none; border-top: 2px solid #2E3B22; margin-top: 4px; padding-top: 12px; font-size: 15px; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
@@ -255,10 +259,14 @@
       </div>
     </div>
 
-    <p class="section-label">品目別売上（年間）</p>
+    <p class="section-label">売上集計（年間）</p>
     <div class="card">
       <div class="select-row">
         <select id="cropYearSelect" onchange="loadCropSummary()"></select>
+      </div>
+      <div class="crop-mode-toggle">
+        <button class="crop-mode-btn active" id="cropModeCropBtn" onclick="switchCropMode('crop')">品目別</button>
+        <button class="crop-mode-btn" id="cropModeVarietyBtn" onclick="switchCropMode('variety')">品種別</button>
       </div>
       <div id="cropSummaryList">
         <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
@@ -310,7 +318,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.30</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.31</p>
 </div>
 
 <script>
@@ -389,7 +397,17 @@ function submitHomeStock(key, storeName) {
 
 var cropYearSelectInit = false;
 var lastCropDetails = {}; // crop -> [{date, store, item, amount}]
+var lastVarietyDetails = {}; // 「品目|品種」 -> [{date, store, item, amount}]
+var lastCropResult = null;
+var cropMode = 'crop';
 var CROP_OPTIONS = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'];
+
+function switchCropMode(mode) {
+  cropMode = mode;
+  document.getElementById('cropModeCropBtn').classList.toggle('active', mode === 'crop');
+  document.getElementById('cropModeVarietyBtn').classList.toggle('active', mode === 'variety');
+  renderCropSummary();
+}
 
 function loadCropSummary() {
   if (!cropYearSelectInit) {
@@ -412,28 +430,48 @@ function loadCropSummary() {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
+    lastCropResult = result;
     lastCropDetails = result.cropDetails || {};
-    var html = '';
-    result.rows.forEach(function (r) {
-      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'' + r.crop + '\')"><span>' + r.crop + '（タップで詳細）</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
-    });
-    if (result.unclassifiedAmount > 0) {
-      html += '<div class="crop-row crop-row-muted" onclick="openCropDetailModal(\'未分類\')"><span>未分類（タップで詳細）</span><span>¥' + result.unclassifiedAmount.toLocaleString() + '</span></div>';
-    }
-    html += '<div class="crop-row crop-row-total"><span>売上合計</span><span>¥' + result.grandTotal.toLocaleString() + '</span></div>';
-    el.innerHTML = html;
+    lastVarietyDetails = result.varietyDetails || {};
+    renderCropSummary();
   }).catch(function (err) {
     el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
-var currentCropDetailCrop = null;
+function renderCropSummary() {
+  var result = lastCropResult;
+  var el = document.getElementById('cropSummaryList');
+  if (!result) return;
 
-function openCropDetailModal(crop) {
-  currentCropDetailCrop = crop;
-  var details = lastCropDetails[crop] || [];
+  var html = '';
+  if (cropMode === 'crop') {
+    result.rows.forEach(function (r) {
+      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'crop\', \'' + r.crop + '\')"><span>' + r.crop + '（タップで詳細）</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
+    });
+  } else {
+    result.varietyRows.forEach(function (r) {
+      var key = r.crop + '|' + r.variety;
+      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'variety\', \'' + key.replace(/'/g, "\\'") + '\')"><span>' + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span></span><span>¥' + r.amount.toLocaleString() + '</span></div>';
+    });
+  }
+  if (result.unclassifiedAmount > 0) {
+    html += '<div class="crop-row crop-row-muted" onclick="openCropDetailModal(\'crop\', \'未分類\')"><span>未分類（タップで詳細）</span><span>¥' + result.unclassifiedAmount.toLocaleString() + '</span></div>';
+  }
+  html += '<div class="crop-row crop-row-total"><span>売上合計</span><span>¥' + result.grandTotal.toLocaleString() + '</span></div>';
+  el.innerHTML = html;
+}
+
+var currentCropDetailKey = null;
+var currentCropDetailMode = null;
+
+function openCropDetailModal(mode, key) {
+  currentCropDetailMode = mode;
+  currentCropDetailKey = key;
+  var details = mode === 'crop' ? (lastCropDetails[key] || []) : (lastVarietyDetails[key] || []);
+  var titleLabel = mode === 'variety' ? key.split('|')[1] : key;
   var el = document.getElementById('cropDetailList');
-  document.getElementById('cropDetailModalTitle').textContent = crop + 'の内訳（' + details.length + '件）';
+  document.getElementById('cropDetailModalTitle').textContent = titleLabel + 'の内訳（' + details.length + '件）';
 
   if (details.length === 0) {
     el.innerHTML = '<p style="font-size:13px; color:#7A7256;">データがありません。</p>';
@@ -442,7 +480,7 @@ function openCropDetailModal(crop) {
     details.forEach(function (d, idx) {
       var block = document.createElement('div');
       block.className = 'crop-detail-item';
-      if (crop === '未分類') {
+      if (mode === 'crop' && key === '未分類') {
         var options = CROP_OPTIONS.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
         block.innerHTML =
           '<p class="crop-detail-meta">' + d.date + '　' + d.store + '　' + d.item + '　¥' + d.amount.toLocaleString() + '</p>' +
@@ -464,7 +502,7 @@ function closeCropDetailModal() {
 }
 
 function assignCropForItem(idx) {
-  var detail = lastCropDetails[currentCropDetailCrop][idx];
+  var detail = lastCropDetails[currentCropDetailKey][idx];
   var crop = document.getElementById('cropDetailSelect_' + idx).value;
   var ok = confirm('「' + detail.item + '」を「' + crop + '」として今後分類します。よろしいですか？');
   if (!ok) return;
