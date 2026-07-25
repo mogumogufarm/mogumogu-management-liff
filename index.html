@@ -60,6 +60,10 @@
   .crop-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
   .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
   .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
+  .ja-mail-row { padding: 10px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
+  .ja-mail-row:active { opacity: 0.6; }
+  .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 2px; }
+  .ja-mail-subject { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 0; }
   .crop-row-muted:active { opacity: 0.7; }
   .crop-row-total { border-bottom: none; border-top: 2px solid #2E3B22; margin-top: 4px; padding-top: 12px; font-size: 15px; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
@@ -187,6 +191,13 @@
           <p class="menu-text-sub">品種別・圃場別の農薬散布記録</p>
         </span>
       </a>
+      <a class="menu-item" href="ja-mail.html">
+        <span class="menu-icon-badge badge-blue"><i class="ti ti-mail" aria-hidden="true"></i></span>
+        <span>
+          <p class="menu-text-title">JA南アルプス指導メール</p>
+          <p class="menu-text-sub">JAからのお知らせ一覧</p>
+        </span>
+      </a>
     </div>
 
     <p class="section-label" id="salesSection">直売所の売上</p>
@@ -281,6 +292,22 @@
       </div>
     </div>
 
+    <p class="section-label">JA南アルプス指導メール</p>
+    <div class="card">
+      <div id="jaMailList">
+        <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+      </div>
+    </div>
+
+    <div id="jaMailBodyModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeJaMailBodyModal();">
+      <div class="modal-box">
+        <p class="modal-title" id="jaMailBodyTitle"></p>
+        <p style="font-size:11px; color:#7A7256; margin:-8px 0 12px;" id="jaMailBodyDate"></p>
+        <p id="jaMailBodyText" style="font-size:13px; color:#2E3B22; white-space:pre-wrap; line-height:1.6;"></p>
+        <button class="modal-close-btn" onclick="closeJaMailBodyModal()">閉じる</button>
+      </div>
+    </div>
+
     <p class="section-label">産直サイトの受注</p>
     <div id="sanchokuSummary">
       <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
@@ -318,7 +345,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.31</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.32</p>
 </div>
 
 <script>
@@ -521,6 +548,60 @@ function assignCropForItem(idx) {
   });
 }
 
+var lastJaMails = [];
+
+function loadJaMailList() {
+  var el = document.getElementById('jaMailList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getJaMailList', userId: currentUserId, limit: 10 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    lastJaMails = result.mails;
+    if (result.mails.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">メールがありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.mails.forEach(function (m, idx) {
+      var row = document.createElement('div');
+      row.className = 'ja-mail-row';
+      row.onclick = function () { openJaMailBody(m.id); };
+      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + m.subject + '</p>';
+      el.appendChild(row);
+    });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function openJaMailBody(messageId) {
+  document.getElementById('jaMailBodyTitle').textContent = '読み込み中...';
+  document.getElementById('jaMailBodyDate').textContent = '';
+  document.getElementById('jaMailBodyText').textContent = '';
+  document.getElementById('jaMailBodyModal').style.display = 'flex';
+
+  callServer({ action: 'getJaMailBody', userId: currentUserId, messageId: messageId }).then(function (result) {
+    if (result.status !== 'ok') {
+      document.getElementById('jaMailBodyTitle').textContent = 'エラー';
+      document.getElementById('jaMailBodyText').textContent = result.message;
+      return;
+    }
+    document.getElementById('jaMailBodyTitle').textContent = result.subject;
+    document.getElementById('jaMailBodyDate').textContent = result.date;
+    document.getElementById('jaMailBodyText').textContent = result.body;
+  }).catch(function (err) {
+    document.getElementById('jaMailBodyTitle').textContent = 'エラー';
+    document.getElementById('jaMailBodyText').textContent = '通信エラーが発生しました：' + (err && err.message ? err.message : err);
+  });
+}
+
+function closeJaMailBodyModal() {
+  document.getElementById('jaMailBodyModal').style.display = 'none';
+}
+
 function loadSanchokuSummary() {
   var el = document.getElementById('sanchokuSummary');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
@@ -683,6 +764,7 @@ if (typeof liff === 'undefined') {
       loadHomeStockStatus();
       loadSanchokuSummary();
       loadCropSummary();
+      loadJaMailList();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
