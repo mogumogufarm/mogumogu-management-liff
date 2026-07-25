@@ -140,7 +140,7 @@
         <span class="menu-icon-badge badge-green"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
         <span>
           <p class="menu-text-title">産直サイト集計</p>
-          <p class="menu-text-sub">食べチョク・ポケットマルシェ・アウル</p>
+          <p class="menu-text-sub">食べチョク・ポケマル・アウル・BASE</p>
         </span>
       </a>
       <a class="menu-item disabled" href="#">
@@ -275,7 +275,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.25</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.28</p>
 </div>
 
 <script>
@@ -362,7 +362,7 @@ function loadSanchokuSummary() {
       return;
     }
     el.innerHTML = '';
-    var sites = ['食べチョク', 'ポケットマルシェ', 'アウル'];
+    var sites = ['食べチョク', 'ポケットマルシェ', 'アウル', 'BASE'];
     sites.forEach(function (site) {
       var data = result.sites[site];
       var block = document.createElement('div');
