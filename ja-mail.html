@@ -36,6 +36,10 @@
   .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 3px; }
   .ja-mail-subject { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0; }
   .ja-mail-badge { display: inline-block; background: #F0DAD0; color: #8B3A2E; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle; }
+  .badge-boujo { background: #F0DAD0; color: #8B3A2E; }
+  .badge-setsumei { background: #DCE6EA; color: #3D5A75; }
+  .badge-mihon { background: #F0DEB8; color: #8A5A2A; }
+  .badge-koushu { background: #E3ECD3; color: #3E5A1F; }
   .manual-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
   .manual-form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
   .manual-form-row input, .manual-form-row textarea {
@@ -92,7 +96,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.04</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
 </div>
 
 <script>
@@ -101,6 +105,22 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
 var currentIdToken = null;
+
+// 件名に含まれるキーワードから、該当するバッジをすべて組み立てる
+var JA_MAIL_BADGE_RULES = [
+  { keywords: ['防除', '薬剤', '散布'], label: '防除', cls: 'badge-boujo' },
+  { keywords: ['説明'], label: '出荷説明会', cls: 'badge-setsumei' },
+  { keywords: ['見本', '熟度', '展示', 'サンプル', '目合わせ'], label: '熟度見本', cls: 'badge-mihon' },
+  { keywords: ['講習会'], label: '講習会', cls: 'badge-koushu' }
+];
+function buildJaMailBadges(subject) {
+  var html = '';
+  JA_MAIL_BADGE_RULES.forEach(function (rule) {
+    var matched = rule.keywords.some(function (kw) { return subject.indexOf(kw) !== -1; });
+    if (matched) html += '<span class="ja-mail-badge ' + rule.cls + '">' + rule.label + '</span>';
+  });
+  return html;
+}
 
 function loadJaMailList() {
   var el = document.getElementById('jaMailList');
@@ -120,8 +140,7 @@ function loadJaMailList() {
       var row = document.createElement('div');
       row.className = 'ja-mail-row';
       row.onclick = function () { openJaMailBody(m.id); };
-      var isBoujo = m.subject.indexOf('防除') !== -1 || m.subject.indexOf('薬剤') !== -1 || m.subject.indexOf('散布') !== -1;
-      var badge = isBoujo ? '<span class="ja-mail-badge">防除</span>' : '';
+      var badge = buildJaMailBadges(m.subject);
       row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + badge + m.subject + '</p>';
       el.appendChild(row);
     });
