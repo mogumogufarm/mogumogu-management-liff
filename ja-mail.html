@@ -35,6 +35,7 @@
   .ja-mail-row:active { opacity: 0.6; }
   .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 3px; }
   .ja-mail-subject { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0; }
+  .ja-mail-badge { display: inline-block; background: #F0DAD0; color: #8B3A2E; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle; }
   .manual-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
   .manual-form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
   .manual-form-row input, .manual-form-row textarea {
@@ -91,7 +92,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.03</p>
 </div>
 
 <script>
@@ -119,7 +120,8 @@ function loadJaMailList() {
       var row = document.createElement('div');
       row.className = 'ja-mail-row';
       row.onclick = function () { openJaMailBody(m.id); };
-      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + m.subject + '</p>';
+      var badge = m.subject.indexOf('防除') !== -1 ? '<span class="ja-mail-badge">防除</span>' : '';
+      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + badge + m.subject + '</p>';
       el.appendChild(row);
     });
   }).catch(function (err) {
