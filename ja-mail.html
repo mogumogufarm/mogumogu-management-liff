@@ -35,6 +35,12 @@
   .ja-mail-row:active { opacity: 0.6; }
   .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 3px; }
   .ja-mail-subject { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0; }
+  .manual-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .manual-form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
+  .manual-form-row input, .manual-form-row textarea {
+    padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; resize: vertical;
+  }
+  .submit-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
   .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
@@ -85,7 +91,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
