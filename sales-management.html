@@ -96,7 +96,6 @@
       <button class="tab-btn" id="tabProgressBtn" onclick="switchTab('progress')">途中経過</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
       <button class="tab-btn" id="tabStockBtn" onclick="switchTab('stock')">在庫管理</button>
-      <button class="tab-btn" id="tabCropBtn" onclick="switchTab('crop')">品目別集計</button>
     </div>
 
     <div id="todayView" class="card"></div>
@@ -112,13 +111,6 @@
     <div id="historyView" class="card" style="display:none;">
       <div class="store-tabs" id="historyStoreTabs"></div>
       <div id="historyList">店舗を選んでください</div>
-    </div>
-
-    <div id="cropView" class="card" style="display:none;">
-      <div class="select-row">
-        <select id="cropYearSelect" onchange="loadCropSummary()"></select>
-      </div>
-      <div id="cropList">読み込み中...</div>
     </div>
 
     <div id="stockView" class="card" style="display:none;">
@@ -148,7 +140,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.17</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.18</p>
 </div>
 
 <script>
@@ -191,59 +183,13 @@ function switchTab(tab) {
   document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
   document.getElementById('tabStockBtn').classList.toggle('active', tab === 'stock');
-  document.getElementById('tabCropBtn').classList.toggle('active', tab === 'crop');
   document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
   document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
   document.getElementById('stockView').style.display = (tab === 'stock') ? 'block' : 'none';
-  document.getElementById('cropView').style.display = (tab === 'crop') ? 'block' : 'none';
   if (tab === 'progress' && !progressInit) initProgressTab();
   if (tab === 'history' && !historyInit) initHistoryTab();
   if (tab === 'stock' && !stockInit) initStockTab();
-  if (tab === 'crop' && !cropInit) initCropTab();
-}
-
-var cropInit = false;
-
-function initCropTab() {
-  cropInit = true;
-  var sel = document.getElementById('cropYearSelect');
-  var thisYear = new Date().getFullYear();
-  for (var y = thisYear; y >= thisYear - 4; y--) {
-    var opt = document.createElement('option');
-    opt.value = String(y);
-    opt.textContent = y + '年度';
-    sel.appendChild(opt);
-  }
-  loadCropSummary();
-}
-
-function loadCropSummary() {
-  var year = document.getElementById('cropYearSelect').value;
-  var el = document.getElementById('cropList');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">集計中...</p>';
-
-  callServer({ action: 'getYearlyCropSummary', userId: profile.userId, year: year }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-      return;
-    }
-    if (result.rows.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">この年の売上データがありません。</p>';
-      return;
-    }
-    var html = '';
-    result.rows.forEach(function (r) {
-      html += '<div class="crop-row"><span>' + r.crop + '</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
-    });
-    if (result.unclassifiedAmount > 0) {
-      html += '<div class="crop-row crop-row-muted"><span>未分類</span><span>¥' + result.unclassifiedAmount.toLocaleString() + '</span></div>';
-    }
-    html += '<div class="crop-row crop-row-total"><span>売上合計</span><span>¥' + result.grandTotal.toLocaleString() + '</span></div>';
-    el.innerHTML = html;
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
-  });
 }
 
 function loadTodayDetail() {
