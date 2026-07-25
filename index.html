@@ -346,7 +346,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.33</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.34</p>
 </div>
 
 <script>
@@ -570,7 +570,8 @@ function loadJaMailList() {
       var row = document.createElement('div');
       row.className = 'ja-mail-row';
       row.onclick = function () { openJaMailBody(m.id); };
-      var badge = m.subject.indexOf('防除') !== -1 ? '<span class="ja-mail-badge">防除</span>' : '';
+      var isBoujo = m.subject.indexOf('防除') !== -1 || m.subject.indexOf('薬剤') !== -1 || m.subject.indexOf('散布') !== -1;
+      var badge = isBoujo ? '<span class="ja-mail-badge">防除</span>' : '';
       row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + badge + m.subject + '</p>';
       el.appendChild(row);
     });
