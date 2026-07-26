@@ -82,7 +82,7 @@
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
   .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 480px; width: 100%; max-height: 82vh; overflow-y: auto; }
   .modal-close-btn { width: 100%; margin-top: 14px; padding: 10px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
-  .memo-original-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 10px 0 2px; }
+  .memo-original-link { display: inline-block; font-size: 12px; font-weight: 700; color: #3D5A75; margin: 10px 0 4px; text-decoration: underline; }
   .memo-original-text { font-size: 13px; color: #2E3B22; margin: 0; white-space: pre-wrap; background: #fff; border: 1px solid #D6CBAA; border-radius: 8px; padding: 8px 10px; }
 
   .status {
@@ -114,7 +114,7 @@
       <div class="memo-form-row">
         <label>メモの内容</label>
         <div class="memo-textarea-wrap">
-          <textarea id="memoText" rows="3" placeholder="気づいたことを自由に書いてください（マイクで話しても入力できます）"></textarea>
+          <textarea id="memoText" rows="3" placeholder="気づいたことを自由に書いてください（空欄で写真だけの投稿も可能です）"></textarea>
           <button type="button" class="mic-btn" id="micBtn" onclick="toggleVoiceInput()"><i class="ti ti-microphone" aria-hidden="true"></i></button>
         </div>
       </div>
@@ -150,8 +150,8 @@
       </div>
       <p class="memo-title" id="detailTitle"></p>
       <p class="memo-summary" id="detailSummary"></p>
-      <p class="memo-original-label">元のメモ</p>
-      <p class="memo-original-text" id="detailOriginal"></p>
+      <a href="#" class="memo-original-link" id="detailOriginalLink" onclick="toggleOriginalText(event)">元のメモを表示</a>
+      <p class="memo-original-text" id="detailOriginal" style="display:none;"></p>
       <img id="detailPhoto" class="memo-photo" style="display:none;">
       <div class="memo-actions" id="detailActions"></div>
       <button class="modal-close-btn" onclick="closeMemoDetailModal()">閉じる</button>
@@ -167,7 +167,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.03</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.04</p>
 </div>
 
 <script>
@@ -273,12 +273,16 @@ function onPhotoSelected() {
 function submitMemo() {
   var text = document.getElementById('memoText').value.trim();
   var editingRowIndex = document.getElementById('editingRowIndex').value;
-  if (!text) {
+  var isEditing = !!editingRowIndex;
+
+  if (!text && !selectedPhotoBase64 && !isEditing) {
+    alert('メモの内容か、写真のどちらかを入力してください。');
+    return;
+  }
+  if (isEditing && !text) {
     alert('メモの内容を入力してください。');
     return;
   }
-
-  var isEditing = !!editingRowIndex;
   var ok = confirm((isEditing ? '更新' : (currentVisibility === '個人' ? '個人メモとして保存' : '共有メモとして保存')) + 'します。よろしいですか？');
   if (!ok) return;
 
@@ -422,6 +426,8 @@ function openMemoDetailModal(rowIndex) {
   if (!m) return;
   var visTagClass = m.visibility === '個人' ? 'memo-tag-personal' : 'memo-tag-shared';
 
+  document.getElementById('detailOriginal').style.display = 'none';
+  document.getElementById('detailOriginalLink').textContent = '元のメモを表示';
   document.getElementById('detailAuthor').textContent = m.date + '　' + m.authorName;
   document.getElementById('detailTags').innerHTML = '<span class="memo-tag memo-tag-category">' + m.category + '</span><span class="memo-tag ' + visTagClass + '">' + m.visibility + '</span>';
   document.getElementById('detailTitle').textContent = m.title;
@@ -441,6 +447,15 @@ function openMemoDetailModal(rowIndex) {
     : '';
 
   document.getElementById('memoDetailModal').style.display = 'flex';
+}
+
+function toggleOriginalText(e) {
+  e.preventDefault();
+  var textEl = document.getElementById('detailOriginal');
+  var linkEl = document.getElementById('detailOriginalLink');
+  var isHidden = textEl.style.display === 'none';
+  textEl.style.display = isHidden ? 'block' : 'none';
+  linkEl.textContent = isHidden ? '元のメモを閉じる' : '元のメモを表示';
 }
 
 function closeMemoDetailModal() {
