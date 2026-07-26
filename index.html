@@ -64,6 +64,11 @@
   .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
   .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
   .ja-mail-row { padding: 10px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
+  .nikki-home-type-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 12px 0 4px; }
+  .nikki-home-type-label:first-child { margin-top: 0; }
+  .nikki-home-row { display: block; padding: 6px 0; font-size: 12px; color: #2E3B22; text-decoration: none; border-bottom: 1px dashed #D6CBAA; }
+  .nikki-home-row:last-child { border-bottom: none; }
+  .nikki-home-row-date { color: #A69B7A; font-size: 10px; }
   .ja-mail-row:active { opacity: 0.6; }
   .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 2px; }
   .ja-mail-subject { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 0; }
@@ -176,26 +181,11 @@
           <p class="menu-text-sub">食べチョク・ポケマル・アウル・BASE</p>
         </span>
       </a>
-      <a class="menu-item" href="memo.html">
-        <span class="menu-icon-badge badge-purple"><i class="ti ti-notes" aria-hidden="true"></i></span>
+      <a class="menu-item" href="nikki.html">
+        <span class="menu-icon-badge badge-purple"><i class="ti ti-notebook" aria-hidden="true"></i></span>
         <span>
-          <p class="menu-text-title">メモ機能</p>
-          <p class="menu-text-sub">AIが要点を整理して記録</p>
-        </span>
-      </a>
-      <a class="menu-item disabled" href="#">
-        <span class="menu-icon-badge badge-teal"><i class="ti ti-seeding" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">生育記録</p>
-          <p class="menu-text-sub">写真つきの観察記録</p>
-        </span>
-        <span class="menu-tag">準備中</span>
-      </a>
-      <a class="menu-item" href="spray-management.html">
-        <span class="menu-icon-badge badge-red"><i class="ti ti-flask" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">防除日誌</p>
-          <p class="menu-text-sub">品種別・圃場別の農薬散布記録</p>
+          <p class="menu-text-title">農園日誌</p>
+          <p class="menu-text-sub">防除・生育記録・メモをまとめて記録</p>
         </span>
       </a>
       <a class="menu-item" href="ja-mail.html">
@@ -315,6 +305,15 @@
       </div>
     </div>
 
+    <div class="block-card">
+      <div class="block-header">農園日誌</div>
+      <div class="block-body">
+      <div id="nikkiRecentList">
+        <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+      </div>
+      </div>
+    </div>
+
     <div id="jaMailBodyModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeJaMailBodyModal();">
       <div class="modal-box">
         <p class="modal-title" id="jaMailBodyTitle"></p>
@@ -369,7 +368,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.37</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.38</p>
 </div>
 
 <script>
@@ -590,6 +589,34 @@ function buildJaMailBadges(subject) {
   return html;
 }
 
+function loadNikkiRecent() {
+  var el = document.getElementById('nikkiRecentList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getRecentNikkiByType', userId: currentUserId, limitPerType: 3 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    var types = ['防除', '生育記録', 'メモ'];
+    var html = '';
+    types.forEach(function (t) {
+      var items = result.byType[t] || [];
+      html += '<p class="nikki-home-type-label">' + t + '</p>';
+      if (items.length === 0) {
+        html += '<p style="font-size:11px; color:#A69B7A; margin:0 0 8px;">記録なし</p>';
+      } else {
+        items.forEach(function (n) {
+          html += '<a class="nikki-home-row" href="nikki.html">' + n.title + '　<span class="nikki-home-row-date">' + n.date + '</span></a>';
+        });
+      }
+    });
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
 function loadJaMailList() {
   var el = document.getElementById('jaMailList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
@@ -806,6 +833,7 @@ if (typeof liff === 'undefined') {
       loadSanchokuSummary();
       loadCropSummary();
       loadJaMailList();
+      loadNikkiRecent();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
