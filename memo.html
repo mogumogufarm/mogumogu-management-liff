@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メモ機能</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="common.css">
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #EFE8D8;
+    color: #2E3B22;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #EAE0E8; color: #6A4A5E;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+
+  .memo-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .memo-form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
+  .memo-form-row textarea {
+    padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; resize: vertical;
+  }
+  .visibility-toggle { display: flex; gap: 8px; }
+  .visibility-btn { flex: 1; padding: 10px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .visibility-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+  .photo-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; display: none; }
+  .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+  .photo-input-btn { display: inline-block; padding: 8px 14px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-size: 12px; cursor: pointer; }
+
+  .memo-item { border-bottom: 1px solid #D6CBAA; padding: 12px 0; }
+  .memo-item:last-child { border-bottom: none; }
+  .memo-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .memo-author { font-size: 11px; color: #7A7256; }
+  .memo-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
+  .memo-tag-personal { background: #EAE0E8; color: #6A4A5E; }
+  .memo-tag-shared { background: #E3ECD3; color: #3E5A1F; }
+  .memo-summary { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0 0 4px; }
+  .memo-original { font-size: 12px; color: #6B6048; margin: 0 0 6px; }
+  .memo-photo { max-width: 100%; border-radius: 8px; margin-top: 6px; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #8B3A2E; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-notes" aria-hidden="true"></i></span>メモ機能</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="card">
+      <div class="memo-form-row">
+        <label>メモの内容</label>
+        <textarea id="memoText" rows="3" placeholder="気づいたことを自由に書いてください"></textarea>
+      </div>
+      <div class="memo-form-row">
+        <label>公開範囲</label>
+        <div class="visibility-toggle">
+          <button type="button" class="visibility-btn active" id="visPersonalBtn" onclick="setVisibility('個人')">個人</button>
+          <button type="button" class="visibility-btn" id="visSharedBtn" onclick="setVisibility('共有')">共有</button>
+        </div>
+      </div>
+      <div class="memo-form-row">
+        <label>写真（任意）</label>
+        <label class="photo-input-btn">
+          写真を選ぶ
+          <input type="file" id="memoPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="onPhotoSelected()">
+        </label>
+        <img id="photoPreview" class="photo-preview">
+      </div>
+      <button class="submit-btn" onclick="submitMemo()">保存する</button>
+    </div>
+
+    <div class="card">
+      <div id="memoList">読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">処理中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentIdToken = null;
+var currentVisibility = '個人';
+var selectedPhotoBase64 = null;
+var selectedPhotoMimeType = null;
+
+function setVisibility(v) {
+  currentVisibility = v;
+  document.getElementById('visPersonalBtn').classList.toggle('active', v === '個人');
+  document.getElementById('visSharedBtn').classList.toggle('active', v === '共有');
+}
+
+function onPhotoSelected() {
+  var fileInput = document.getElementById('memoPhotoInput');
+  var file = fileInput.files[0];
+  if (!file) return;
+  selectedPhotoMimeType = file.type;
+
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var dataUrl = e.target.result;
+    selectedPhotoBase64 = dataUrl.split(',')[1];
+    var preview = document.getElementById('photoPreview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitMemo() {
+  var text = document.getElementById('memoText').value.trim();
+  if (!text) {
+    alert('メモの内容を入力してください。');
+    return;
+  }
+
+  var ok = confirm((currentVisibility === '個人' ? '個人メモ' : '共有メモ') + 'として保存します。よろしいですか？');
+  if (!ok) return;
+
+  showProcessing('AIが要点を整理しています...');
+  callServer({
+    action: 'submitMemo', userId: profile.userId, text: text, visibility: currentVisibility,
+    photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType
+  }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      document.getElementById('memoText').value = '';
+      document.getElementById('memoPhotoInput').value = '';
+      document.getElementById('photoPreview').style.display = 'none';
+      selectedPhotoBase64 = null;
+      selectedPhotoMimeType = null;
+      loadMemoList();
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadMemoList() {
+  var el = document.getElementById('memoList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getMemoList', userId: profile.userId, limit: 50 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.memos.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだメモがありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.memos.forEach(function (m) {
+      var item = document.createElement('div');
+      item.className = 'memo-item';
+      var tagClass = m.visibility === '個人' ? 'memo-tag-personal' : 'memo-tag-shared';
+      var photoHtml = m.photoUrl ? '<img class="memo-photo" src="' + m.photoUrl + '">' : '';
+      item.innerHTML =
+        '<div class="memo-meta"><span class="memo-author">' + m.date + '　' + m.authorName + '</span><span class="memo-tag ' + tagClass + '">' + m.visibility + '</span></div>' +
+        '<p class="memo-summary">' + m.summary + '</p>' +
+        '<p class="memo-original">' + m.text + '</p>' +
+        photoHtml;
+      el.appendChild(item);
+    });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    currentIdToken = liff.getIDToken();
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      loadMemoList();
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var msg = (err && err.message) ? err.message : String(err);
+    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
+      try { liff.logout(); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + msg;
+  });
+}
+</script>
+</body>
+</html>
