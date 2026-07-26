@@ -45,6 +45,9 @@
   .crop-row-muted { color: #A69B7A; font-weight: 500; }
   .crop-row-total { border-bottom: none; border-top: 2px solid #2E3B22; margin-top: 4px; padding-top: 14px; font-size: 16px; }
   .store-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .history-mode-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+  .history-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .history-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
   .store-tab-btn {
     flex: 1; min-width: 0; padding: 9px 4px; border: 1px solid #D6CBAA; border-radius: 8px;
     background: #F7F3E9; color: #6B6048; font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
@@ -109,7 +112,12 @@
     </div>
 
     <div id="historyView" class="card" style="display:none;">
+      <div class="history-mode-toggle">
+        <button class="history-mode-btn active" id="historyModeStoreBtn" onclick="switchHistoryMode('store')">店舗別</button>
+        <button class="history-mode-btn" id="historyModeCropBtn" onclick="switchHistoryMode('crop')">品目別</button>
+      </div>
       <div class="store-tabs" id="historyStoreTabs"></div>
+      <div class="store-tabs" id="historyCropTabs" style="display:none;"></div>
       <div id="historyList">店舗を選んでください</div>
     </div>
 
@@ -140,7 +148,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.18</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.19</p>
 </div>
 
 <script>
@@ -453,6 +461,42 @@ function loadStockStatus() {
 }
 
 var historyStore = null;
+var historyCrop = null;
+var historyMode = 'store';
+var historyCropInit = false;
+var HISTORY_CROPS = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'];
+
+function switchHistoryMode(mode) {
+  historyMode = mode;
+  document.getElementById('historyModeStoreBtn').classList.toggle('active', mode === 'store');
+  document.getElementById('historyModeCropBtn').classList.toggle('active', mode === 'crop');
+  document.getElementById('historyStoreTabs').style.display = (mode === 'store') ? 'flex' : 'none';
+  document.getElementById('historyCropTabs').style.display = (mode === 'crop') ? 'flex' : 'none';
+
+  if (mode === 'crop' && !historyCropInit) {
+    historyCropInit = true;
+    if (!historyCrop) historyCrop = HISTORY_CROPS[0];
+    renderCropTabsForHistory();
+  }
+  loadDailyHistory();
+}
+
+function renderCropTabsForHistory() {
+  var container = document.getElementById('historyCropTabs');
+  container.innerHTML = '';
+  HISTORY_CROPS.forEach(function (crop) {
+    var btn = document.createElement('button');
+    btn.className = 'store-tab-btn' + (crop === historyCrop ? ' active' : '');
+    btn.textContent = crop;
+    btn.onclick = function () {
+      historyCrop = crop;
+      Array.prototype.forEach.call(container.children, function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      loadDailyHistory();
+    };
+    container.appendChild(btn);
+  });
+}
 
 function initHistoryTab() {
   historyInit = true;
@@ -466,10 +510,42 @@ function initHistoryTab() {
 }
 
 function loadDailyHistory() {
-  var store = historyStore;
   var el = document.getElementById('historyList');
-  if (!store) return;
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  if (historyMode === 'crop') {
+    if (!historyCrop) return;
+    callServer({ action: 'getDailyCropHistory', userId: profile.userId, crop: historyCrop }).then(function (result) {
+      if (result.status !== 'ok') {
+        el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
+        return;
+      }
+      if (result.rows.length === 0) {
+        el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだデータがありません。</p>';
+        return;
+      }
+      el.innerHTML = '';
+      result.rows.forEach(function (r) {
+        var parts = r.date.split('-');
+        var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
+        var block = document.createElement('div');
+        block.className = 'history-block';
+        var itemsHtml = r.items.map(function (it) {
+          return '<div class="item-row"><span>' + it.store + '・' + it.item + '</span><span>¥' + it.amount.toLocaleString() + '</span></div>';
+        }).join('');
+        block.innerHTML =
+          '<div class="history-row"><span class="history-date">' + label + '</span><span>¥' + r.amount.toLocaleString() + '</span></div>' +
+          '<div class="history-items">' + itemsHtml + '</div>';
+        el.appendChild(block);
+      });
+    }).catch(function (err) {
+      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    });
+    return;
+  }
+
+  var store = historyStore;
+  if (!store) return;
 
   callServer({ action: 'getDailyHistory', userId: profile.userId, store: store }).then(function (result) {
     if (result.status !== 'ok') {
