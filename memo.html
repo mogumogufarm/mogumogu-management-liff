@@ -21,8 +21,9 @@
     overflow-x: hidden;
   }
   .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
-  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .ai-status-link { font-size: 11px; color: #7A7256; background: none; border: 1px solid #D6CBAA; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-family: inherit; }
   .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
   .site-title .icon-badge {
     width: 32px; height: 32px; border-radius: 9px; background: #EAE0E8; color: #6A4A5E;
@@ -32,9 +33,16 @@
 
   .memo-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
   .memo-form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
+  .memo-textarea-wrap { position: relative; }
   .memo-form-row textarea {
-    padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; resize: vertical;
+    padding: 8px; padding-right: 40px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; resize: vertical;
   }
+  .mic-btn {
+    position: absolute; right: 6px; top: 6px; width: 30px; height: 30px; border-radius: 50%;
+    border: none; background: #2E3B22; color: #fff; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .mic-btn.recording { background: #8B3A2E; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
   .visibility-toggle { display: flex; gap: 8px; }
   .visibility-btn { flex: 1; padding: 10px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; }
   .visibility-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
@@ -46,12 +54,17 @@
   .memo-item:last-child { border-bottom: none; }
   .memo-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
   .memo-author { font-size: 11px; color: #7A7256; }
+  .memo-tags { display: flex; gap: 4px; }
   .memo-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
   .memo-tag-personal { background: #EAE0E8; color: #6A4A5E; }
   .memo-tag-shared { background: #E3ECD3; color: #3E5A1F; }
-  .memo-summary { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0 0 4px; }
-  .memo-original { font-size: 12px; color: #6B6048; margin: 0 0 6px; }
+  .memo-tag-category { background: #DCE6EA; color: #3D5A75; }
+  .memo-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 0 0 4px; }
+  .memo-summary { font-size: 13px; color: #6B6048; margin: 0 0 6px; }
   .memo-photo { max-width: 100%; border-radius: 8px; margin-top: 6px; }
+  .memo-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .memo-action-btn { padding: 5px 12px; border: 1px solid #D6CBAA; border-radius: 6px; background: #fff; color: #6B6048; font-family: inherit; font-size: 11px; cursor: pointer; }
+  .memo-action-btn.danger { color: #8B3A2E; border-color: #E0BDB0; }
 
   .status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -66,7 +79,10 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <div class="top-nav">
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+    <button class="ai-status-link" onclick="checkAiStatus()">AI状態を確認</button>
+  </div>
   <h1 class="site-title"><span class="icon-badge"><i class="ti ti-notes" aria-hidden="true"></i></span>メモ機能</h1>
 
   <div id="blockedCard" class="card" style="text-align:center; display:none;">
@@ -75,9 +91,13 @@
 
   <div id="mainContent" style="display:none;">
     <div class="card">
+      <input type="hidden" id="editingRowIndex" value="">
       <div class="memo-form-row">
         <label>メモの内容</label>
-        <textarea id="memoText" rows="3" placeholder="気づいたことを自由に書いてください"></textarea>
+        <div class="memo-textarea-wrap">
+          <textarea id="memoText" rows="3" placeholder="気づいたことを自由に書いてください（マイクで話しても入力できます）"></textarea>
+          <button type="button" class="mic-btn" id="micBtn" onclick="toggleVoiceInput()"><i class="ti ti-microphone" aria-hidden="true"></i></button>
+        </div>
       </div>
       <div class="memo-form-row">
         <label>公開範囲</label>
@@ -94,7 +114,7 @@
         </label>
         <img id="photoPreview" class="photo-preview">
       </div>
-      <button class="submit-btn" onclick="submitMemo()">保存する</button>
+      <button class="submit-btn" id="submitBtn" onclick="submitMemo()">保存する</button>
     </div>
 
     <div class="card">
@@ -111,7 +131,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -123,6 +143,7 @@ var currentIdToken = null;
 var currentVisibility = '個人';
 var selectedPhotoBase64 = null;
 var selectedPhotoMimeType = null;
+var lastMemos = [];
 
 function setVisibility(v) {
   currentVisibility = v;
@@ -130,6 +151,56 @@ function setVisibility(v) {
   document.getElementById('visSharedBtn').classList.toggle('active', v === '共有');
 }
 
+// ---- 音声入力 ----
+var recognition = null;
+var isRecording = false;
+function toggleVoiceInput() {
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('お使いの環境では音声入力に対応していません。LINEアプリ内ブラウザではなく、Safari/Chromeで開くと使える場合があります。');
+    return;
+  }
+  if (isRecording) {
+    recognition.stop();
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.interimResults = false;
+  recognition.onstart = function () {
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+  };
+  recognition.onend = function () {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+  };
+  recognition.onerror = function (e) {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    if (e.error !== 'no-speech') alert('音声入力でエラーが発生しました：' + e.error);
+  };
+  recognition.onresult = function (e) {
+    var transcript = e.results[0][0].transcript;
+    var textarea = document.getElementById('memoText');
+    textarea.value = (textarea.value ? textarea.value + ' ' : '') + transcript;
+  };
+  recognition.start();
+}
+
+// ---- AI状態確認 ----
+function checkAiStatus() {
+  showProcessing('AIの動作を確認しています...');
+  callServer({ action: 'testMemoAiStatus', userId: profile.userId }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+// ---- 写真選択 ----
 function onPhotoSelected() {
   var fileInput = document.getElementById('memoPhotoInput');
   var file = fileInput.files[0];
@@ -147,29 +218,35 @@ function onPhotoSelected() {
   reader.readAsDataURL(file);
 }
 
+// ---- 保存・更新 ----
 function submitMemo() {
   var text = document.getElementById('memoText').value.trim();
+  var editingRowIndex = document.getElementById('editingRowIndex').value;
   if (!text) {
     alert('メモの内容を入力してください。');
     return;
   }
 
-  var ok = confirm((currentVisibility === '個人' ? '個人メモ' : '共有メモ') + 'として保存します。よろしいですか？');
+  var isEditing = !!editingRowIndex;
+  var ok = confirm((isEditing ? '更新' : (currentVisibility === '個人' ? '個人メモとして保存' : '共有メモとして保存')) + 'します。よろしいですか？');
   if (!ok) return;
 
   showProcessing('AIが要点を整理しています...');
-  callServer({
-    action: 'submitMemo', userId: profile.userId, text: text, visibility: currentVisibility,
-    photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType
-  }).then(function (result) {
+
+  var action = isEditing ? 'updateMemo' : 'submitMemo';
+  var payload = { action: action, userId: profile.userId, text: text, visibility: currentVisibility };
+  if (isEditing) {
+    payload.rowIndex = editingRowIndex;
+  } else {
+    payload.photoBase64 = selectedPhotoBase64;
+    payload.photoMimeType = selectedPhotoMimeType;
+  }
+
+  callServer(payload).then(function (result) {
     hideProcessing();
     alert(result.message);
     if (result.status === 'ok') {
-      document.getElementById('memoText').value = '';
-      document.getElementById('memoPhotoInput').value = '';
-      document.getElementById('photoPreview').style.display = 'none';
-      selectedPhotoBase64 = null;
-      selectedPhotoMimeType = null;
+      resetForm();
       loadMemoList();
     }
   }).catch(function (err) {
@@ -178,6 +255,43 @@ function submitMemo() {
   });
 }
 
+function resetForm() {
+  document.getElementById('memoText').value = '';
+  document.getElementById('memoPhotoInput').value = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('editingRowIndex').value = '';
+  document.getElementById('submitBtn').textContent = '保存する';
+  selectedPhotoBase64 = null;
+  selectedPhotoMimeType = null;
+  setVisibility('個人');
+}
+
+function startEditMemo(rowIndex) {
+  var memo = lastMemos.filter(function (m) { return m.rowIndex === rowIndex; })[0];
+  if (!memo) return;
+  document.getElementById('memoText').value = memo.text;
+  document.getElementById('editingRowIndex').value = rowIndex;
+  document.getElementById('submitBtn').textContent = '更新する（写真は変更できません）';
+  setVisibility(memo.visibility);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteMemoItem(rowIndex) {
+  var ok = confirm('このメモを削除します。よろしいですか？（元に戻せません）');
+  if (!ok) return;
+
+  showProcessing('削除中...');
+  callServer({ action: 'deleteMemo', userId: profile.userId, rowIndex: rowIndex }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') loadMemoList();
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+// ---- 一覧読み込み ----
 function loadMemoList() {
   var el = document.getElementById('memoList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
@@ -187,6 +301,7 @@ function loadMemoList() {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
+    lastMemos = result.memos;
     if (result.memos.length === 0) {
       el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだメモがありません。</p>';
       return;
@@ -195,13 +310,17 @@ function loadMemoList() {
     result.memos.forEach(function (m) {
       var item = document.createElement('div');
       item.className = 'memo-item';
-      var tagClass = m.visibility === '個人' ? 'memo-tag-personal' : 'memo-tag-shared';
-      var photoHtml = m.photoUrl ? '<img class="memo-photo" src="' + m.photoUrl + '">' : '';
+      var visTagClass = m.visibility === '個人' ? 'memo-tag-personal' : 'memo-tag-shared';
+      var photoHtml = m.photoUrl ? '<img class="memo-photo" src="' + m.photoUrl + '" loading="lazy">' : '';
+      var actionsHtml = m.isOwn
+        ? '<div class="memo-actions"><button class="memo-action-btn" onclick="startEditMemo(' + m.rowIndex + ')">編集</button><button class="memo-action-btn danger" onclick="deleteMemoItem(' + m.rowIndex + ')">削除</button></div>'
+        : '';
       item.innerHTML =
-        '<div class="memo-meta"><span class="memo-author">' + m.date + '　' + m.authorName + '</span><span class="memo-tag ' + tagClass + '">' + m.visibility + '</span></div>' +
+        '<div class="memo-meta"><span class="memo-author">' + m.date + '　' + m.authorName + '</span>' +
+        '<span class="memo-tags"><span class="memo-tag memo-tag-category">' + m.category + '</span><span class="memo-tag ' + visTagClass + '">' + m.visibility + '</span></span></div>' +
+        '<p class="memo-title">' + m.title + '</p>' +
         '<p class="memo-summary">' + m.summary + '</p>' +
-        '<p class="memo-original">' + m.text + '</p>' +
-        photoHtml;
+        photoHtml + actionsHtml;
       el.appendChild(item);
     });
   }).catch(function (err) {
