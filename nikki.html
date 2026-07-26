@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>農園日誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="common.css">
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #EFE8D8;
+    color: #2E3B22;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .ai-status-link { font-size: 11px; color: #7A7256; background: none; border: 1px solid #D6CBAA; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-family: inherit; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #EAE0E8; color: #6A4A5E;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+
+  .type-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+  .type-btn { flex: 1; padding: 10px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .type-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+
+  .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .form-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
+  .form-row select, .form-row input { padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; }
+  .textarea-wrap { position: relative; }
+  .textarea-wrap textarea { padding: 8px; padding-right: 40px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; resize: vertical; }
+  .mic-btn {
+    position: absolute; right: 6px; top: 6px; width: 30px; height: 30px; border-radius: 50%;
+    border: none; background: #2E3B22; color: #fff; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .mic-btn.recording { background: #8B3A2E; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .visibility-toggle { display: flex; gap: 8px; }
+  .visibility-btn { flex: 1; padding: 10px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .visibility-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+  .photo-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; display: none; }
+  .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+  .photo-input-btn { display: inline-block; padding: 8px 14px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-size: 12px; cursor: pointer; }
+
+  .filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter-row select { flex: 1; min-width: 0; padding: 8px; font-size: 12px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
+
+  .nikki-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
+  .nikki-row:last-child { border-bottom: none; }
+  .nikki-row:active { opacity: 0.6; }
+  .nikki-row-icon { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .nikki-row-thumb { flex-shrink: 0; width: 34px; height: 34px; border-radius: 8px; object-fit: cover; }
+  .nikki-row-main { flex: 1; min-width: 0; }
+  .nikki-row-tags { display: flex; gap: 4px; margin-bottom: 2px; }
+  .nikki-tag { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 5px; }
+  .nikki-row-title { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nikki-row-date { font-size: 10px; color: #A69B7A; margin: 2px 0 0; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
+  .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 480px; width: 100%; max-height: 82vh; overflow-y: auto; }
+  .modal-close-btn { width: 100%; margin-top: 14px; padding: 10px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .detail-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 8px 0 4px; }
+  .detail-summary { font-size: 13px; color: #6B6048; margin: 0 0 6px; }
+  .detail-meta-line { font-size: 12px; color: #7A7256; margin: 2px 0; }
+  .detail-original-link { display: inline-block; font-size: 12px; font-weight: 700; color: #3D5A75; margin: 10px 0 4px; text-decoration: underline; }
+  .detail-original-text { font-size: 13px; color: #2E3B22; margin: 0; white-space: pre-wrap; background: #fff; border: 1px solid #D6CBAA; border-radius: 8px; padding: 8px 10px; }
+  .detail-photo { max-width: 100%; border-radius: 8px; margin-top: 8px; }
+  .detail-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .detail-action-btn { padding: 6px 14px; border: 1px solid #D6CBAA; border-radius: 6px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .detail-action-btn.danger { color: #8B3A2E; border-color: #E0BDB0; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #8B3A2E; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav">
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+    <button class="ai-status-link" onclick="checkAiStatus()">AI状態を確認</button>
+  </div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-notebook" aria-hidden="true"></i></span>農園日誌</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="card">
+      <input type="hidden" id="editingRowIndex" value="">
+      <div class="type-toggle">
+        <button type="button" class="type-btn active" id="typeBtn防除" onclick="setType('防除')">防除</button>
+        <button type="button" class="type-btn" id="typeBtn生育記録" onclick="setType('生育記録')">生育記録</button>
+        <button type="button" class="type-btn" id="typeBtnメモ" onclick="setType('メモ')">メモ</button>
+      </div>
+
+      <div id="fieldRow" class="form-row">
+        <label>圃場</label>
+        <select id="fieldSelect" onchange="onFieldChange()"></select>
+      </div>
+      <div id="cropRow" class="form-row">
+        <label>品目</label>
+        <select id="cropSelect" onchange="onCropChange()"></select>
+      </div>
+      <div id="varietyRow" class="form-row">
+        <label>品種（任意）</label>
+        <select id="varietySelect"></select>
+      </div>
+      <div id="pesticideRow" class="form-row">
+        <label>使用薬剤</label>
+        <select id="pesticideSelect"></select>
+        <p id="pesticideMismatchNote" style="font-size:11px; color:#8B3A2E; margin:4px 0 0; display:none;"></p>
+      </div>
+      <div id="amountRow" class="form-row">
+        <label>散布量</label>
+        <input type="text" id="amountInput" placeholder="例：10L">
+      </div>
+
+      <div class="form-row">
+        <label>本文</label>
+        <div class="textarea-wrap">
+          <textarea id="nikkiText" rows="3" placeholder="内容を自由に書いてください（空欄で写真だけの投稿も可能です）"></textarea>
+          <button type="button" class="mic-btn" id="micBtn" onclick="toggleVoiceInput()"><i class="ti ti-microphone" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>公開範囲</label>
+        <div class="visibility-toggle">
+          <button type="button" class="visibility-btn active" id="visPersonalBtn" onclick="setVisibility('個人')">個人</button>
+          <button type="button" class="visibility-btn" id="visSharedBtn" onclick="setVisibility('共有')">共有</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>写真（任意）</label>
+        <label class="photo-input-btn">
+          写真を選ぶ
+          <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="onPhotoSelected()">
+        </label>
+        <img id="photoPreview" class="photo-preview">
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="submitNikki()">保存する</button>
+    </div>
+
+    <div class="card">
+      <div class="filter-row">
+        <select id="filterType" onchange="loadNikkiList()">
+          <option value="すべて">すべての種類</option>
+          <option value="防除">防除</option>
+          <option value="生育記録">生育記録</option>
+          <option value="メモ">メモ</option>
+        </select>
+        <select id="filterCrop" onchange="loadNikkiList()">
+          <option value="">すべての品目</option>
+        </select>
+      </div>
+      <div id="nikkiList">読み込み中...</div>
+    </div>
+  </div>
+
+  <div id="nikkiDetailModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeDetailModal();">
+    <div class="modal-box">
+      <div id="detailTagsRow" class="nikki-row-tags"></div>
+      <p class="detail-meta-line" id="detailMeta"></p>
+      <p class="detail-title" id="detailTitle"></p>
+      <p class="detail-summary" id="detailSummary"></p>
+      <a href="#" class="detail-original-link" id="detailOriginalLink" onclick="toggleOriginalText(event)">元の内容を表示</a>
+      <p class="detail-original-text" id="detailOriginal" style="display:none;"></p>
+      <img id="detailPhoto" class="detail-photo" style="display:none;">
+      <div class="detail-actions" id="detailActions"></div>
+      <button class="modal-close-btn" onclick="closeDetailModal()">閉じる</button>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">処理中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentIdToken = null;
+var currentType = '防除';
+var currentVisibility = '個人';
+var selectedPhotoBase64 = null;
+var selectedPhotoMimeType = null;
+var fieldsData = [];
+var pesticidesData = [];
+var lastNikkis = [];
+
+var TYPE_ICON_COLORS = {
+  '防除': { bg: '#F0DAD0', fg: '#8B3A2E', icon: 'ti-flask' },
+  '生育記録': { bg: '#E3ECD3', fg: '#3E5A1F', icon: 'ti-seeding' },
+  'メモ': { bg: '#EAE0E8', fg: '#6A4A5E', icon: 'ti-file-text' }
+};
+var CROP_TAG_COLORS = {
+  'さくらんぼ': { bg: '#F0DAD0', fg: '#8B3A2E' },
+  'もも': { bg: '#F0DEB8', fg: '#8A5A2A' },
+  'スモモ': { bg: '#EAE0E8', fg: '#6A4A5E' },
+  '葡萄': { bg: '#E3ECD3', fg: '#3E5A1F' },
+  '柿': { bg: '#F0DEB8', fg: '#8A5A2A' }
+};
+
+// ---- 種類・公開範囲の切り替え ----
+function setType(t) {
+  currentType = t;
+  ['防除', '生育記録', 'メモ'].forEach(function (x) {
+    document.getElementById('typeBtn' + x).classList.toggle('active', x === t);
+  });
+  document.getElementById('fieldRow').style.display = (t === '防除' || t === '生育記録') ? 'flex' : 'none';
+  document.getElementById('cropRow').style.display = (t === '防除' || t === '生育記録') ? 'flex' : 'none';
+  document.getElementById('varietyRow').style.display = (t === '防除' || t === '生育記録') ? 'flex' : 'none';
+  document.getElementById('pesticideRow').style.display = (t === '防除') ? 'flex' : 'none';
+  document.getElementById('amountRow').style.display = (t === '防除') ? 'flex' : 'none';
+}
+
+function setVisibility(v) {
+  currentVisibility = v;
+  document.getElementById('visPersonalBtn').classList.toggle('active', v === '個人');
+  document.getElementById('visSharedBtn').classList.toggle('active', v === '共有');
+}
+
+// ---- 圃場・品目・品種・薬剤の連動 ----
+function onFieldChange() {
+  var fieldName = document.getElementById('fieldSelect').value;
+  var field = fieldsData.filter(function (f) { return f.name === fieldName; })[0];
+  var cropSel = document.getElementById('cropSelect');
+  cropSel.innerHTML = '';
+  (field ? field.crops : []).forEach(function (c) {
+    var opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    cropSel.appendChild(opt);
+  });
+  onCropChange();
+}
+
+function onCropChange() {
+  var fieldName = document.getElementById('fieldSelect').value;
+  var field = fieldsData.filter(function (f) { return f.name === fieldName; })[0];
+  var crop = document.getElementById('cropSelect').value;
+
+  var varietySel = document.getElementById('varietySelect');
+  varietySel.innerHTML = '<option value="">（指定なし）</option>';
+  (field ? field.varieties : []).forEach(function (v) {
+    var opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    varietySel.appendChild(opt);
+  });
+
+  var pestSel = document.getElementById('pesticideSelect');
+  pestSel.innerHTML = '';
+  var matched = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) !== -1; });
+  var others = pesticidesData.filter(function (p) { return p.cropCandidates.indexOf(crop) === -1; });
+  if (matched.length > 0) {
+    var g1 = document.createElement('optgroup');
+    g1.label = crop + '向け候補';
+    matched.forEach(function (p) { g1.appendChild(makePesticideOption(p)); });
+    pestSel.appendChild(g1);
+  }
+  var g2 = document.createElement('optgroup');
+  g2.label = 'その他の薬剤';
+  others.forEach(function (p) { g2.appendChild(makePesticideOption(p)); });
+  pestSel.appendChild(g2);
+  checkPesticideMismatch();
+}
+
+function makePesticideOption(p) {
+  var opt = document.createElement('option');
+  opt.value = p.name;
+  opt.textContent = '[' + p.category + '] ' + p.name;
+  return opt;
+}
+
+// 選ばれている品目に対して、薬剤が候補外の場合に注意書きを出す（自動修正はせず、確認を促すだけ）
+function checkPesticideMismatch() {
+  var crop = document.getElementById('cropSelect').value;
+  var pesticideName = document.getElementById('pesticideSelect').value;
+  var pesticide = pesticidesData.filter(function (p) { return p.name === pesticideName; })[0];
+  var note = document.getElementById('pesticideMismatchNote');
+  if (pesticide && crop && pesticide.cropCandidates.indexOf(crop) === -1 && pesticide.cropCandidates.length > 0) {
+    note.textContent = '⚠ 「' + pesticideName + '」は、' + crop + '向けの登録候補に無い薬剤です。品目・薬剤の組み合わせを確認してください（候補：' + pesticide.cropCandidates.join('・') + '）。';
+    note.style.display = 'block';
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function initFieldsAndPesticides() {
+  Promise.all([
+    callServer({ action: 'getFieldList', userId: profile.userId }),
+    callServer({ action: 'getPesticideList', userId: profile.userId })
+  ]).then(function (results) {
+    var fieldResult = results[0], pesticideResult = results[1];
+    if (fieldResult.status === 'ok') fieldsData = fieldResult.fields;
+    if (pesticideResult.status === 'ok') pesticidesData = pesticideResult.pesticides;
+
+    var fieldSel = document.getElementById('fieldSelect');
+    fieldsData.forEach(function (f) {
+      var opt = document.createElement('option');
+      opt.value = f.name; opt.textContent = f.name;
+      fieldSel.appendChild(opt);
+    });
+    onFieldChange();
+
+    var cropFilterSel = document.getElementById('filterCrop');
+    ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'].forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      cropFilterSel.appendChild(opt);
+    });
+
+    document.getElementById('pesticideSelect').addEventListener('change', checkPesticideMismatch);
+  });
+}
+
+// ---- 音声入力 ----
+var recognition = null;
+var isRecording = false;
+function toggleVoiceInput() {
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('お使いの環境では音声入力に対応していません（LINEアプリ内では動かないことがよくあります）。Safari/Chromeで開いてお試しください。');
+    return;
+  }
+  if (isRecording) { recognition.stop(); return; }
+
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      startRecognition(SpeechRecognition);
+    }).catch(function (err) {
+      alert('マイクの使用が許可されていません：' + err.name);
+    });
+  } else {
+    startRecognition(SpeechRecognition);
+  }
+}
+function startRecognition(SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.interimResults = false;
+  recognition.onstart = function () { isRecording = true; document.getElementById('micBtn').classList.add('recording'); };
+  recognition.onend = function () { isRecording = false; document.getElementById('micBtn').classList.remove('recording'); };
+  recognition.onerror = function (e) {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    alert('音声入力でエラーが発生しました：' + e.error);
+  };
+  recognition.onresult = function (e) {
+    var textarea = document.getElementById('nikkiText');
+    textarea.value = (textarea.value ? textarea.value + ' ' : '') + e.results[0][0].transcript;
+  };
+  recognition.start();
+}
+
+// ---- AI状態確認 ----
+function checkAiStatus() {
+  showProcessing('AIの動作を確認しています...');
+  callServer({ action: 'testMemoAiStatus', userId: profile.userId }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+// ---- 写真選択 ----
+function onPhotoSelected() {
+  var file = document.getElementById('photoInput').files[0];
+  if (!file) return;
+  selectedPhotoMimeType = file.type;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    selectedPhotoBase64 = e.target.result.split(',')[1];
+    var preview = document.getElementById('photoPreview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---- 保存・更新 ----
+function submitNikki() {
+  var text = document.getElementById('nikkiText').value.trim();
+  var editingRowIndex = document.getElementById('editingRowIndex').value;
+  var isEditing = !!editingRowIndex;
+
+  if (!text && !selectedPhotoBase64 && !isEditing) {
+    alert('本文か写真のどちらかを入力してください。');
+    return;
+  }
+  if (isEditing && !text) {
+    alert('内容を入力してください。');
+    return;
+  }
+
+  var ok = confirm((isEditing ? '更新' : '保存') + 'します。よろしいですか？');
+  if (!ok) return;
+
+  showProcessing('AIが内容を整理しています...');
+
+  var payload;
+  if (isEditing) {
+    payload = { action: 'updateNikki', userId: profile.userId, rowIndex: editingRowIndex, text: text, visibility: currentVisibility };
+  } else {
+    payload = {
+      action: 'submitNikki', userId: profile.userId, type: currentType, visibility: currentVisibility,
+      field: (currentType === '防除' || currentType === '生育記録') ? document.getElementById('fieldSelect').value : '',
+      crop: (currentType === '防除' || currentType === '生育記録') ? document.getElementById('cropSelect').value : '',
+      variety: (currentType === '防除' || currentType === '生育記録') ? document.getElementById('varietySelect').value : '',
+      pesticide: currentType === '防除' ? document.getElementById('pesticideSelect').value : '',
+      amount: currentType === '防除' ? document.getElementById('amountInput').value : '',
+      text: text, photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType
+    };
+  }
+
+  callServer(payload).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      resetForm();
+      loadNikkiList();
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function resetForm() {
+  document.getElementById('nikkiText').value = '';
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('editingRowIndex').value = '';
+  document.getElementById('submitBtn').textContent = '保存する';
+  document.getElementById('amountInput').value = '';
+  selectedPhotoBase64 = null;
+  selectedPhotoMimeType = null;
+  setVisibility('個人');
+}
+
+function startEditNikki(rowIndex) {
+  var n = lastNikkis.filter(function (x) { return x.rowIndex === rowIndex; })[0];
+  if (!n) return;
+  document.getElementById('nikkiText').value = n.text;
+  document.getElementById('editingRowIndex').value = rowIndex;
+  document.getElementById('submitBtn').textContent = '更新する（写真・品目等は変更できません）';
+  setVisibility(n.visibility);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteNikkiItem(rowIndex) {
+  var ok = confirm('この記録を削除します。よろしいですか？（元に戻せません）');
+  if (!ok) return;
+  showProcessing('削除中...');
+  callServer({ action: 'deleteNikki', userId: profile.userId, rowIndex: rowIndex }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') loadNikkiList();
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+// ---- 一覧 ----
+function loadNikkiList() {
+  var filterType = document.getElementById('filterType').value;
+  var filterCrop = document.getElementById('filterCrop').value;
+  var el = document.getElementById('nikkiList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getNikkiList', userId: profile.userId, limit: 50, filterType: filterType, filterCrop: filterCrop }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    lastNikkis = result.memos;
+    if (result.memos.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">該当する記録がありません。</p>';
+      return;
+    }
+    el.innerHTML = '';
+    result.memos.forEach(function (m) {
+      var typeColor = TYPE_ICON_COLORS[m.type] || TYPE_ICON_COLORS['メモ'];
+      var row = document.createElement('div');
+      row.className = 'nikki-row';
+      row.onclick = function () { openDetailModal(m.rowIndex); };
+      var iconHtml = m.photoUrl
+        ? '<img class="nikki-row-thumb" src="' + m.photoUrl + '" loading="lazy">'
+        : '<span class="nikki-row-icon" style="background:' + typeColor.bg + ';color:' + typeColor.fg + ';"><i class="ti ' + typeColor.icon + '" aria-hidden="true"></i></span>';
+      var cropTagHtml = m.crop ? buildTag(m.crop, CROP_TAG_COLORS[m.crop]) : '';
+      var typeTagHtml = buildTag(m.type, typeColor);
+      row.innerHTML =
+        iconHtml +
+        '<span class="nikki-row-main"><span class="nikki-row-tags">' + cropTagHtml + typeTagHtml + '</span><p class="nikki-row-title">' + m.title + '</p><p class="nikki-row-date">' + m.date + '</p></span>';
+      el.appendChild(row);
+    });
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function buildTag(label, colors) {
+  var c = colors || { bg: '#E8E4DA', fg: '#6B6048' };
+  return '<span class="nikki-tag" style="background:' + c.bg + ';color:' + c.fg + ';">' + label + '</span>';
+}
+
+function openDetailModal(rowIndex) {
+  var m = lastNikkis.filter(function (x) { return x.rowIndex === rowIndex; })[0];
+  if (!m) return;
+  var typeColor = TYPE_ICON_COLORS[m.type] || TYPE_ICON_COLORS['メモ'];
+
+  document.getElementById('detailOriginal').style.display = 'none';
+  document.getElementById('detailOriginalLink').textContent = '元の内容を表示';
+
+  var cropTagHtml = m.crop ? buildTag(m.crop, CROP_TAG_COLORS[m.crop]) : '';
+  document.getElementById('detailTagsRow').innerHTML = cropTagHtml + buildTag(m.type, typeColor) + buildTag(m.visibility, { bg: '#E8E4DA', fg: '#6B6048' });
+
+  var metaParts = [m.date, m.authorName];
+  if (m.field) metaParts.push('圃場：' + m.field);
+  if (m.variety) metaParts.push('品種：' + m.variety);
+  if (m.pesticide) metaParts.push('薬剤：' + m.pesticide + (m.amount ? '（' + m.amount + '）' : ''));
+  document.getElementById('detailMeta').textContent = metaParts.join('　');
+
+  document.getElementById('detailTitle').textContent = m.title;
+  document.getElementById('detailSummary').textContent = m.summary;
+  document.getElementById('detailOriginal').textContent = m.text;
+
+  var photoEl = document.getElementById('detailPhoto');
+  if (m.photoUrl) { photoEl.src = m.photoUrl; photoEl.style.display = 'block'; } else { photoEl.style.display = 'none'; }
+
+  document.getElementById('detailActions').innerHTML = m.isOwn
+    ? '<button class="detail-action-btn" onclick="startEditNikki(' + m.rowIndex + '); closeDetailModal();">編集</button><button class="detail-action-btn danger" onclick="deleteNikkiItem(' + m.rowIndex + '); closeDetailModal();">削除</button>'
+    : '';
+
+  document.getElementById('nikkiDetailModal').style.display = 'flex';
+}
+
+function toggleOriginalText(e) {
+  e.preventDefault();
+  var textEl = document.getElementById('detailOriginal');
+  var linkEl = document.getElementById('detailOriginalLink');
+  var isHidden = textEl.style.display === 'none';
+  textEl.style.display = isHidden ? 'block' : 'none';
+  linkEl.textContent = isHidden ? '元の内容を閉じる' : '元の内容を表示';
+}
+
+function closeDetailModal() {
+  document.getElementById('nikkiDetailModal').style.display = 'none';
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    currentIdToken = liff.getIDToken();
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      setType('防除');
+      initFieldsAndPesticides();
+      loadNikkiList();
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var msg = (err && err.message) ? err.message : String(err);
+    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
+      try { liff.logout(); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + msg;
+  });
+}
+</script>
+</body>
+</html>
