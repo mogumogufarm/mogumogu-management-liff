@@ -35,6 +35,9 @@
   .status.loading { background: #4A4436; color: #fff; }
 
   .section-label { font-size: 12px; font-weight: 700; color: #7A7256; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
+  .block-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; overflow: hidden; margin: 16px 0; }
+  .block-header { background: #2E3B22; color: #fff; padding: 9px 14px; font-size: 13px; font-weight: 700; }
+  .block-body { padding: 12px 14px; }
   .section-label-tag { font-size: 10px; font-weight: 400; color: #A69B7A; }
   .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
   .stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
@@ -205,7 +208,9 @@
       </a>
     </div>
 
-    <p class="section-label" id="salesSection">直売所の売上</p>
+    <div class="block-card">
+      <div class="block-header" id="salesSection">直売所の売上</div>
+      <div class="block-body">
     <div class="store-group">
       <div class="sales-store-name">道の駅しらね</div>
       <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
@@ -275,8 +280,12 @@
       </div>
     </div>
 
-    <p class="section-label">売上集計（年間）</p>
-    <div class="card">
+      </div>
+    </div>
+
+    <div class="block-card">
+      <div class="block-header">売上集計（年間）</div>
+      <div class="block-body">
       <div class="select-row">
         <select id="cropYearSelect" onchange="loadCropSummary()"></select>
       </div>
@@ -286,6 +295,7 @@
       </div>
       <div id="cropSummaryList">
         <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+      </div>
       </div>
     </div>
 
@@ -297,10 +307,12 @@
       </div>
     </div>
 
-    <p class="section-label">JA南アルプス指導メール</p>
-    <div class="card">
+    <div class="block-card">
+      <div class="block-header">JA南アルプス指導メール</div>
+      <div class="block-body">
       <div id="jaMailList">
         <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+      </div>
       </div>
     </div>
 
@@ -313,12 +325,18 @@
       </div>
     </div>
 
-    <p class="section-label">産直サイトの受注</p>
+    <div class="block-card">
+      <div class="block-header">産直サイトの受注</div>
+      <div class="block-body">
     <div id="sanchokuSummary">
       <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
     </div>
+      </div>
+    </div>
 
-    <p class="section-label">スタッフ・人件費</p>
+    <div class="block-card">
+      <div class="block-header">スタッフ・人件費</div>
+      <div class="block-body">
     <div class="store-group">
       <div class="stat-grid">
         <div class="stat-card">
@@ -339,6 +357,8 @@
         </div>
       </div>
     </div>
+      </div>
+    </div>
   </div>
 
   <div class="processing-overlay" id="processingOverlay" style="display:none;">
@@ -350,7 +370,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.35</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.36</p>
 </div>
 
 <script>
