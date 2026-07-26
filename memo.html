@@ -66,14 +66,14 @@
   .memo-action-btn { padding: 5px 12px; border: 1px solid #D6CBAA; border-radius: 6px; background: #fff; color: #6B6048; font-family: inherit; font-size: 11px; cursor: pointer; }
   .memo-action-btn.danger { color: #8B3A2E; border-color: #E0BDB0; }
 
-  .category-filter { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #D6CBAA; }
-  .category-chip { flex-shrink: 0; padding: 6px 12px; border: 1px solid #D6CBAA; border-radius: 20px; background: #fff; color: #6B6048; font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
-  .category-chip.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+  .category-filter { margin-bottom: 12px; }
+  .category-filter select { width: 100%; padding: 9px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; background: #fff; color: #2E3B22; }
 
   .memo-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
   .memo-row:last-child { border-bottom: none; }
   .memo-row:active { opacity: 0.6; }
   .memo-row-icon { flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .memo-row-thumb { flex-shrink: 0; width: 32px; height: 32px; border-radius: 7px; object-fit: cover; }
   .memo-row-main { flex: 1; min-width: 0; }
   .memo-row-title { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .memo-row-date { font-size: 10px; color: #A69B7A; margin: 2px 0 0; }
@@ -137,7 +137,7 @@
     </div>
 
     <div class="card">
-      <div class="category-filter" id="categoryFilter"></div>
+      <div class="category-filter"><select id="categoryFilter" onchange="onCategoryFilterChange()"></select></div>
       <div id="memoList">読み込み中...</div>
     </div>
   </div>
@@ -167,7 +167,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.03</p>
 </div>
 
 <script>
@@ -193,13 +193,28 @@ var isRecording = false;
 function toggleVoiceInput() {
   var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('お使いの環境では音声入力に対応していません。LINEアプリ内ブラウザではなく、Safari/Chromeで開くと使える場合があります。');
+    alert('お使いの環境では音声入力に対応していません（この機能はブラウザの仕組みに依存しており、LINEアプリ内では動かないことがよくあります）。「共有」ボタン等から「ブラウザで開く」を選び、Safari/Chromeで開いてお試しください。');
     return;
   }
   if (isRecording) {
     recognition.stop();
     return;
   }
+
+  // マイクの使用許可を先に明示的に確認する（許可されていないと音声入力が無言のまま失敗するため）
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      startRecognition(SpeechRecognition);
+    }).catch(function (err) {
+      alert('マイクの使用が許可されていません。ブラウザの設定でマイクへのアクセスを許可してください。\n（' + err.name + '）');
+    });
+  } else {
+    startRecognition(SpeechRecognition);
+  }
+}
+
+function startRecognition(SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = 'ja-JP';
   recognition.interimResults = false;
@@ -214,7 +229,7 @@ function toggleVoiceInput() {
   recognition.onerror = function (e) {
     isRecording = false;
     document.getElementById('micBtn').classList.remove('recording');
-    if (e.error !== 'no-speech') alert('音声入力でエラーが発生しました：' + e.error);
+    alert('音声入力でエラーが発生しました：' + e.error);
   };
   recognition.onresult = function (e) {
     var transcript = e.results[0][0].transcript;
@@ -341,21 +356,24 @@ var MEMO_CATEGORY_COLORS = {
 };
 var currentCategoryFilter = 'すべて';
 
+var categoryFilterInit = false;
 function renderCategoryFilter() {
+  if (categoryFilterInit) return;
+  categoryFilterInit = true;
   var el = document.getElementById('categoryFilter');
   var categories = ['すべて', 'さくらんぼ', 'もも', 'スモモ', '葡萄', '柿', '防除', '収穫', '出荷', 'その他'];
   el.innerHTML = '';
   categories.forEach(function (c) {
-    var chip = document.createElement('button');
-    chip.className = 'category-chip' + (c === currentCategoryFilter ? ' active' : '');
-    chip.textContent = c;
-    chip.onclick = function () {
-      currentCategoryFilter = c;
-      renderCategoryFilter();
-      renderMemoList();
-    };
-    el.appendChild(chip);
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    el.appendChild(opt);
   });
+}
+
+function onCategoryFilterChange() {
+  currentCategoryFilter = document.getElementById('categoryFilter').value;
+  renderMemoList();
 }
 
 function loadMemoList() {
@@ -389,11 +407,12 @@ function renderMemoList() {
     var row = document.createElement('div');
     row.className = 'memo-row';
     row.onclick = function () { openMemoDetailModal(m.rowIndex); };
-    var photoIconHtml = m.photoUrl ? '<i class="ti ti-photo memo-row-photo-icon" aria-hidden="true"></i>' : '';
+    var iconHtml = m.photoUrl
+      ? '<img class="memo-row-thumb" src="' + m.photoUrl + '" loading="lazy">'
+      : '<span class="memo-row-icon" style="background:' + colors.bg + ';color:' + colors.fg + ';"><i class="ti ti-file-text" aria-hidden="true"></i></span>';
     row.innerHTML =
-      '<span class="memo-row-icon" style="background:' + colors.bg + ';color:' + colors.fg + ';"><i class="ti ti-file-text" aria-hidden="true"></i></span>' +
-      '<span class="memo-row-main"><p class="memo-row-title">' + m.title + '</p><p class="memo-row-date">' + m.date + '</p></span>' +
-      photoIconHtml;
+      iconHtml +
+      '<span class="memo-row-main"><p class="memo-row-title">' + m.title + '</p><p class="memo-row-date">' + m.date + '</p></span>';
     el.appendChild(row);
   });
 }
