@@ -48,6 +48,11 @@
   .manual-remove-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: 1px solid #E0BDB0; background: #fff; color: #8B3A2E; font-size: 12px; cursor: pointer; }
   .add-row-btn { width: 100%; padding: 8px; border: 1px dashed #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; margin-bottom: 10px; }
   .manual-entries-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 6px 0 4px; }
+  table.grid-input-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  table.grid-input-table th, table.grid-input-table td { border: 1px solid #D6CBAA; padding: 4px; text-align: center; font-size: 11px; }
+  table.grid-input-table th { background: #EFE8D8; font-weight: 700; color: #6B6048; }
+  table.grid-input-table td input { width: 100%; border: none; text-align: center; font-size: 12px; padding: 4px 2px; background: transparent; }
+  table.grid-input-table td input:focus { background: #FFF8E8; outline: 1px solid #8A5A2A; }
   table.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
   table.preview-table th, table.preview-table td { border: 1px solid #D6CBAA; padding: 5px 6px; text-align: center; }
   table.preview-table th { background: #EFE8D8; font-weight: 700; }
@@ -123,7 +128,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.04</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
 </div>
 
 <script>
@@ -146,23 +151,27 @@ function switchInputMode(mode) {
 }
 
 var currentManualDocType = '市況速報';
+var JA_FIXED_MEMBER_CODE = '211050';       // JA共選：組合員コード（固定）
+var JA_FIXED_PRODUCER_NAME = '金子昌円';    // JA共選：生産者名（固定）
+
 var MANUAL_FORM_CONFIGS = {
   '市況速報': {
-    headerFields: [{ key: 'reportDate', label: '速報日付', type: 'date' }],
-    rowFields: [{ key: 'variety', label: '品種', kind: 'variety' }, { key: 'grade', label: '等級', kind: 'grade' }, { key: 'size', label: '階級', kind: 'size' }, { key: 'price', label: '単価', numeric: true }],
+    headerFields: [{ key: 'reportDate', label: '速報日付', type: 'date' }, { key: 'variety', label: '品種', kind: 'variety' }],
+    gridMode: true,
+    gridValueLabel: '単価',
     submitAction: 'submitJaMarketPrices'
   },
   '荷受票': {
     headerFields: [
-      { key: 'date', label: '選果年月日', type: 'date' }, { key: 'memberCode', label: '組合員コード' },
-      { key: 'producerName', label: '生産者名' }, { key: 'variety', label: '品種', kind: 'variety' }, { key: 'unitWeight', label: '量目(kg/箱)', numeric: true }
+      { key: 'date', label: '選果年月日', type: 'date' },
+      { key: 'variety', label: '品種', kind: 'variety' }, { key: 'unitWeight', label: '量目(kg/箱)', numeric: true }
     ],
-    rowFields: [{ key: 'grade', label: '等級', kind: 'grade' }, { key: 'size', label: '階級', kind: 'size' }, { key: 'boxes', label: '箱数', numeric: true }],
-    submitAction: 'submitJaUkeoi',
-    gradeFromHeader: true
+    gridMode: true,
+    gridValueLabel: '箱数',
+    submitAction: 'submitJaUkeoi'
   },
   '精算通知書': {
-    headerFields: [{ key: 'memberCode', label: '組合員コード' }, { key: 'variety', label: '品種', kind: 'variety' }],
+    headerFields: [{ key: 'variety', label: '品種', kind: 'variety' }],
     rowFields: [
       { key: 'date', label: '選果年月日', type: 'date' }, { key: 'size', label: '階級', kind: 'size' },
       { key: 'weight', label: '出荷量kg', numeric: true }, { key: 'unitPrice', label: '単価', numeric: true }, { key: 'amount', label: '精算金額', numeric: true }
@@ -242,16 +251,6 @@ function renderManualForm() {
   var el = document.getElementById('manualFormCard');
   var html = '';
 
-  if (currentManualDocType === '荷受票' || currentManualDocType === '市況速報') {
-    html += '<div class="card" style="background:#F0DEB8; border-color:#D9C08A; margin-bottom:14px;">';
-    html += '<p style="font-size:12px; font-weight:700; color:#8A5A2A; margin:0 0 8px;">紙の書式に近い「マス目」形式で入力する場合</p>';
-    html += '<p style="font-size:11px; color:#6B6048; margin:0 0 10px;">スプレッドシートの「' + JA_GRID_SHEET_NAMES[currentManualDocType] + '」シートに、コード・品種等を1回だけ書けば、あとは階級×等級のマスに数字を打つだけで登録できます。</p>';
-    html += '<button class="add-row-btn" onclick="addGridBlock()">＋ 新しいブロックを追加</button>';
-    html += '<button class="confirm-btn" onclick="loadFromGridSheet()">マス目シートから読み込む</button>';
-    html += '</div>';
-    html += '<p class="manual-entries-label" style="margin-top:0;">または、1件ずつ通常の形式で入力する場合</p>';
-  }
-
   config.headerFields.forEach(function (f) {
     var inputHtml;
     if (f.kind === 'variety') {
@@ -261,42 +260,51 @@ function renderManualForm() {
     }
     html += '<div class="manual-field-row"><label>' + f.label + '</label>' + inputHtml + '</div>';
   });
-  html += '<p class="manual-entries-label">明細行</p>';
-  html += '<div id="manualRows"></div>';
-  html += '<button type="button" class="add-row-btn" onclick="addManualRow()">＋ 行を追加</button>';
-  html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
-  html += '<button class="cancel-btn" onclick="loadFromInputSheet()">1件ずつ用シートから読み込む</button>';
-  el.innerHTML = html;
-  addManualRow();
+
+  if (config.gridMode) {
+    html += '<p class="manual-entries-label">数量を入力してください（空欄のマスは無視されます）</p>';
+    html += '<div id="gridTableWrap"></div>';
+    html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
+    el.innerHTML = html;
+    renderGridTable();
+  } else {
+    html += '<p class="manual-entries-label">明細行</p>';
+    html += '<div id="manualRows"></div>';
+    html += '<button type="button" class="add-row-btn" onclick="addManualRow()">＋ 行を追加</button>';
+    html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
+    el.innerHTML = html;
+    addManualRow();
+  }
 }
 
-function addGridBlock() {
-  showProcessing('ブロックを追加中...');
-  callServer({ action: 'addJaGridBlock', userId: profile.userId, docType: currentManualDocType }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+// 荷受票・市況速報：秀・赤秀・丸秀（またはももの5等級）×4L〜Sの固定マス目を表示し、数量だけ入力する
+function renderGridTable() {
+  var headerVarietyEl = document.getElementById('manualHeader_variety');
+  var variety = headerVarietyEl ? headerVarietyEl.value : '';
+  var grades = gradeOptionsForVariety(variety);
+
+  var html = '<table class="grid-input-table"><tr><th></th>';
+  grades.forEach(function (g) { html += '<th>' + g + '</th>'; });
+  html += '</tr>';
+  JA_SIZE_OPTIONS.forEach(function (size) {
+    html += '<tr><th>' + size + '</th>';
+    grades.forEach(function (g) {
+      html += '<td><input type="number" data-size="' + size + '" data-grade="' + g + '"></td>';
+    });
+    html += '</tr>';
   });
+  html += '</table>';
+  document.getElementById('gridTableWrap').innerHTML = html;
 }
 
-function loadFromGridSheet() {
-  var ok = confirm('マス目シートに入力済みの内容を読み込みます。よろしいですか？');
-  if (!ok) return;
-  showProcessing('読み込み中...');
-  callServer({ action: 'processJaGridSheet', userId: profile.userId, docType: currentManualDocType }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
-}
 
-// 荷受票のように「品種はヘッダーで1つだけ指定」の場合、変わったら各行の等級の選択肢を更新する
+// 品種が変わったら、グリッドモードならマス目の等級列を、行モードなら各行の等級選択肢を更新する
 function onHeaderVarietyChange() {
   var config = MANUAL_FORM_CONFIGS[currentManualDocType];
+  if (config.gridMode) {
+    renderGridTable();
+    return;
+  }
   if (!config.gradeFromHeader) return;
   var headerVariety = document.getElementById('manualHeader_variety').value;
   document.querySelectorAll('#manualRows select[data-key="grade"]').forEach(function (sel) {
@@ -374,19 +382,27 @@ function submitManualForm() {
     headerData[f.key] = f.numeric ? Number(val) : val;
   });
 
-  var rows = Array.prototype.slice.call(document.getElementById('manualRows').children);
-  var entries = rows.map(function (rowEl) {
-    var entry = {};
-    Array.prototype.forEach.call(rowEl.querySelectorAll('input, select'), function (input) {
-      var key = input.getAttribute('data-key');
-      var field = config.rowFields.filter(function (f) { return f.key === key; })[0];
-      entry[key] = field && field.numeric ? Number(input.value) : input.value;
+  var entries = [];
+  if (config.gridMode) {
+    document.querySelectorAll('#gridTableWrap input').forEach(function (input) {
+      if (input.value === '' || Number(input.value) === 0) return;
+      entries.push({ grade: input.getAttribute('data-grade'), size: input.getAttribute('data-size'), value: Number(input.value) });
     });
-    return entry;
-  }).filter(function (e) { return Object.keys(e).some(function (k) { return e[k] !== '' && e[k] !== 0; }); });
+  } else {
+    var rows = Array.prototype.slice.call(document.getElementById('manualRows').children);
+    entries = rows.map(function (rowEl) {
+      var entry = {};
+      Array.prototype.forEach.call(rowEl.querySelectorAll('input, select'), function (input) {
+        var key = input.getAttribute('data-key');
+        var field = config.rowFields.filter(function (f) { return f.key === key; })[0];
+        entry[key] = field && field.numeric ? Number(input.value) : input.value;
+      });
+      return entry;
+    }).filter(function (e) { return Object.keys(e).some(function (k) { return e[k] !== '' && e[k] !== 0; }); });
+  }
 
   if (entries.length === 0) {
-    alert('明細行を1行以上入力してください。');
+    alert('数量を1つ以上入力してください。');
     return;
   }
 
@@ -395,13 +411,15 @@ function submitManualForm() {
 
   var payload = { action: config.submitAction, userId: profile.userId };
   if (currentManualDocType === '市況速報') {
-    payload.reportDate = headerData.reportDate; payload.prices = entries;
+    var prices = entries.map(function (e) { return { variety: headerData.variety, grade: e.grade, size: e.size, price: e.value }; });
+    payload.reportDate = headerData.reportDate; payload.prices = prices;
   } else if (currentManualDocType === '荷受票') {
-    payload.date = headerData.date; payload.memberCode = headerData.memberCode;
-    payload.producerName = headerData.producerName; payload.variety = headerData.variety;
-    payload.unitWeight = headerData.unitWeight; payload.entries = entries;
+    var ukeoiEntries = entries.map(function (e) { return { grade: e.grade, size: e.size, boxes: e.value }; });
+    payload.date = headerData.date; payload.memberCode = JA_FIXED_MEMBER_CODE;
+    payload.producerName = JA_FIXED_PRODUCER_NAME; payload.variety = headerData.variety;
+    payload.unitWeight = headerData.unitWeight; payload.entries = ukeoiEntries;
   } else if (currentManualDocType === '精算通知書') {
-    payload.memberCode = headerData.memberCode; payload.variety = headerData.variety; payload.settlements = entries;
+    payload.memberCode = JA_FIXED_MEMBER_CODE; payload.variety = headerData.variety; payload.settlements = entries;
   } else if (currentManualDocType === '売立案内書') {
     payload.sellDate = headerData.sellDate; payload.finalAmount = headerData.finalAmount; payload.items = entries;
   }
