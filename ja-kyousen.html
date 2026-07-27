@@ -89,7 +89,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -164,6 +164,14 @@ function renderPreview(docType, data) {
     });
     html += '</table>';
     html += '<p style="font-size:11px; color:#6B6048;">対応する荷受記録（同じ組合員コード・品種・選果年月日）を探して、金額を確定版に更新します。</p>';
+  } else if (docType === '売立案内書') {
+    html += '<p class="preview-meta">売立日：' + data.sellDate + '（丸統商事）</p>';
+    html += '<table class="preview-table"><tr><th>品名</th><th>等級</th><th>階級</th><th>箱数</th><th>単価</th><th>金額</th></tr>';
+    data.items.forEach(function (it) {
+      html += '<tr><td>' + it.itemName + '</td><td>' + it.grade + '</td><td>' + it.size + '</td><td>' + it.boxes + '</td><td>' + it.unitPrice.toLocaleString() + '円</td><td>¥' + it.amount.toLocaleString() + '</td></tr>';
+    });
+    html += '</table>';
+    html += '<p class="preview-meta">差引仕切金額：¥' + (data.finalAmount ? data.finalAmount.toLocaleString() : '-') + '</p>';
   }
 
   document.getElementById('previewContent').innerHTML = html;
@@ -188,6 +196,11 @@ function confirmSubmit() {
     };
   } else if (docType === '精算通知書') {
     payload = { action: 'submitJaSettlement', userId: profile.userId, memberCode: data.memberCode, variety: data.variety, settlements: data.settlements };
+  } else if (docType === '売立案内書') {
+    payload = {
+      action: 'submitMarutou', userId: profile.userId, sellDate: data.sellDate, items: data.items, finalAmount: data.finalAmount,
+      photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType
+    };
   }
 
   callServer(payload).then(function (result) {
