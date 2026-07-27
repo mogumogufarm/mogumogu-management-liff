@@ -96,7 +96,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
@@ -113,6 +113,14 @@ var JA_MAIL_BADGE_RULES = [
   { keywords: ['見本', '熟度', '展示', 'サンプル', '目合わせ'], label: '熟度見本', cls: 'badge-mihon' },
   { keywords: ['講習会'], label: '講習会', cls: 'badge-koushu' }
 ];
+var JA_MAIL_CROP_COLORS = {
+  'さくらんぼ': { bg: '#F0DAD0', fg: '#8B3A2E' },
+  'もも': { bg: '#F0DEB8', fg: '#8A5A2A' },
+  'スモモ': { bg: '#EAE0E8', fg: '#6A4A5E' },
+  '葡萄': { bg: '#E3ECD3', fg: '#3E5A1F' },
+  '柿': { bg: '#F0DEB8', fg: '#8A5A2A' }
+};
+
 function buildJaMailBadges(subject) {
   var html = '';
   JA_MAIL_BADGE_RULES.forEach(function (rule) {
@@ -141,7 +149,12 @@ function loadJaMailList() {
       row.className = 'ja-mail-row';
       row.onclick = function () { openJaMailBody(m.id); };
       var badge = buildJaMailBadges(m.subject);
-      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + badge + m.subject + '</p>';
+      var cropBadge = '';
+      if (m.crop) {
+        var cc = JA_MAIL_CROP_COLORS[m.crop] || { bg: '#E8E4DA', fg: '#6B6048' };
+        cropBadge = '<span class="ja-mail-badge" style="background:' + cc.bg + ';color:' + cc.fg + ';">' + m.crop + '</span>';
+      }
+      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + cropBadge + badge + m.subject + '</p>';
       el.appendChild(row);
     });
   }).catch(function (err) {
