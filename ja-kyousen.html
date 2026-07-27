@@ -34,6 +34,20 @@
   .photo-preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
 
   .doc-type-label { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: #E3ECD3; color: #3E5A1F; margin-bottom: 10px; }
+  .mode-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+  .mode-btn { flex: 1; padding: 10px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+  .doc-type-toggle { display: flex; gap: 6px; flex-wrap: wrap; }
+  .doc-type-btn { flex: 1; min-width: 100px; padding: 8px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 11px; cursor: pointer; }
+  .doc-type-btn.active { background: #8A5A2A; border-color: #8A5A2A; color: #fff; font-weight: 700; }
+  .manual-field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .manual-field-row label { font-size: 12px; font-weight: 700; color: #6B6048; }
+  .manual-field-row input { padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; width: 100%; }
+  .manual-entry-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
+  .manual-entry-row input { flex: 1; min-width: 0; padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid #D6CBAA; font-family: inherit; }
+  .manual-remove-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: 1px solid #E0BDB0; background: #fff; color: #8B3A2E; font-size: 12px; cursor: pointer; }
+  .add-row-btn { width: 100%; padding: 8px; border: 1px dashed #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; margin-bottom: 10px; }
+  .manual-entries-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 6px 0 4px; }
   table.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
   table.preview-table th, table.preview-table td { border: 1px solid #D6CBAA; padding: 5px 6px; text-align: center; }
   table.preview-table th { background: #EFE8D8; font-weight: 700; }
@@ -64,6 +78,12 @@
   </div>
 
   <div id="mainContent" style="display:none;">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeAiBtn" onclick="switchInputMode('ai')">写真から読み取る</button>
+      <button class="mode-btn" id="modeManualBtn" onclick="switchInputMode('manual')">手入力する</button>
+    </div>
+
+    <div id="aiModeSection">
     <div class="card">
       <p style="font-size:12px; color:#6B6048; margin:0 0 10px;">市況速報・荷受票・精算通知書のいずれかの写真をアップロードしてください。種類はAIが自動で判定します。</p>
       <label class="photo-input-btn">
@@ -78,6 +98,20 @@
       <button class="confirm-btn" id="confirmBtn" onclick="confirmSubmit()">この内容で登録する</button>
       <button class="cancel-btn" onclick="cancelPreview()">やり直す</button>
     </div>
+    </div>
+
+    <div id="manualModeSection" style="display:none;">
+      <div class="card">
+        <div class="doc-type-toggle">
+          <button class="doc-type-btn active" id="docTypeBtn市況速報" onclick="setManualDocType('市況速報')">市況速報</button>
+          <button class="doc-type-btn" id="docTypeBtn荷受票" onclick="setManualDocType('荷受票')">荷受票</button>
+          <button class="doc-type-btn" id="docTypeBtn精算通知書" onclick="setManualDocType('精算通知書')">精算通知書</button>
+          <button class="doc-type-btn" id="docTypeBtn売立案内書" onclick="setManualDocType('売立案内書')">売立案内書</button>
+        </div>
+      </div>
+
+      <div id="manualFormCard" class="card"></div>
+    </div>
   </div>
 
   <div class="processing-overlay" id="processingOverlay" style="display:none;">
@@ -89,7 +123,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -101,6 +135,136 @@ var currentIdToken = null;
 var selectedPhotoBase64 = null;
 var selectedPhotoMimeType = null;
 var currentAnalysis = null;
+
+// ---- 入力モード切り替え ----
+function switchInputMode(mode) {
+  document.getElementById('modeAiBtn').classList.toggle('active', mode === 'ai');
+  document.getElementById('modeManualBtn').classList.toggle('active', mode === 'manual');
+  document.getElementById('aiModeSection').style.display = (mode === 'ai') ? 'block' : 'none';
+  document.getElementById('manualModeSection').style.display = (mode === 'manual') ? 'block' : 'none';
+  if (mode === 'manual' && !document.getElementById('manualFormCard').innerHTML) setManualDocType('市況速報');
+}
+
+var currentManualDocType = '市況速報';
+var MANUAL_FORM_CONFIGS = {
+  '市況速報': {
+    headerFields: [{ key: 'reportDate', label: '速報日付', type: 'date' }],
+    rowFields: [{ key: 'variety', label: '品種' }, { key: 'grade', label: '等級' }, { key: 'size', label: '階級' }, { key: 'price', label: '単価', numeric: true }],
+    submitAction: 'submitJaMarketPrices'
+  },
+  '荷受票': {
+    headerFields: [
+      { key: 'date', label: '選果年月日', type: 'date' }, { key: 'memberCode', label: '組合員コード' },
+      { key: 'producerName', label: '生産者名' }, { key: 'variety', label: '品種' }, { key: 'unitWeight', label: '量目(kg/箱)', numeric: true }
+    ],
+    rowFields: [{ key: 'grade', label: '等級' }, { key: 'size', label: '階級' }, { key: 'boxes', label: '箱数', numeric: true }],
+    submitAction: 'submitJaUkeoi'
+  },
+  '精算通知書': {
+    headerFields: [{ key: 'memberCode', label: '組合員コード' }, { key: 'variety', label: '品種' }],
+    rowFields: [
+      { key: 'date', label: '選果年月日', type: 'date' }, { key: 'size', label: '階級' },
+      { key: 'weight', label: '出荷量kg', numeric: true }, { key: 'unitPrice', label: '単価', numeric: true }, { key: 'amount', label: '精算金額', numeric: true }
+    ],
+    submitAction: 'submitJaSettlement'
+  },
+  '売立案内書': {
+    headerFields: [{ key: 'sellDate', label: '売立日', type: 'date' }, { key: 'finalAmount', label: '差引仕切金額', numeric: true }],
+    rowFields: [
+      { key: 'itemName', label: '品名' }, { key: 'grade', label: '等級' }, { key: 'size', label: '階級' },
+      { key: 'boxes', label: '箱数', numeric: true }, { key: 'unitPrice', label: '単価', numeric: true }, { key: 'amount', label: '金額', numeric: true }
+    ],
+    submitAction: 'submitMarutou'
+  }
+};
+
+function setManualDocType(docType) {
+  currentManualDocType = docType;
+  ['市況速報', '荷受票', '精算通知書', '売立案内書'].forEach(function (t) {
+    document.getElementById('docTypeBtn' + t).classList.toggle('active', t === docType);
+  });
+  renderManualForm();
+}
+
+function renderManualForm() {
+  var config = MANUAL_FORM_CONFIGS[currentManualDocType];
+  var el = document.getElementById('manualFormCard');
+  var html = '';
+  config.headerFields.forEach(function (f) {
+    html += '<div class="manual-field-row"><label>' + f.label + '</label><input type="' + (f.type || 'text') + '" id="manualHeader_' + f.key + '"></div>';
+  });
+  html += '<p class="manual-entries-label">明細行</p>';
+  html += '<div id="manualRows"></div>';
+  html += '<button type="button" class="add-row-btn" onclick="addManualRow()">＋ 行を追加</button>';
+  html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
+  el.innerHTML = html;
+  addManualRow();
+}
+
+function addManualRow() {
+  var config = MANUAL_FORM_CONFIGS[currentManualDocType];
+  var rowsEl = document.getElementById('manualRows');
+  var rowId = 'row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  var row = document.createElement('div');
+  row.className = 'manual-entry-row';
+  row.id = rowId;
+  var inputsHtml = config.rowFields.map(function (f) {
+    return '<input type="' + (f.type || (f.numeric ? 'number' : 'text')) + '" placeholder="' + f.label + '" data-key="' + f.key + '">';
+  }).join('');
+  row.innerHTML = inputsHtml + '<button type="button" class="manual-remove-btn" onclick="document.getElementById(\'' + rowId + '\').remove()"><i class="ti ti-x" aria-hidden="true"></i></button>';
+  rowsEl.appendChild(row);
+}
+
+function submitManualForm() {
+  var config = MANUAL_FORM_CONFIGS[currentManualDocType];
+  var headerData = {};
+  config.headerFields.forEach(function (f) {
+    var val = document.getElementById('manualHeader_' + f.key).value;
+    headerData[f.key] = f.numeric ? Number(val) : val;
+  });
+
+  var rows = Array.prototype.slice.call(document.getElementById('manualRows').children);
+  var entries = rows.map(function (rowEl) {
+    var entry = {};
+    Array.prototype.forEach.call(rowEl.querySelectorAll('input'), function (input) {
+      var key = input.getAttribute('data-key');
+      var field = config.rowFields.filter(function (f) { return f.key === key; })[0];
+      entry[key] = field && field.numeric ? Number(input.value) : input.value;
+    });
+    return entry;
+  }).filter(function (e) { return Object.keys(e).some(function (k) { return e[k] !== '' && e[k] !== 0; }); });
+
+  if (entries.length === 0) {
+    alert('明細行を1行以上入力してください。');
+    return;
+  }
+
+  var ok = confirm('この内容（' + entries.length + '件）で登録します。よろしいですか？');
+  if (!ok) return;
+
+  var payload = { action: config.submitAction, userId: profile.userId };
+  if (currentManualDocType === '市況速報') {
+    payload.reportDate = headerData.reportDate; payload.prices = entries;
+  } else if (currentManualDocType === '荷受票') {
+    payload.date = headerData.date; payload.memberCode = headerData.memberCode;
+    payload.producerName = headerData.producerName; payload.variety = headerData.variety;
+    payload.unitWeight = headerData.unitWeight; payload.entries = entries;
+  } else if (currentManualDocType === '精算通知書') {
+    payload.memberCode = headerData.memberCode; payload.variety = headerData.variety; payload.settlements = entries;
+  } else if (currentManualDocType === '売立案内書') {
+    payload.sellDate = headerData.sellDate; payload.finalAmount = headerData.finalAmount; payload.items = entries;
+  }
+
+  showProcessing('登録中...');
+  callServer(payload).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') setManualDocType(currentManualDocType);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
 
 function onPhotoSelected() {
   var file = document.getElementById('photoInput').files[0];
