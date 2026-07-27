@@ -123,7 +123,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.03</p>
 </div>
 
 <script>
@@ -149,21 +149,22 @@ var currentManualDocType = '市況速報';
 var MANUAL_FORM_CONFIGS = {
   '市況速報': {
     headerFields: [{ key: 'reportDate', label: '速報日付', type: 'date' }],
-    rowFields: [{ key: 'variety', label: '品種' }, { key: 'grade', label: '等級' }, { key: 'size', label: '階級' }, { key: 'price', label: '単価', numeric: true }],
+    rowFields: [{ key: 'variety', label: '品種', kind: 'variety' }, { key: 'grade', label: '等級', kind: 'grade' }, { key: 'size', label: '階級', kind: 'size' }, { key: 'price', label: '単価', numeric: true }],
     submitAction: 'submitJaMarketPrices'
   },
   '荷受票': {
     headerFields: [
       { key: 'date', label: '選果年月日', type: 'date' }, { key: 'memberCode', label: '組合員コード' },
-      { key: 'producerName', label: '生産者名' }, { key: 'variety', label: '品種' }, { key: 'unitWeight', label: '量目(kg/箱)', numeric: true }
+      { key: 'producerName', label: '生産者名' }, { key: 'variety', label: '品種', kind: 'variety' }, { key: 'unitWeight', label: '量目(kg/箱)', numeric: true }
     ],
-    rowFields: [{ key: 'grade', label: '等級' }, { key: 'size', label: '階級' }, { key: 'boxes', label: '箱数', numeric: true }],
-    submitAction: 'submitJaUkeoi'
+    rowFields: [{ key: 'grade', label: '等級', kind: 'grade' }, { key: 'size', label: '階級', kind: 'size' }, { key: 'boxes', label: '箱数', numeric: true }],
+    submitAction: 'submitJaUkeoi',
+    gradeFromHeader: true
   },
   '精算通知書': {
-    headerFields: [{ key: 'memberCode', label: '組合員コード' }, { key: 'variety', label: '品種' }],
+    headerFields: [{ key: 'memberCode', label: '組合員コード' }, { key: 'variety', label: '品種', kind: 'variety' }],
     rowFields: [
-      { key: 'date', label: '選果年月日', type: 'date' }, { key: 'size', label: '階級' },
+      { key: 'date', label: '選果年月日', type: 'date' }, { key: 'size', label: '階級', kind: 'size' },
       { key: 'weight', label: '出荷量kg', numeric: true }, { key: 'unitPrice', label: '単価', numeric: true }, { key: 'amount', label: '精算金額', numeric: true }
     ],
     submitAction: 'submitJaSettlement'
@@ -171,7 +172,7 @@ var MANUAL_FORM_CONFIGS = {
   '売立案内書': {
     headerFields: [{ key: 'sellDate', label: '売立日', type: 'date' }, { key: 'finalAmount', label: '差引仕切金額', numeric: true }],
     rowFields: [
-      { key: 'itemName', label: '品名' }, { key: 'grade', label: '等級' }, { key: 'size', label: '階級' },
+      { key: 'itemName', label: '品名' }, { key: 'grade', label: '等級', kind: 'grade' }, { key: 'size', label: '階級', kind: 'size' },
       { key: 'boxes', label: '箱数', numeric: true }, { key: 'unitPrice', label: '単価', numeric: true }, { key: 'amount', label: '金額', numeric: true }
     ],
     submitAction: 'submitMarutou'
@@ -186,19 +187,91 @@ function setManualDocType(docType) {
   renderManualForm();
 }
 
+var JA_GRADE_OPTIONS_MOMO = ['EX', '特青', '特赤', '青秀', '赤秀'];
+var JA_GRADE_OPTIONS_OTHER = ['秀', '赤秀', '丸秀'];
+var JA_SIZE_OPTIONS = ['4L', '3L', '2L', 'L', 'M', 'S'];
+var varietyListData = null; // { crops: [...], byCrop: {...} }
+
+function loadVarietyListForJa() {
+  return callServer({ action: 'getVarietyList', userId: profile.userId }).then(function (result) {
+    if (result.status === 'ok') varietyListData = result;
+  });
+}
+
+function isVarietyMomo(variety) {
+  if (!varietyListData) return false;
+  return (varietyListData.byCrop['もも'] || []).indexOf(variety) !== -1;
+}
+
+function gradeOptionsForVariety(variety) {
+  return isVarietyMomo(variety) ? JA_GRADE_OPTIONS_MOMO : JA_GRADE_OPTIONS_OTHER;
+}
+
+function buildVarietySelectHtml(idAttr, extraAttrs) {
+  var html = '<select id="' + idAttr + '" ' + (extraAttrs || '') + '><option value="">選択</option>';
+  if (varietyListData) {
+    varietyListData.crops.forEach(function (crop) {
+      html += '<optgroup label="' + crop + '">';
+      varietyListData.byCrop[crop].forEach(function (v) {
+        html += '<option value="' + v + '">' + v + '</option>';
+      });
+      html += '</optgroup>';
+    });
+  }
+  html += '</select>';
+  return html;
+}
+
+function buildGradeSelectHtml(attrs, initialVariety) {
+  var options = gradeOptionsForVariety(initialVariety || '');
+  var html = '<select ' + attrs + '><option value="">選択</option>';
+  options.forEach(function (g) { html += '<option value="' + g + '">' + g + '</option>'; });
+  html += '</select>';
+  return html;
+}
+
+function buildSizeSelectHtml(attrs) {
+  var html = '<select ' + attrs + '><option value="">選択</option>';
+  JA_SIZE_OPTIONS.forEach(function (s) { html += '<option value="' + s + '">' + s + '</option>'; });
+  html += '</select>';
+  return html;
+}
+
 function renderManualForm() {
   var config = MANUAL_FORM_CONFIGS[currentManualDocType];
   var el = document.getElementById('manualFormCard');
   var html = '';
   config.headerFields.forEach(function (f) {
-    html += '<div class="manual-field-row"><label>' + f.label + '</label><input type="' + (f.type || 'text') + '" id="manualHeader_' + f.key + '"></div>';
+    var inputHtml;
+    if (f.kind === 'variety') {
+      inputHtml = buildVarietySelectHtml('manualHeader_' + f.key, 'onchange="onHeaderVarietyChange()"');
+    } else {
+      inputHtml = '<input type="' + (f.type || 'text') + '" id="manualHeader_' + f.key + '">';
+    }
+    html += '<div class="manual-field-row"><label>' + f.label + '</label>' + inputHtml + '</div>';
   });
   html += '<p class="manual-entries-label">明細行</p>';
   html += '<div id="manualRows"></div>';
   html += '<button type="button" class="add-row-btn" onclick="addManualRow()">＋ 行を追加</button>';
   html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
+  html += '<button class="cancel-btn" onclick="loadFromInputSheet()">スプレッドシートから読み込む</button>';
   el.innerHTML = html;
   addManualRow();
+}
+
+// 荷受票のように「品種はヘッダーで1つだけ指定」の場合、変わったら各行の等級の選択肢を更新する
+function onHeaderVarietyChange() {
+  var config = MANUAL_FORM_CONFIGS[currentManualDocType];
+  if (!config.gradeFromHeader) return;
+  var headerVariety = document.getElementById('manualHeader_variety').value;
+  document.querySelectorAll('#manualRows select[data-key="grade"]').forEach(function (sel) {
+    var current = sel.value;
+    sel.innerHTML = '';
+    var options = gradeOptionsForVariety(headerVariety);
+    var optHtml = '<option value="">選択</option>';
+    options.forEach(function (g) { optHtml += '<option value="' + g + '"' + (g === current ? ' selected' : '') + '>' + g + '</option>'; });
+    sel.innerHTML = optHtml;
+  });
 }
 
 function addManualRow() {
@@ -208,12 +281,55 @@ function addManualRow() {
   var row = document.createElement('div');
   row.className = 'manual-entry-row';
   row.id = rowId;
+
+  var headerVarietyEl = document.getElementById('manualHeader_variety');
+  var headerVariety = headerVarietyEl ? headerVarietyEl.value : '';
+
   var inputsHtml = config.rowFields.map(function (f) {
+    if (f.kind === 'variety') {
+      return buildVarietySelectHtml('', 'data-key="' + f.key + '" onchange="onRowVarietyChange(this)"');
+    }
+    if (f.kind === 'grade') {
+      return buildGradeSelectHtml('data-key="' + f.key + '"' + (config.gradeFromHeader ? '' : ''), headerVariety);
+    }
+    if (f.kind === 'size') {
+      return buildSizeSelectHtml('data-key="' + f.key + '"');
+    }
     return '<input type="' + (f.type || (f.numeric ? 'number' : 'text')) + '" placeholder="' + f.label + '" data-key="' + f.key + '">';
   }).join('');
+
   row.innerHTML = inputsHtml + '<button type="button" class="manual-remove-btn" onclick="document.getElementById(\'' + rowId + '\').remove()"><i class="ti ti-x" aria-hidden="true"></i></button>';
   rowsEl.appendChild(row);
 }
+
+// 同じ行の中に品種の選択肢がある場合（市況速報・売立案内書）、変わったらその行の等級の選択肢を更新する
+function onRowVarietyChange(selectEl) {
+  var rowEl = selectEl.closest('.manual-entry-row');
+  var gradeSel = rowEl.querySelector('select[data-key="grade"]');
+  if (!gradeSel) return;
+  var current = gradeSel.value;
+  var options = gradeOptionsForVariety(selectEl.value);
+  var optHtml = '<option value="">選択</option>';
+  options.forEach(function (g) { optHtml += '<option value="' + g + '"' + (g === current ? ' selected' : '') + '>' + g + '</option>'; });
+  gradeSel.innerHTML = optHtml;
+}
+
+function loadFromInputSheet() {
+  var ok = confirm('スプレッドシートの「' + JA_INPUT_SHEET_NAMES[currentManualDocType] + '」シートに入力済みの内容を読み込みます。よろしいですか？');
+  if (!ok) return;
+  showProcessing('読み込み中...');
+  callServer({ action: 'processJaInputSheet', userId: profile.userId, docType: currentManualDocType }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+var JA_INPUT_SHEET_NAMES = {
+  '市況速報': 'JA共選_市況速報_入力用', '荷受票': 'JA共選_荷受票_入力用',
+  '精算通知書': 'JA共選_精算通知書_入力用', '売立案内書': 'JA共選_売立案内書_入力用'
+};
 
 function submitManualForm() {
   var config = MANUAL_FORM_CONFIGS[currentManualDocType];
@@ -226,7 +342,7 @@ function submitManualForm() {
   var rows = Array.prototype.slice.call(document.getElementById('manualRows').children);
   var entries = rows.map(function (rowEl) {
     var entry = {};
-    Array.prototype.forEach.call(rowEl.querySelectorAll('input'), function (input) {
+    Array.prototype.forEach.call(rowEl.querySelectorAll('input, select'), function (input) {
       var key = input.getAttribute('data-key');
       var field = config.rowFields.filter(function (f) { return f.key === key; })[0];
       entry[key] = field && field.numeric ? Number(input.value) : input.value;
@@ -403,6 +519,7 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
+      loadVarietyListForJa();
     } else {
       document.getElementById('blockedCard').style.display = 'block';
     }
