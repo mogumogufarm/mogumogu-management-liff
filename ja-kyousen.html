@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JA共選 取り込み</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="common.css">
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #EFE8D8;
+    color: #2E3B22;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
+  .top-nav { text-align: left; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #F0DEB8; color: #8A5A2A;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+
+  .photo-input-btn { display: block; text-align: center; padding: 14px; border: 2px dashed #D6CBAA; border-radius: 10px; background: #fff; color: #6B6048; font-size: 13px; cursor: pointer; }
+  .photo-preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
+
+  .doc-type-label { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: #E3ECD3; color: #3E5A1F; margin-bottom: 10px; }
+  table.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+  table.preview-table th, table.preview-table td { border: 1px solid #D6CBAA; padding: 5px 6px; text-align: center; }
+  table.preview-table th { background: #EFE8D8; font-weight: 700; }
+  .preview-meta { font-size: 12px; color: #6B6048; margin: 0 0 10px; line-height: 1.7; }
+  .no-price-note { color: #8B3A2E; }
+
+  .confirm-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .cancel-btn { width: 100%; padding: 10px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; margin-top: 8px; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #8B3A2E; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-file-invoice" aria-hidden="true"></i></span>JA共選 取り込み</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="card">
+      <p style="font-size:12px; color:#6B6048; margin:0 0 10px;">市況速報・荷受票・精算通知書のいずれかの写真をアップロードしてください。種類はAIが自動で判定します。</p>
+      <label class="photo-input-btn">
+        <i class="ti ti-camera" aria-hidden="true"></i>　写真を選ぶ
+        <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="onPhotoSelected()">
+      </label>
+      <img id="photoPreview" class="photo-preview">
+    </div>
+
+    <div id="previewCard" class="card" style="display:none;">
+      <div id="previewContent"></div>
+      <button class="confirm-btn" id="confirmBtn" onclick="confirmSubmit()">この内容で登録する</button>
+      <button class="cancel-btn" onclick="cancelPreview()">やり直す</button>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">処理中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentIdToken = null;
+var selectedPhotoBase64 = null;
+var selectedPhotoMimeType = null;
+var currentAnalysis = null;
+
+function onPhotoSelected() {
+  var file = document.getElementById('photoInput').files[0];
+  if (!file) return;
+  selectedPhotoMimeType = file.type;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    selectedPhotoBase64 = e.target.result.split(',')[1];
+    var preview = document.getElementById('photoPreview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    analyzeDocument();
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeDocument() {
+  showProcessing('AIが書類の種類を判定・読み取り中です...');
+  callServer({ action: 'analyzeJaDocument', userId: profile.userId, photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType }).then(function (result) {
+    hideProcessing();
+    if (result.status !== 'ok') {
+      alert(result.message);
+      return;
+    }
+    currentAnalysis = result;
+    renderPreview(result.docType, result.data);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function renderPreview(docType, data) {
+  var el = document.getElementById('previewContent');
+  var html = '<span class="doc-type-label">' + docType + '</span>';
+
+  if (docType === '市況速報') {
+    html += '<p class="preview-meta">速報日付：' + data.reportDate + '（' + data.prices.length + '件）</p>';
+    html += '<table class="preview-table"><tr><th>品種</th><th>等級</th><th>階級</th><th>単価</th></tr>';
+    data.prices.forEach(function (p) {
+      html += '<tr><td>' + p.variety + '</td><td>' + p.grade + '</td><td>' + p.size + '</td><td>' + p.price.toLocaleString() + '円</td></tr>';
+    });
+    html += '</table>';
+  } else if (docType === '荷受票') {
+    html += '<p class="preview-meta">選果年月日：' + data.date + '<br>組合員コード：' + data.memberCode + '　生産者名：' + (data.producerName || '-') + '<br>品種：' + data.variety + '　量目：' + data.unitWeight + 'kg/箱</p>';
+    html += '<table class="preview-table"><tr><th>等級</th><th>階級</th><th>箱数</th><th>重さ</th><th>単価</th><th>仮金額</th></tr>';
+    data.entries.forEach(function (e) {
+      var priceCell = e.unitPrice !== null ? e.unitPrice.toLocaleString() + '円' : '<span class="no-price-note">未登録</span>';
+      var amountCell = e.amount !== null ? '¥' + e.amount.toLocaleString() : '<span class="no-price-note">-</span>';
+      html += '<tr><td>' + e.grade + '</td><td>' + e.size + '</td><td>' + e.boxes + '</td><td>' + e.weight + 'kg</td><td>' + priceCell + '</td><td>' + amountCell + '</td></tr>';
+    });
+    html += '</table>';
+    if (data.entries.some(function (e) { return e.unitPrice === null; })) {
+      html += '<p style="font-size:11px; color:#8B3A2E;">⚠ 単価が見つからない組み合わせがあります。先に市況速報を登録してから、この荷受票を登録し直すか、後で単価が揃った時に再計算してください。</p>';
+    }
+  } else if (docType === '精算通知書') {
+    html += '<p class="preview-meta">組合員コード：' + data.memberCode + '　品種：' + data.variety + '</p>';
+    html += '<table class="preview-table"><tr><th>選果年月日</th><th>階級</th><th>出荷量</th><th>単価</th><th>精算金額</th></tr>';
+    data.settlements.forEach(function (s) {
+      html += '<tr><td>' + s.date + '</td><td>' + s.size + '</td><td>' + s.weight + 'kg</td><td>' + s.unitPrice.toLocaleString() + '円</td><td>¥' + s.amount.toLocaleString() + '</td></tr>';
+    });
+    html += '</table>';
+    html += '<p style="font-size:11px; color:#6B6048;">対応する荷受記録（同じ組合員コード・品種・選果年月日）を探して、金額を確定版に更新します。</p>';
+  }
+
+  document.getElementById('previewContent').innerHTML = html;
+  document.getElementById('previewCard').style.display = 'block';
+}
+
+function confirmSubmit() {
+  var docType = currentAnalysis.docType;
+  var data = currentAnalysis.data;
+  var ok = confirm('この内容で登録します。よろしいですか？');
+  if (!ok) return;
+
+  showProcessing('登録中...');
+  var payload;
+  if (docType === '市況速報') {
+    payload = { action: 'submitJaMarketPrices', userId: profile.userId, reportDate: data.reportDate, prices: data.prices };
+  } else if (docType === '荷受票') {
+    payload = {
+      action: 'submitJaUkeoi', userId: profile.userId, date: data.date, memberCode: data.memberCode,
+      producerName: data.producerName, variety: data.variety, unitWeight: data.unitWeight, entries: data.entries,
+      photoBase64: selectedPhotoBase64, photoMimeType: selectedPhotoMimeType
+    };
+  } else if (docType === '精算通知書') {
+    payload = { action: 'submitJaSettlement', userId: profile.userId, memberCode: data.memberCode, variety: data.variety, settlements: data.settlements };
+  }
+
+  callServer(payload).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') cancelPreview();
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function cancelPreview() {
+  document.getElementById('previewCard').style.display = 'none';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoInput').value = '';
+  selectedPhotoBase64 = null;
+  selectedPhotoMimeType = null;
+  currentAnalysis = null;
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    currentIdToken = liff.getIDToken();
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var msg = (err && err.message) ? err.message : String(err);
+    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
+      try { liff.logout(); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + msg;
+  });
+}
+</script>
+</body>
+</html>
