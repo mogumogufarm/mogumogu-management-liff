@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>売上管理</title>
+<title>直売所売上管理</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
@@ -41,6 +41,7 @@
   .store-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #D6CBAA; }
 
   .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .section-divider { font-size: 12px; font-weight: 700; color: #7A7256; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid #D6CBAA; }
   .crop-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; border-bottom: 1px solid #D6CBAA; font-size: 14px; font-weight: 700; color: #2E3B22; }
   .crop-row-muted { color: #A69B7A; font-weight: 500; }
   .crop-row-total { border-bottom: none; border-top: 2px solid #2E3B22; margin-top: 4px; padding-top: 14px; font-size: 16px; }
@@ -87,7 +88,7 @@
 <body>
 <div class="wrap">
   <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
-  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>売上管理</h1>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>直売所売上管理</h1>
 
   <div id="blockedCard" class="card" style="text-align:center; display:none;">
     <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
@@ -95,15 +96,14 @@
 
   <div id="mainContent" style="display:none;">
     <div class="tabs">
-      <button class="tab-btn active" id="tabTodayBtn" onclick="switchTab('today')">本日の詳細</button>
-      <button class="tab-btn" id="tabProgressBtn" onclick="switchTab('progress')">途中経過</button>
+      <button class="tab-btn active" id="tabProgressBtn" onclick="switchTab('progress')">本日の売上</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
       <button class="tab-btn" id="tabStockBtn" onclick="switchTab('stock')">在庫管理</button>
     </div>
 
-    <div id="todayView" class="card"></div>
-
-    <div id="progressView" class="card" style="display:none;">
+    <div id="progressView" class="card">
+      <div id="todayView"></div>
+      <p class="section-divider">途中経過</p>
       <div class="select-row">
         <select id="progressDateSelect" onchange="onProgressDateChange()"></select>
       </div>
@@ -148,7 +148,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.19</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.20</p>
 </div>
 
 <script>
@@ -157,7 +157,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
 var currentIdToken = null;
-var currentTab = 'today';
+var currentTab = 'progress';
 var progressInit = false;
 var historyInit = false;
 var stockInit = false;
@@ -187,15 +187,16 @@ function applyUrlParams() {
 
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById('tabTodayBtn').classList.toggle('active', tab === 'today');
   document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
   document.getElementById('tabStockBtn').classList.toggle('active', tab === 'stock');
-  document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
   document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
   document.getElementById('stockView').style.display = (tab === 'stock') ? 'block' : 'none';
-  if (tab === 'progress' && !progressInit) initProgressTab();
+  if (tab === 'progress') {
+    loadTodayDetail();
+    if (!progressInit) initProgressTab();
+  }
   if (tab === 'history' && !historyInit) initHistoryTab();
   if (tab === 'stock' && !stockInit) initStockTab();
 }
@@ -593,6 +594,7 @@ if (typeof liff === 'undefined') {
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
       loadTodayDetail();
+      if (!progressInit) initProgressTab();
       applyUrlParams();
     } else {
       document.getElementById('blockedCard').style.display = 'block';
