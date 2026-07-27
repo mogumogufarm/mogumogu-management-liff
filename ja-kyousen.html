@@ -123,7 +123,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.03</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.04</p>
 </div>
 
 <script>
@@ -241,6 +241,17 @@ function renderManualForm() {
   var config = MANUAL_FORM_CONFIGS[currentManualDocType];
   var el = document.getElementById('manualFormCard');
   var html = '';
+
+  if (currentManualDocType === '荷受票' || currentManualDocType === '市況速報') {
+    html += '<div class="card" style="background:#F0DEB8; border-color:#D9C08A; margin-bottom:14px;">';
+    html += '<p style="font-size:12px; font-weight:700; color:#8A5A2A; margin:0 0 8px;">紙の書式に近い「マス目」形式で入力する場合</p>';
+    html += '<p style="font-size:11px; color:#6B6048; margin:0 0 10px;">スプレッドシートの「' + JA_GRID_SHEET_NAMES[currentManualDocType] + '」シートに、コード・品種等を1回だけ書けば、あとは階級×等級のマスに数字を打つだけで登録できます。</p>';
+    html += '<button class="add-row-btn" onclick="addGridBlock()">＋ 新しいブロックを追加</button>';
+    html += '<button class="confirm-btn" onclick="loadFromGridSheet()">マス目シートから読み込む</button>';
+    html += '</div>';
+    html += '<p class="manual-entries-label" style="margin-top:0;">または、1件ずつ通常の形式で入力する場合</p>';
+  }
+
   config.headerFields.forEach(function (f) {
     var inputHtml;
     if (f.kind === 'variety') {
@@ -254,9 +265,33 @@ function renderManualForm() {
   html += '<div id="manualRows"></div>';
   html += '<button type="button" class="add-row-btn" onclick="addManualRow()">＋ 行を追加</button>';
   html += '<button class="confirm-btn" onclick="submitManualForm()">この内容で登録する</button>';
-  html += '<button class="cancel-btn" onclick="loadFromInputSheet()">スプレッドシートから読み込む</button>';
+  html += '<button class="cancel-btn" onclick="loadFromInputSheet()">1件ずつ用シートから読み込む</button>';
   el.innerHTML = html;
   addManualRow();
+}
+
+function addGridBlock() {
+  showProcessing('ブロックを追加中...');
+  callServer({ action: 'addJaGridBlock', userId: profile.userId, docType: currentManualDocType }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadFromGridSheet() {
+  var ok = confirm('マス目シートに入力済みの内容を読み込みます。よろしいですか？');
+  if (!ok) return;
+  showProcessing('読み込み中...');
+  callServer({ action: 'processJaGridSheet', userId: profile.userId, docType: currentManualDocType }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
 }
 
 // 荷受票のように「品種はヘッダーで1つだけ指定」の場合、変わったら各行の等級の選択肢を更新する
