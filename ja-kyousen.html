@@ -83,6 +83,11 @@
   </div>
 
   <div id="mainContent" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <p style="font-size:12px; color:#6B6048; margin:0 0 8px;">JA共選・丸統商事の売上を、見やすい一覧表にまとめます。</p>
+      <button class="confirm-btn" onclick="generateSummaryTable()">スプレッドシートにまとめ表を作成する</button>
+    </div>
+
     <div class="mode-toggle">
       <button class="mode-btn active" id="modeAiBtn" onclick="switchInputMode('ai')">写真から読み取る</button>
       <button class="mode-btn" id="modeManualBtn" onclick="switchInputMode('manual')">手入力する</button>
@@ -128,7 +133,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
@@ -142,6 +147,17 @@ var selectedPhotoMimeType = null;
 var currentAnalysis = null;
 
 // ---- 入力モード切り替え ----
+function generateSummaryTable() {
+  showProcessing('まとめ表を作成中...');
+  callServer({ action: 'generateJaSummaryTable', userId: profile.userId }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
 function switchInputMode(mode) {
   document.getElementById('modeAiBtn').classList.toggle('active', mode === 'ai');
   document.getElementById('modeManualBtn').classList.toggle('active', mode === 'manual');
