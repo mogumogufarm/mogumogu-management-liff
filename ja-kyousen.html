@@ -91,6 +91,20 @@
     <div class="mode-toggle">
       <button class="mode-btn active" id="modeAiBtn" onclick="switchInputMode('ai')">写真から読み取る</button>
       <button class="mode-btn" id="modeManualBtn" onclick="switchInputMode('manual')">手入力する</button>
+      <button class="mode-btn" id="modeCheckBtn" onclick="switchInputMode('check')">登録済みを確認</button>
+    </div>
+
+    <div id="checkModeSection" style="display:none;">
+      <div class="card">
+        <div class="doc-type-toggle">
+          <button class="doc-type-btn active" id="checkSourceBtn荷受記録" onclick="setCheckSource('荷受記録')">JA荷受記録</button>
+          <button class="doc-type-btn" id="checkSourceBtn丸統記録" onclick="setCheckSource('丸統記録')">丸統記録</button>
+          <button class="doc-type-btn" id="checkSourceBtn価格履歴" onclick="setCheckSource('価格履歴')">JA価格履歴</button>
+        </div>
+      </div>
+      <div class="card">
+        <div id="checkListContent">読み込み中...</div>
+      </div>
     </div>
 
     <div id="aiModeSection">
@@ -133,7 +147,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.07</p>
 </div>
 
 <script>
@@ -161,9 +175,58 @@ function generateSummaryTable() {
 function switchInputMode(mode) {
   document.getElementById('modeAiBtn').classList.toggle('active', mode === 'ai');
   document.getElementById('modeManualBtn').classList.toggle('active', mode === 'manual');
+  document.getElementById('modeCheckBtn').classList.toggle('active', mode === 'check');
   document.getElementById('aiModeSection').style.display = (mode === 'ai') ? 'block' : 'none';
   document.getElementById('manualModeSection').style.display = (mode === 'manual') ? 'block' : 'none';
+  document.getElementById('checkModeSection').style.display = (mode === 'check') ? 'block' : 'none';
   if (mode === 'manual' && !document.getElementById('manualFormCard').innerHTML) setManualDocType('市況速報');
+  if (mode === 'check' && !document.getElementById('checkListContent').getAttribute('data-loaded')) setCheckSource('荷受記録');
+}
+
+var currentCheckSource = '荷受記録';
+function setCheckSource(source) {
+  currentCheckSource = source;
+  ['荷受記録', '丸統記録', '価格履歴'].forEach(function (s) {
+    document.getElementById('checkSourceBtn' + s).classList.toggle('active', s === source);
+  });
+  loadCheckList();
+}
+
+function loadCheckList() {
+  var el = document.getElementById('checkListContent');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+  callServer({ action: 'getJaRecordsList', userId: profile.userId, source: currentCheckSource, limit: 50 }).then(function (result) {
+    el.setAttribute('data-loaded', '1');
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだデータがありません。</p>';
+      return;
+    }
+    var html = '<table class="preview-table">';
+    if (currentCheckSource === '荷受記録') {
+      html += '<tr><th>選果年月日</th><th>品種</th><th>等級</th><th>階級</th><th>箱数</th><th>単価</th><th>金額</th><th>状態</th></tr>';
+      result.rows.forEach(function (r) {
+        html += '<tr><td>' + r.date + '</td><td>' + r.variety + '</td><td>' + r.grade + '</td><td>' + r.size + '</td><td>' + r.boxes + '</td><td>' + (r.unitPrice ? r.unitPrice.toLocaleString() + '円' : '-') + '</td><td>' + (r.amount ? '¥' + Number(r.amount).toLocaleString() : '-') + '</td><td>' + (r.status || '仮') + '</td></tr>';
+      });
+    } else if (currentCheckSource === '丸統記録') {
+      html += '<tr><th>売立日</th><th>品名</th><th>等級</th><th>階級</th><th>箱数</th><th>単価</th><th>金額</th></tr>';
+      result.rows.forEach(function (r) {
+        html += '<tr><td>' + r.date + '</td><td>' + r.itemName + '</td><td>' + r.grade + '</td><td>' + r.size + '</td><td>' + r.boxes + '</td><td>' + r.unitPrice.toLocaleString() + '円</td><td>¥' + Number(r.amount).toLocaleString() + '</td></tr>';
+      });
+    } else if (currentCheckSource === '価格履歴') {
+      html += '<tr><th>速報日付</th><th>品種</th><th>等級</th><th>階級</th><th>単価</th></tr>';
+      result.rows.forEach(function (r) {
+        html += '<tr><td>' + r.reportDate + '</td><td>' + r.variety + '</td><td>' + r.grade + '</td><td>' + r.size + '</td><td>' + r.price.toLocaleString() + '円</td></tr>';
+      });
+    }
+    html += '</table>';
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
 }
 
 var currentManualDocType = '市況速報';
