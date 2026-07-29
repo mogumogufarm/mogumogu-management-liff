@@ -39,8 +39,9 @@
   @media (min-width: 900px) {
     .dashboard-grid { columns: 2; column-gap: 16px; }
     .dashboard-grid .block-card { margin: 0 0 16px; break-inside: avoid; }
-    .mobile-page-header { display: none; }
+    .mobile-page-header { display: none !important; }
   }
+  .mobile-header-row { display: flex; align-items: center; gap: 8px; }
   .block-header { background: #2E3B22; color: #fff; padding: 9px 14px; font-size: 13px; font-weight: 700; }
   .block-body { padding: 12px 14px; }
   .section-label-tag { font-size: 10px; font-weight: 400; color: #A69B7A; }
@@ -152,7 +153,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="mobile-page-header" style="display:flex; align-items:center; gap:8px;">
+  <div class="mobile-page-header mobile-header-row">
     <div id="navHamburgerSlot"></div>
     <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
   </div>
@@ -390,7 +391,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.45</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.46</p>
 </div>
 
 <script>
