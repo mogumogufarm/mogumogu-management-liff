@@ -63,6 +63,7 @@
   .crop-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
   .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
   .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
+  .crop-row-qty { font-size: 10px; color: #A69B7A; font-weight: 400; }
   .ja-mail-row { padding: 10px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
   .nikki-home-type-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 12px 0 4px; }
   .nikki-home-type-label:first-child { margin-top: 0; }
@@ -375,7 +376,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.40</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.41</p>
 </div>
 
 <script>
@@ -509,7 +510,13 @@ function renderCropSummary() {
   } else {
     result.varietyRows.forEach(function (r) {
       var key = r.crop + '|' + r.variety;
-      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'variety\', \'' + key.replace(/'/g, "\\'") + '\')"><span>' + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span></span><span>¥' + r.amount.toLocaleString() + '</span></div>';
+      var sourceBreakdown = Object.keys(r.countBySource || {})
+        .map(function (src) { return src + '×' + r.countBySource[src]; })
+        .join('　');
+      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'variety\', \'' + key.replace(/'/g, "\\'") + '\')">' +
+        '<span>' + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span>' +
+        '<br><span class="crop-row-qty">' + r.weightKg.toLocaleString() + 'kg　' + r.count + '件　' + sourceBreakdown + '</span></span>' +
+        '<span>¥' + r.amount.toLocaleString() + '</span></div>';
     });
   }
   if (result.unclassifiedAmount > 0) {
