@@ -143,7 +143,10 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="eyebrow">もぐもぐ農園</p>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <div id="navHamburgerSlot"></div>
+    <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
+  </div>
   <h1 class="site-title">運営管理システム</h1>
 
   <div id="blockedMessage" style="display:none; background: #F7F3E9; border:1px solid #D6CBAA; border-radius:12px; padding:24px;">
@@ -376,7 +379,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.41</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.42</p>
 </div>
 
 <script>
@@ -384,6 +387,7 @@ var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6l
 var LIFF_ID = '2010745560-GD4XbdoK';
 var currentUserId = null;
 var currentIdToken = null;
+initNavDrawer('index.html');
 
 var homeVarietyByCrop = {};
 var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
