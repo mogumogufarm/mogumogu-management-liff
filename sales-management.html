@@ -90,7 +90,10 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <div class="top-nav" style="display:flex; align-items:center; gap:10px;">
+    <div id="navHamburgerSlot"></div>
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+  </div>
   <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>直売所売上管理</h1>
 
   <div id="blockedCard" class="card" style="text-align:center; display:none;">
@@ -159,7 +162,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.21</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.22</p>
 </div>
 
 <script>
@@ -168,6 +171,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
 var currentIdToken = null;
+initNavDrawer('sales-management.html');
 var currentTab = 'progress';
 var progressInit = false;
 var historyInit = false;
