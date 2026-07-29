@@ -117,6 +117,10 @@
   .stock-sub { font-size: 11px; color: #7A7256; }
 
   .menu-list { display: flex; flex-direction: column; gap: 8px; }
+  @media (min-width: 900px) {
+    .menu-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .menu-item { flex-direction: column; align-items: flex-start; text-align: left; }
+  }
   .menu-item {
     display: flex; align-items: center; gap: 12px;
     background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px;
@@ -379,7 +383,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.42</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.43</p>
 </div>
 
 <script>
