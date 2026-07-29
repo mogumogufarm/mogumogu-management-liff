@@ -38,6 +38,9 @@
   .store-name { font-size: 14px; font-weight: 700; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
   .store-name .report-time { font-size: 11px; font-weight: 400; color: #7A7256; }
   .item-row { display: flex; justify-content: space-between; font-size: 12px; color: #6B6048; padding: 3px 0; }
+  .monthly-store-label { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 14px 0 4px; padding-bottom: 4px; border-bottom: 1px solid #D6CBAA; }
+  .monthly-store-label:first-child { margin-top: 0; }
+  .monthly-grand-total { font-size: 14px; font-weight: 700; color: #2E3B22; margin-top: 16px; padding-top: 12px; border-top: 2px solid #2E3B22; text-align: right; }
   .store-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #D6CBAA; }
 
   .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -98,7 +101,15 @@
     <div class="tabs">
       <button class="tab-btn active" id="tabProgressBtn" onclick="switchTab('progress')">本日の売上</button>
       <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
+      <button class="tab-btn" id="tabMonthlyBtn" onclick="switchTab('monthly')">月別集計</button>
       <button class="tab-btn" id="tabStockBtn" onclick="switchTab('stock')">在庫管理</button>
+    </div>
+
+    <div id="monthlyView" class="card" style="display:none;">
+      <div class="select-row">
+        <select id="monthlySelect" onchange="loadMonthlySummary()"></select>
+      </div>
+      <div id="monthlySummaryList">読み込み中...</div>
     </div>
 
     <div id="progressView" class="card">
@@ -148,7 +159,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.20</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.21</p>
 </div>
 
 <script>
@@ -189,16 +200,63 @@ function switchTab(tab) {
   currentTab = tab;
   document.getElementById('tabProgressBtn').classList.toggle('active', tab === 'progress');
   document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+  document.getElementById('tabMonthlyBtn').classList.toggle('active', tab === 'monthly');
   document.getElementById('tabStockBtn').classList.toggle('active', tab === 'stock');
   document.getElementById('progressView').style.display = (tab === 'progress') ? 'block' : 'none';
   document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+  document.getElementById('monthlyView').style.display = (tab === 'monthly') ? 'block' : 'none';
   document.getElementById('stockView').style.display = (tab === 'stock') ? 'block' : 'none';
   if (tab === 'progress') {
     loadTodayDetail();
     if (!progressInit) initProgressTab();
   }
   if (tab === 'history' && !historyInit) initHistoryTab();
+  if (tab === 'monthly' && !monthlyInit) initMonthlyTab();
   if (tab === 'stock' && !stockInit) initStockTab();
+}
+
+var monthlyInit = false;
+function initMonthlyTab() {
+  monthlyInit = true;
+  var sel = document.getElementById('monthlySelect');
+  var now = new Date();
+  for (var i = 0; i < 12; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    var opt = document.createElement('option');
+    opt.value = ym;
+    opt.textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+    sel.appendChild(opt);
+  }
+  loadMonthlySummary();
+}
+
+function loadMonthlySummary() {
+  var yearMonth = document.getElementById('monthlySelect').value;
+  var el = document.getElementById('monthlySummaryList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">集計中...</p>';
+
+  callServer({ action: 'getMonthlySalesByStoreAndCrop', userId: profile.userId, yearMonth: yearMonth }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
+      return;
+    }
+    if (result.stores.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">この月のデータがありません。</p>';
+      return;
+    }
+    var html = '';
+    result.stores.forEach(function (s) {
+      html += '<p class="monthly-store-label">' + s.store + '（' + s.totalCount + '件　¥' + s.totalAmount.toLocaleString() + '）</p>';
+      s.crops.forEach(function (c) {
+        html += '<div class="item-row"><span>' + c.crop + '</span><span>' + c.count + '件　¥' + c.amount.toLocaleString() + '</span></div>';
+      });
+    });
+    html += '<div class="monthly-grand-total">全店合計：' + result.grandCount + '件　¥' + result.grandAmount.toLocaleString() + '</div>';
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
 }
 
 function loadTodayDetail() {
