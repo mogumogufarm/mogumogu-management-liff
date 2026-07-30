@@ -314,7 +314,13 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
-      loadTodayOrders();
+      var params = new URLSearchParams(window.location.search);
+      var tabParam = params.get('tab');
+      if (tabParam === 'history' || tabParam === 'unfilled') {
+        switchTab(tabParam);
+      } else {
+        loadTodayOrders();
+      }
     } else {
       document.getElementById('blockedCard').style.display = 'block';
     }
