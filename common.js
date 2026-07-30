@@ -29,8 +29,17 @@ function hideProcessing() {
 var NAV_LINKS = [
   { group: '売上・在庫', items: [
     { href: 'index.html', label: 'ホーム', icon: 'ti-home' },
-    { href: 'sales-management.html', label: '直売所売上管理', icon: 'ti-shopping-cart' },
-    { href: 'sanchoku-management.html', label: '産直サイト集計', icon: 'ti-building-store' }
+    { href: 'sales-management.html', label: '直売所売上管理', icon: 'ti-shopping-cart', children: [
+      { href: 'sales-management.html?tab=progress', label: '本日の売上' },
+      { href: 'sales-management.html?tab=history', label: '日別推移' },
+      { href: 'sales-management.html?tab=monthly', label: '月別集計' },
+      { href: 'sales-management.html?tab=stock', label: '在庫管理' }
+    ] },
+    { href: 'sanchoku-management.html', label: '産直サイト集計', icon: 'ti-building-store', children: [
+      { href: 'sanchoku-management.html?tab=today', label: '本日の受注' },
+      { href: 'sanchoku-management.html?tab=history', label: '日別推移' },
+      { href: 'sanchoku-management.html?tab=unfilled', label: '金額未入力' }
+    ] }
   ] },
   { group: 'JA・丸統', items: [
     { href: 'ja-kyousen.html', label: 'JA共選・丸統 取り込み', icon: 'ti-file-invoice' }
@@ -56,11 +65,19 @@ function initNavDrawer(currentFile) {
   drawer.className = 'nav-drawer';
   drawer.id = 'navDrawer';
   var html = '<p class="nav-drawer-title">もぐもぐ農園</p>';
+  var currentFullPath = currentFile + window.location.search;
   NAV_LINKS.forEach(function (group) {
     html += '<p class="nav-drawer-group-label">' + group.group + '</p>';
     group.items.forEach(function (item) {
-      var isCurrent = item.href === currentFile;
+      var itemBaseFile = item.href.split('?')[0];
+      var isCurrent = itemBaseFile === currentFile;
       html += '<a class="nav-drawer-link' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+      if (item.children && isCurrent) {
+        item.children.forEach(function (child) {
+          var isChildCurrent = child.href === currentFullPath;
+          html += '<a class="nav-drawer-link nav-drawer-sublink' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
+        });
+      }
     });
   });
   drawer.innerHTML = html;
