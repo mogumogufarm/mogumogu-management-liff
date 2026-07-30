@@ -42,6 +42,15 @@
     .mobile-page-header { display: none !important; }
   }
   .mobile-header-row { display: flex; align-items: center; gap: 8px; }
+  .pc-only-block { display: none; }
+  @media (min-width: 900px) {
+    .pc-only-block { display: block; }
+  }
+  .weather-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #D6CBAA; font-size: 12px; }
+  .weather-row:last-child { border-bottom: none; }
+  .weather-date { font-weight: 700; color: #2E3B22; width: 70px; flex-shrink: 0; }
+  .weather-desc { flex: 1; color: #6B6048; }
+  .weather-temp { color: #7A7256; font-size: 11px; white-space: nowrap; }
   .block-header { background: #2E3B22; color: #fff; padding: 9px 14px; font-size: 13px; font-weight: 700; }
   .block-body { padding: 12px 14px; }
   .section-label-tag { font-size: 10px; font-weight: 400; color: #A69B7A; }
@@ -218,6 +227,15 @@
       </a>
     </div>
 
+    <div id="weatherCard" class="block-card pc-only-block">
+      <div class="block-header">天気予報（気象庁データ）</div>
+      <div class="block-body">
+        <div id="weatherContent">
+          <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+
     <div class="dashboard-grid">
     <div class="block-card">
       <div class="block-header" id="salesSection">直売所の売上</div>
@@ -391,7 +409,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.46</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.47</p>
 </div>
 
 <script>
@@ -625,6 +643,26 @@ function buildJaMailBadges(subject) {
     if (matched) html += '<span class="ja-mail-badge ' + rule.cls + '">' + rule.label + '</span>';
   });
   return html;
+}
+
+function loadWeatherForecast() {
+  var el = document.getElementById('weatherContent');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getWeatherForecast', userId: currentUserId }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    var html = '<p style="font-size:11px; color:#A69B7A; margin:0 0 8px;">' + result.areaName + '（気象庁発表・無料データ）</p>';
+    result.days.forEach(function (d) {
+      var tempHtml = (d.tempMin || d.tempMax) ? (d.tempMin + '〜' + d.tempMax) : '';
+      html += '<div class="weather-row"><span class="weather-date">' + d.date + '</span><span class="weather-desc">' + d.weather + '　降水' + d.pop + '</span><span class="weather-temp">' + tempHtml + '</span></div>';
+    });
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
 }
 
 function loadNikkiRecent() {
@@ -877,6 +915,7 @@ if (typeof liff === 'undefined') {
       loadCropSummary();
       loadJaMailList();
       loadNikkiRecent();
+      loadWeatherForecast();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
