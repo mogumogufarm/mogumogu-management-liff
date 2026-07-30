@@ -27,6 +27,7 @@
   display: flex; align-items: center; gap: 8px; padding: 8px 6px; color: #F7F3E9; font-size: 13px;
   text-decoration: none; border-radius: 6px;
 }
+.nav-drawer-sublink { padding-left: 30px; font-size: 12px; color: #D6CBAA; }
 .nav-drawer-link:active { background: rgba(255,255,255,0.08); }
 .nav-drawer-link.current { background: rgba(255,255,255,0.1); font-weight: 700; }
 .nav-drawer-link i { font-size: 15px; }
