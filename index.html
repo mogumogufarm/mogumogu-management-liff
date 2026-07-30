@@ -42,6 +42,11 @@
     .mobile-page-header { display: none !important; }
   }
   .mobile-header-row { display: flex; align-items: center; gap: 8px; }
+  .display-settings-btn { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 12px; padding: 6px 12px; border: 1px solid #D6CBAA; border-radius: 8px; background: #F7F3E9; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .display-settings-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+  .display-settings-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2E3B22; padding: 8px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
+  .display-settings-item:last-child { border-bottom: none; }
+  .display-settings-item input { width: 16px; height: 16px; }
   .pc-only-block { display: none; }
   @media (min-width: 900px) {
     .pc-only-block { display: block; }
@@ -168,6 +173,23 @@
     <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
   </div>
   <h1 class="site-title mobile-page-header">運営管理システム</h1>
+  <button class="display-settings-btn" onclick="openDisplaySettingsModal()"><i class="ti ti-adjustments" aria-hidden="true"></i> 表示設定</button>
+
+  <div id="displaySettingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeDisplaySettingsModal();">
+    <div class="modal-box">
+      <p class="modal-title">表示するブロックを選ぶ</p>
+      <div class="display-settings-list">
+        <label class="display-settings-item"><input type="checkbox" id="dsWeather"> 天気予報</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsSales"> 直売所の売上</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsCropSummary"> 売上集計（年間）</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsNikki"> 農園日誌</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsSanchoku"> 産直サイトの受注</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsJaMail"> JA南アルプス指導メール</label>
+        <label class="display-settings-item"><input type="checkbox" id="dsStaff"> スタッフ・人件費</label>
+      </div>
+      <button class="modal-close-btn" onclick="saveDisplaySettings()">保存する</button>
+    </div>
+  </div>
 
   <div id="blockedMessage" style="display:none; background: #F7F3E9; border:1px solid #D6CBAA; border-radius:12px; padding:24px;">
     <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
@@ -238,7 +260,7 @@
     </div>
 
     <div class="dashboard-grid">
-    <div class="block-card">
+    <div class="block-card" id="blockSales">
       <div class="block-header" id="salesSection">直売所の売上</div>
       <div class="block-body">
     <div class="store-group">
@@ -313,7 +335,7 @@
       </div>
     </div>
 
-    <div class="block-card">
+    <div class="block-card" id="blockCropSummary">
       <div class="block-header">売上集計（年間）</div>
       <div class="block-body">
       <div class="select-row">
@@ -337,7 +359,7 @@
       </div>
     </div>
 
-    <div class="block-card">
+    <div class="block-card" id="blockNikki">
       <div class="block-header">農園日誌</div>
       <div class="block-body">
       <div id="nikkiRecentList">
@@ -355,7 +377,7 @@
       </div>
     </div>
 
-    <div class="block-card">
+    <div class="block-card" id="blockSanchoku">
       <div class="block-header">産直サイトの受注</div>
       <div class="block-body">
     <div id="sanchokuSummary">
@@ -364,7 +386,7 @@
       </div>
     </div>
 
-    <div class="block-card">
+    <div class="block-card" id="blockJaMail">
       <div class="block-header">JA南アルプス指導メール</div>
       <div class="block-body">
       <div id="jaMailList">
@@ -373,7 +395,7 @@
       </div>
     </div>
 
-    <div class="block-card">
+    <div class="block-card" id="blockStaff">
       <div class="block-header">スタッフ・人件費</div>
       <div class="block-body">
     <div class="store-group">
@@ -410,7 +432,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.48</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.49</p>
 </div>
 
 <script>
@@ -644,6 +666,74 @@ function buildJaMailBadges(subject) {
     if (matched) html += '<span class="ja-mail-badge ' + rule.cls + '">' + rule.label + '</span>';
   });
   return html;
+}
+
+var DISPLAY_BLOCK_MAP = {
+  weather: { elId: 'weatherCard', checkId: 'dsWeather' },
+  sales: { elId: 'blockSales', checkId: 'dsSales' },
+  cropSummary: { elId: 'blockCropSummary', checkId: 'dsCropSummary' },
+  nikki: { elId: 'blockNikki', checkId: 'dsNikki' },
+  sanchoku: { elId: 'blockSanchoku', checkId: 'dsSanchoku' },
+  jaMail: { elId: 'blockJaMail', checkId: 'dsJaMail' },
+  staff: { elId: 'blockStaff', checkId: 'dsStaff' }
+};
+var lastDisplaySettings = null;
+
+function loadDisplaySettings() {
+  callServer({ action: 'getDisplaySettings', userId: currentUserId }).then(function (result) {
+    if (result.status !== 'ok') return;
+    lastDisplaySettings = result.settings;
+    applyDisplaySettings();
+  });
+}
+
+function applyDisplaySettings() {
+  if (!lastDisplaySettings) return;
+  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
+    var el = document.getElementById(DISPLAY_BLOCK_MAP[key].elId);
+    if (!el) return;
+    var visible = lastDisplaySettings[key] !== false;
+    if (key === 'weather') {
+      // 天気予報はPC限定表示のクラス（pc-only-block）を保ったまま、非表示指定の時だけ強制的に隠す
+      el.style.display = visible ? '' : 'none';
+    } else {
+      el.style.display = visible ? '' : 'none';
+    }
+  });
+}
+
+function openDisplaySettingsModal() {
+  var settings = lastDisplaySettings || {};
+  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
+    document.getElementById(DISPLAY_BLOCK_MAP[key].checkId).checked = settings[key] !== false;
+  });
+  document.getElementById('displaySettingsModal').style.display = 'flex';
+}
+
+function closeDisplaySettingsModal() {
+  document.getElementById('displaySettingsModal').style.display = 'none';
+}
+
+function saveDisplaySettings() {
+  var settings = {};
+  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
+    settings[key] = document.getElementById(DISPLAY_BLOCK_MAP[key].checkId).checked;
+  });
+
+  showProcessing('保存中...');
+  callServer({ action: 'submitDisplaySettings', userId: currentUserId, settings: settings }).then(function (result) {
+    hideProcessing();
+    if (result.status === 'ok') {
+      lastDisplaySettings = settings;
+      applyDisplaySettings();
+      closeDisplaySettingsModal();
+    } else {
+      alert(result.message);
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
 }
 
 function loadWeatherForecast() {
@@ -917,6 +1007,7 @@ if (typeof liff === 'undefined') {
       loadJaMailList();
       loadNikkiRecent();
       loadWeatherForecast();
+      loadDisplaySettings();
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
