@@ -185,6 +185,11 @@ function applyUrlParams() {
   var tab = params.get('tab');
   var store = params.get('store');
   var date = params.get('date');
+
+  if (tab === 'history' || tab === 'monthly' || tab === 'stock') {
+    switchTab(tab);
+    return;
+  }
   if (tab !== 'progress') return;
 
   switchTab('progress');
