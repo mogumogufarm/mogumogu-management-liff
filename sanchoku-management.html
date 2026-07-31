@@ -1,343 +1,137 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>産直サイト管理</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<link rel="stylesheet" href="common.css">
-<script src="common.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: 'Noto Sans JP', sans-serif;
-    background: #EFE8D8;
-    color: #2E3B22;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 14px 40px; }
-  .top-nav { text-align: left; margin-bottom: 10px; }
-  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
-  .site-title .icon-badge {
-    width: 32px; height: 32px; border-radius: 9px; background: #E3ECD3; color: #3E5A1F;
-    display: flex; align-items: center; justify-content: center; font-size: 17px;
-  }
-  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+// 全ページ共通の通信・処理中ポップアップ関数
+// 呼び出し元のページで、先に GAS_URL / currentIdToken を定義しておくこと
 
-  .tabs { display: flex; border: 1px solid #D6CBAA; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-  .tab-btn { flex: 1; padding: 9px 4px; border: none; background: #F7F3E9; color: #7A7256; font-family: inherit; font-size: 12px; cursor: pointer; }
-  .tab-btn.active { background: #2E3B22; color: #fff; font-weight: 700; }
-
-  .site-block { border: 1px solid #D6CBAA; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
-  .site-block-title { font-size: 15px; font-weight: 700; color: #3E5A1F; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #D6CBAA; }
-  .item-row { display: flex; justify-content: space-between; font-size: 12px; color: #6B6048; padding: 3px 0; }
-  .edit-btn { margin-left: 6px; padding: 2px 8px; border: 1px solid #D6CBAA; border-radius: 6px; background: #fff; color: #6B6048; font-family: inherit; font-size: 10px; cursor: pointer; }
-  .item-row .unfilled { color: #8B3A2E; font-weight: 700; }
-  .site-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-top: 6px; margin-top: 6px; border-top: 1px dashed #D6CBAA; }
-
-  .select-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .select-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
-
-  .history-block { border-bottom: 1px solid #D6CBAA; padding: 8px 0; }
-  .history-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding: 0 4px 4px; }
-  .history-items { padding: 0 4px; }
-
-  .unfilled-card { border: 1px solid #D6CBAA; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-  .unfilled-meta { font-size: 12px; color: #6B6048; margin: 0 0 8px; }
-  .unfilled-meta b { color: #2E3B22; }
-  .unfilled-input-row { display: flex; gap: 8px; }
-  .unfilled-input-row input { flex: 1; min-width: 0; padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
-  .unfilled-input-row button { flex-shrink: 0; white-space: nowrap; padding: 8px 14px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
-
-  .status {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
-    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
-    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
-  }
-  .status.show { display: block; }
-  .status.error { background: #8B3A2E; color: #fff; }
-  .status.loading { background: #4A4436; color: #fff; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
-  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>産直サイト管理</h1>
-
-  <div id="blockedCard" class="card" style="text-align:center; display:none;">
-    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
-  </div>
-
-  <div id="mainContent" style="display:none;">
-    <div class="tabs">
-      <button class="tab-btn active" id="tabTodayBtn" onclick="switchTab('today')">本日の受注</button>
-      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">日別推移</button>
-      <button class="tab-btn" id="tabUnfilledBtn" onclick="switchTab('unfilled')">金額未入力</button>
-    </div>
-
-    <div id="todayView" class="card"></div>
-
-    <div id="historyView" class="card" style="display:none;">
-      <div class="select-row">
-        <select id="historySiteSelect" onchange="loadHistory()"></select>
-      </div>
-      <div id="historyList">店舗を選んでください</div>
-    </div>
-
-    <div id="unfilledView" class="card" style="display:none;">
-      <div id="unfilledList">読み込み中...</div>
-    </div>
-  </div>
-
-  <div class="processing-overlay" id="processingOverlay" style="display:none;">
-    <div class="processing-box">
-      <div class="spinner"></div>
-      <p id="processingText">処理中...</p>
-    </div>
-  </div>
-
-  <div class="status" id="initStatus" style="display:none;"></div>
-
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.08</p>
-</div>
-
-<script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
-var LIFF_ID = '2010745560-GD4XbdoK';
-
-var profile = null;
-var currentIdToken = null;
-var currentTab = 'today';
-var historyInit = false;
-var unfilledInit = false;
-var SITES = ['食べチョク', 'ポケットマルシェ', 'アウル', 'BASE'];
-
-function switchTab(tab) {
-  currentTab = tab;
-  document.getElementById('tabTodayBtn').classList.toggle('active', tab === 'today');
-  document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
-  document.getElementById('tabUnfilledBtn').classList.toggle('active', tab === 'unfilled');
-  document.getElementById('todayView').style.display = (tab === 'today') ? 'block' : 'none';
-  document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
-  document.getElementById('unfilledView').style.display = (tab === 'unfilled') ? 'block' : 'none';
-  if (tab === 'history' && !historyInit) initHistoryTab();
-  if (tab === 'unfilled' && !unfilledInit) { unfilledInit = true; loadUnfilled(); }
+function callServer(payload) {
+  payload.idToken = currentIdToken;
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function (res) { return res.json(); });
 }
 
-function editSanchokuOrder(rowIndex, currentVariety, currentQtyLabel, currentAmount) {
-  var newVariety = prompt('品種', currentVariety);
-  if (newVariety === null) return;
-  var newQtyLabel = prompt('数量表示（例：1kg）', currentQtyLabel);
-  if (newQtyLabel === null) return;
-  var newAmount = prompt('金額（円）', currentAmount === null ? '' : currentAmount);
-  if (newAmount === null) return;
-
-  var ok = confirm('この内容に修正します。よろしいですか？\n品種：' + newVariety + '\n数量：' + newQtyLabel + '\n金額：' + (newAmount || '（未入力のまま）'));
-  if (!ok) return;
-
-  showProcessing('修正中...');
-  callServer({ action: 'updateSanchokuOrder', userId: profile.userId, rowIndex: rowIndex, variety: newVariety, qtyLabel: newQtyLabel, amount: newAmount }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-    if (result.status === 'ok') {
-      if (currentTab === 'today') loadTodayOrders();
-      else if (currentTab === 'unfilled') loadUnfilled();
-    }
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) { setTimeout(function () { reject(new Error((label || 'TIMEOUT') + ':' + ms + 'ms')); }, ms); })
+  ]);
 }
 
-function loadTodayOrders() {
-  var el = document.getElementById('todayView');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
-
-  callServer({ action: 'getTodaySanchokuOrders', userId: profile.userId }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
-      return;
-    }
-    el.innerHTML = '<p style="font-size:12px; color:#7A7256; margin:0 0 10px;">' + result.today + '</p>';
-
-    SITES.forEach(function (site) {
-      var s = result.sites[site];
-      var block = document.createElement('div');
-      block.className = 'site-block';
-
-      var itemsHtml = s.items.length === 0
-        ? '<p style="font-size:12px; color:#A69B7A; margin:0;">本日の受注なし</p>'
-        : s.items.map(function (it) {
-            var amountHtml = it.amount === null ? '<span class="unfilled">未入力</span>' : '¥' + it.amount.toLocaleString();
-            return '<div class="item-row"><span>' + it.variety + '・' + it.qtyLabel + '</span><span>' + amountHtml +
-              ' <button class="edit-btn" onclick="editSanchokuOrder(' + it.rowIndex + ', \'' + it.variety.replace(/'/g, "\\'") + '\', \'' + it.qtyLabel.replace(/'/g, "\\'") + '\', ' + (it.amount === null ? 'null' : it.amount) + ')">修正</button></span></div>';
-          }).join('');
-
-      var totalAmountHtml = s.hasUnfilled
-        ? (s.totalAmount > 0 ? '¥' + s.totalAmount.toLocaleString() + '＋未入力あり' : '未入力あり')
-        : '¥' + s.totalAmount.toLocaleString();
-
-      block.innerHTML =
-        '<p class="site-block-title">' + site + '</p>' +
-        itemsHtml +
-        '<div class="site-total"><span>合計・' + s.totalCount + '件</span><span>' + totalAmountHtml + '</span></div>';
-      el.appendChild(block);
-    });
-  });
+function showProcessing(text) {
+  document.getElementById('processingText').textContent = text;
+  document.getElementById('processingOverlay').style.display = 'flex';
+}
+function hideProcessing() {
+  document.getElementById('processingOverlay').style.display = 'none';
 }
 
-function initHistoryTab() {
-  historyInit = true;
-  var sel = document.getElementById('historySiteSelect');
-  SITES.forEach(function (s) {
-    var opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    sel.appendChild(opt);
-  });
-  loadHistory();
-}
+// ==== 共通ナビゲーションメニュー（ハンバーガー＋スライド式、PCでは常時表示のサイドバー） ====
+var NAV_LINKS = [
+  { group: '売上・在庫', items: [
+    { href: 'index.html', label: 'ホーム', icon: 'ti-home' },
+    { href: 'sales-management.html', label: '直売所売上管理', icon: 'ti-shopping-cart', children: [
+      { href: 'sales-management.html?tab=progress', label: '本日の売上' },
+      { href: 'sales-management.html?tab=history', label: '日別推移' },
+      { href: 'sales-management.html?tab=monthly', label: '月別集計' },
+      { href: 'sales-management.html?tab=stock', label: '在庫管理' }
+    ] },
+    { href: 'sanchoku-management.html', label: '産直サイト集計', icon: 'ti-building-store', children: [
+      { href: 'sanchoku-management.html?tab=today', label: '本日の受注' },
+      { href: 'sanchoku-management.html?tab=history', label: '日別推移' },
+      { href: 'sanchoku-management.html?tab=unfilled', label: '金額未入力' }
+    ] }
+  ] },
+  { group: 'JA・丸統', items: [
+    { href: 'ja-kyousen.html', label: 'JA共選・丸統 取り込み', icon: 'ti-file-invoice' }
+  ] },
+  { group: '記録・日誌', items: [
+    { href: 'nikki.html', label: '農園日誌', icon: 'ti-notebook' },
+    { href: 'ja-mail.html', label: 'JA指導メール', icon: 'ti-mail' }
+  ] },
+  { group: '管理', items: [
+    { href: 'staff-management.html', label: 'スタッフ管理', icon: 'ti-users' }
+  ] },
+  { group: '設定', items: [
+    { action: 'openDisplaySettings', label: '表示設定', icon: 'ti-adjustments' }
+  ] }
+];
 
-function loadHistory() {
-  var site = document.getElementById('historySiteSelect').value;
-  var el = document.getElementById('historyList');
-  if (!site) return;
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+function initNavDrawer(currentFile) {
+  document.body.classList.add('has-responsive-layout');
 
-  callServer({ action: 'getSanchokuDailyHistory', userId: profile.userId, site: site }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
-      return;
-    }
-    if (result.rows.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだデータがありません。</p>';
-      return;
-    }
-    el.innerHTML = '';
-    result.rows.forEach(function (r) {
-      var parts = r.date.split('-');
-      var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
-      var block = document.createElement('div');
-      block.className = 'history-block';
+  var overlay = document.createElement('div');
+  overlay.className = 'nav-overlay';
+  overlay.id = 'navOverlay';
+  overlay.onclick = closeNavDrawer;
 
-      var itemsHtml = r.items.map(function (it) {
-        var amountHtml = it.amount === null ? '<span class="unfilled">未入力</span>' : '¥' + it.amount.toLocaleString();
-        return '<div class="item-row"><span>' + it.variety + '・' + it.qtyLabel + '</span><span>' + amountHtml + '</span></div>';
-      }).join('');
-
-      var totalAmountHtml = r.hasUnfilled
-        ? (r.amount > 0 ? '¥' + r.amount.toLocaleString() + '＋未入力あり' : '未入力あり')
-        : '¥' + r.amount.toLocaleString();
-
-      block.innerHTML =
-        '<div class="history-row"><span class="history-date">' + label + '（' + r.count + '件）</span><span>' + totalAmountHtml + '</span></div>' +
-        '<div class="history-items">' + itemsHtml + '</div>';
-      el.appendChild(block);
-    });
-  });
-}
-
-function loadUnfilled() {
-  var el = document.getElementById('unfilledList');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
-
-  callServer({ action: 'getUnfilledSanchokuOrders', userId: profile.userId }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
-      return;
-    }
-    if (result.rows.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">金額未入力の注文はありません。</p>';
-      return;
-    }
-    el.innerHTML = '';
-    result.rows.forEach(function (r) {
-      var parts = r.date.split('-');
-      var label = Number(parts[1]) + '月' + Number(parts[2]) + '日';
-      var card = document.createElement('div');
-      card.className = 'unfilled-card';
-      card.innerHTML =
-        '<p class="unfilled-meta"><b>' + r.site + '</b>　' + r.variety + '・' + r.qtyLabel + '　' + label + '受注</p>' +
-        '<div class="unfilled-input-row">' +
-        '<input type="number" placeholder="金額を入力" id="unfilled-amount-' + r.rowIndex + '">' +
-        '<button onclick="submitUnfilledAmount(' + r.rowIndex + ')">登録</button>' +
-        '</div>';
-      el.appendChild(card);
-    });
-  });
-}
-
-function submitUnfilledAmount(rowIndex) {
-  var input = document.getElementById('unfilled-amount-' + rowIndex);
-  var amount = input.value;
-  if (!amount) {
-    alert('金額を入力してください。');
-    return;
-  }
-  var ok = confirm('この注文の金額を¥' + Number(amount).toLocaleString() + 'として登録します。よろしいですか？');
-  if (!ok) return;
-
-  showProcessing('登録中...');
-
-  callServer({ action: 'submitSanchokuAmount', userId: profile.userId, rowIndex: rowIndex, amount: amount }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-    if (result.status === 'ok') loadUnfilled();
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
-}
-
-if (typeof liff === 'undefined') {
-  document.getElementById('initStatus').className = 'status show error';
-  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
-} else {
-  showProcessing('読み込み中...しばらくお待ちください');
-  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
-    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
-    return withTimeout(liff.getProfile(), 10000);
-  }).then(function (p) {
-    profile = p;
-    currentIdToken = liff.getIDToken();
-    return callServer({ action: 'checkAdmin', userId: p.userId });
-  }).then(function (result) {
-    hideProcessing();
-    document.getElementById('initStatus').style.display = 'none';
-    if (result.status === 'ok') {
-      document.getElementById('mainContent').style.display = 'block';
-      var params = new URLSearchParams(window.location.search);
-      var tabParam = params.get('tab');
-      if (tabParam === 'history' || tabParam === 'unfilled') {
-        switchTab(tabParam);
-      } else {
-        loadTodayOrders();
+  var drawer = document.createElement('div');
+  drawer.className = 'nav-drawer';
+  drawer.id = 'navDrawer';
+  var html = '<p class="nav-drawer-title">もぐもぐ農園</p>';
+  var currentFullPath = currentFile + window.location.search;
+  NAV_LINKS.forEach(function (group) {
+    html += '<p class="nav-drawer-group-label">' + group.group + '</p>';
+    group.items.forEach(function (item) {
+      if (item.action) {
+        html += '<a class="nav-drawer-link" href="#" onclick="handleNavAction(\'' + item.action + '\'); return false;"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+        return;
       }
-    } else {
-      document.getElementById('blockedCard').style.display = 'block';
-    }
-  }).catch(function (err) {
-    if (err === 'LOGIN_REDIRECT') return;
-    var msg = (err && err.message) ? err.message : String(err);
-    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
-      try { liff.logout(); } catch (e) {}
-      window.location.reload();
-      return;
-    }
-    hideProcessing();
-    var el = document.getElementById('initStatus');
-    el.className = 'status show error';
-    el.textContent = '初期化エラー：' + msg;
+      var itemBaseFile = item.href.split('?')[0];
+      var isCurrent = itemBaseFile === currentFile;
+      html += '<a class="nav-drawer-link' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+      if (item.children && isCurrent) {
+        item.children.forEach(function (child) {
+          var isChildCurrent = child.href === currentFullPath;
+          html += '<a class="nav-drawer-link nav-drawer-sublink' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
+        });
+      }
+    });
   });
+  drawer.innerHTML = html;
+
+  document.body.insertBefore(overlay, document.body.firstChild);
+  document.body.insertBefore(drawer, document.body.firstChild);
+
+  // 既存の.wrapをpage-content-areaで包む（PC幅の時、サイドバーの隣に本文を並べるため）
+  var wrap = document.querySelector('.wrap');
+  if (wrap) {
+    var contentArea = document.createElement('div');
+    contentArea.className = 'page-content-area';
+    wrap.parentNode.insertBefore(contentArea, wrap);
+    contentArea.appendChild(wrap);
+  }
+
+  // ハンバーガーボタンを、ページ側が用意したスロットに挿入する
+  var slot = document.getElementById('navHamburgerSlot');
+  if (slot) {
+    var btn = document.createElement('button');
+    btn.className = 'nav-hamburger-btn';
+    btn.setAttribute('aria-label', 'メニュー');
+    btn.innerHTML = '<i class="ti ti-menu-2" aria-hidden="true"></i>';
+    btn.onclick = toggleNavDrawer;
+    slot.appendChild(btn);
+  }
 }
-</script>
-</body>
-</html>
+
+function toggleNavDrawer() {
+  document.getElementById('navDrawer').classList.toggle('show');
+  document.getElementById('navOverlay').classList.toggle('show');
+}
+function closeNavDrawer() {
+  document.getElementById('navDrawer').classList.remove('show');
+  document.getElementById('navOverlay').classList.remove('show');
+}
+
+// サイドバーの「表示設定」など、リンクではなくアクションが指定された項目がクリックされた時の処理
+function handleNavAction(action) {
+  if (action === 'openDisplaySettings') {
+    closeNavDrawer();
+    if (typeof openDisplaySettingsModal === 'function') {
+      // すでにホーム画面を開いている場合は、そのままモーダルを開く
+      openDisplaySettingsModal();
+    } else {
+      // 他のページからの場合は、ホーム画面に移動してから開く
+      window.location.href = 'index.html?openSettings=1';
+    }
+  }
+}
