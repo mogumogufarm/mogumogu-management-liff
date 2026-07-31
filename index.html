@@ -37,6 +37,8 @@
   .section-label { font-size: 12px; font-weight: 700; color: #7A7256; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
   .block-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; overflow: hidden; margin: 16px 0; }
   @media (min-width: 900px) {
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    .dashboard-grid .block-card { margin: 0; }
     .mobile-page-header { display: none !important; }
   }
   .mobile-header-row { display: flex; align-items: center; gap: 8px; }
@@ -191,8 +193,6 @@
     <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
   </div>
 
-  <p style="background:red; color:white; font-size:20px; padding:20px;">テスト表示123（これが見えていますか？）</p>
-
   <div id="menu" class="mobile-page-header" style="display:none;">
     <p class="section-label">メニュー</p>
     <div class="menu-list">
@@ -247,6 +247,7 @@
         </span>
       </a>
     </div>
+  </div>
 
     <div class="dashboard-grid">
     <div id="weatherCard" class="block-card pc-only-block">
@@ -429,8 +430,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.57（テスト表示あり）</p>
-</div>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.58</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
