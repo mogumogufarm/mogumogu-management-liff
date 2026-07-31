@@ -173,7 +173,6 @@
     <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
   </div>
   <h1 class="site-title mobile-page-header">運営管理システム</h1>
-  <button class="display-settings-btn" onclick="openDisplaySettingsModal()"><i class="ti ti-adjustments" aria-hidden="true"></i> 表示設定</button>
 
   <div id="displaySettingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeDisplaySettingsModal();">
     <div class="modal-box">
@@ -432,7 +431,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.51</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.52</p>
 </div>
 
 <script>
@@ -1009,6 +1008,9 @@ if (typeof liff === 'undefined') {
       loadNikkiRecent();
       loadWeatherForecast();
       loadDisplaySettings();
+      if (new URLSearchParams(window.location.search).get('openSettings') === '1') {
+        setTimeout(openDisplaySettingsModal, 300);
+      }
     } else {
       document.getElementById('blockedMessage').style.display = 'block';
     }
