@@ -65,7 +65,10 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top-nav"><a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a></div>
+  <div class="top-nav" style="display:flex; align-items:center; gap:10px;">
+    <div id="navHamburgerSlot"></div>
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+  </div>
   <h1 class="site-title"><span class="icon-badge"><i class="ti ti-mail" aria-hidden="true"></i></span>JA南アルプス指導メール</h1>
 
   <div id="blockedCard" class="card" style="text-align:center; display:none;">
@@ -96,7 +99,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.07</p>
 </div>
 
 <script>
@@ -105,6 +108,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 
 var profile = null;
 var currentIdToken = null;
+initNavDrawer('ja-mail.html');
 
 // 件名に含まれるキーワードから、該当するバッジをすべて組み立てる
 var JA_MAIL_BADGE_RULES = [
