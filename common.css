@@ -45,13 +45,15 @@
     display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700;
   }
   .pc-nav-icongrid {
-    background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 24px;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 20px;
+    display: flex; flex-wrap: wrap; gap: 28px;
   }
-  .pc-nav-group-divider {
-    font-size: 10px; color: #A69B7A; padding: 0 8px 0 4px; align-self: center;
+  .pc-nav-group { position: relative; }
+  .pc-nav-group:not(:first-child)::before {
+    content: ''; position: absolute; left: -14px; top: 0; bottom: 0; width: 1px; background: #D6CBAA;
   }
-  .pc-nav-group-divider:not(:first-child) { border-left: 1px solid #D6CBAA; margin-left: 6px; padding-left: 14px; }
+  .pc-nav-group-label { font-size: 10px; color: #A69B7A; margin: 0 0 6px; }
+  .pc-nav-group-row { display: flex; gap: 6px; }
   .pc-nav-icon-item {
     text-align: center; padding: 10px 16px; border-radius: 8px; text-decoration: none;
     min-width: 84px; cursor: pointer; border: none; background: none; font-family: inherit;
