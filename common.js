@@ -140,9 +140,9 @@ function renderPcNavIconGrid() {
   var gridHtml = '';
   var subHtml = '';
 
-  // すべてのカテゴリの項目を、常に1つの並びで表示する（カテゴリの区切りは小さなラベルで示すだけ）
+  // カテゴリごとに「ラベル＋アイコン列」のまとまりにして、常に並べて表示する
   NAV_LINKS.forEach(function (group) {
-    gridHtml += '<span class="pc-nav-group-divider">' + group.group + '</span>';
+    gridHtml += '<div class="pc-nav-group"><p class="pc-nav-group-label">' + group.group + '</p><div class="pc-nav-group-row">';
     group.items.forEach(function (item) {
       if (item.action) {
         gridHtml += '<button class="pc-nav-icon-item" onclick="handleNavAction(\'' + item.action + '\')"><i class="ti ' + item.icon + '" aria-hidden="true"></i><p>' + item.label + '</p></button>';
@@ -158,6 +158,7 @@ function renderPcNavIconGrid() {
         });
       }
     });
+    gridHtml += '</div></div>';
   });
 
   gridEl.innerHTML = gridHtml;
