@@ -115,22 +115,9 @@ function initNavDrawer(currentFile) {
 }
 
 var pcNavCurrentFile = null;
-var pcNavActiveGroupIndex = 0;
-
-// 現在のページが属するカテゴリ（タブ）を探す
-function findGroupIndexForCurrentFile(currentFile) {
-  for (var g = 0; g < NAV_LINKS.length; g++) {
-    var items = NAV_LINKS[g].items;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].href && items[i].href.split('?')[0] === currentFile) return g;
-    }
-  }
-  return 0;
-}
 
 function buildPcTopNav(currentFile) {
   pcNavCurrentFile = currentFile;
-  pcNavActiveGroupIndex = findGroupIndexForCurrentFile(currentFile);
 
   var wrapper = document.createElement('div');
   wrapper.className = 'pc-nav-wrapper';
@@ -138,53 +125,39 @@ function buildPcTopNav(currentFile) {
 
   wrapper.innerHTML =
     '<div class="pc-nav-header"><span>もぐもぐ農園　運営管理システム</span><i class="ti ti-user-circle" aria-hidden="true"></i></div>' +
-    '<div class="pc-nav-tabs" id="pcNavTabs"></div>' +
     '<div class="pc-nav-icongrid" id="pcNavIconGrid"></div>' +
     '<div class="pc-nav-subitem-row" id="pcNavSubRow"></div>';
 
   document.body.insertBefore(wrapper, document.body.firstChild);
 
-  renderPcNavTabs();
-  renderPcNavIconGrid();
-}
-
-function renderPcNavTabs() {
-  var el = document.getElementById('pcNavTabs');
-  var html = '';
-  NAV_LINKS.forEach(function (group, idx) {
-    html += '<button class="pc-nav-tab' + (idx === pcNavActiveGroupIndex ? ' active' : '') + '" onclick="switchPcNavTab(' + idx + ')">' + group.group + '</button>';
-  });
-  el.innerHTML = html;
-}
-
-function switchPcNavTab(idx) {
-  pcNavActiveGroupIndex = idx;
-  renderPcNavTabs();
   renderPcNavIconGrid();
 }
 
 function renderPcNavIconGrid() {
   var gridEl = document.getElementById('pcNavIconGrid');
   var subRowEl = document.getElementById('pcNavSubRow');
-  var group = NAV_LINKS[pcNavActiveGroupIndex];
   var currentFullPath = pcNavCurrentFile + window.location.search;
   var gridHtml = '';
   var subHtml = '';
 
-  group.items.forEach(function (item) {
-    if (item.action) {
-      gridHtml += '<button class="pc-nav-icon-item" onclick="handleNavAction(\'' + item.action + '\')"><i class="ti ' + item.icon + '" aria-hidden="true"></i><p>' + item.label + '</p></button>';
-      return;
-    }
-    var itemBaseFile = item.href.split('?')[0];
-    var isCurrent = itemBaseFile === pcNavCurrentFile;
-    gridHtml += '<a class="pc-nav-icon-item' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i><p>' + item.label + '</p></a>';
-    if (item.children && isCurrent) {
-      item.children.forEach(function (child) {
-        var isChildCurrent = child.href === currentFullPath;
-        subHtml += '<a class="pc-nav-subitem' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
-      });
-    }
+  // すべてのカテゴリの項目を、常に1つの並びで表示する（カテゴリの区切りは小さなラベルで示すだけ）
+  NAV_LINKS.forEach(function (group) {
+    gridHtml += '<span class="pc-nav-group-divider">' + group.group + '</span>';
+    group.items.forEach(function (item) {
+      if (item.action) {
+        gridHtml += '<button class="pc-nav-icon-item" onclick="handleNavAction(\'' + item.action + '\')"><i class="ti ' + item.icon + '" aria-hidden="true"></i><p>' + item.label + '</p></button>';
+        return;
+      }
+      var itemBaseFile = item.href.split('?')[0];
+      var isCurrent = itemBaseFile === pcNavCurrentFile;
+      gridHtml += '<a class="pc-nav-icon-item' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i><p>' + item.label + '</p></a>';
+      if (item.children && isCurrent) {
+        item.children.forEach(function (child) {
+          var isChildCurrent = child.href === currentFullPath;
+          subHtml += '<a class="pc-nav-subitem' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
+        });
+      }
+    });
   });
 
   gridEl.innerHTML = gridHtml;
