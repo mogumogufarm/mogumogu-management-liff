@@ -44,16 +44,14 @@
     background: #2E3B22; color: #F7F3E9; padding: 12px 24px;
     display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700;
   }
-  .pc-nav-tabs { background: #8A5A2A; padding: 0 16px; display: flex; gap: 2px; }
-  .pc-nav-tab {
-    border: none; background: none; color: #F3E6D6; font-family: inherit; font-size: 12px;
-    padding: 9px 16px; cursor: pointer; border-radius: 6px 6px 0 0;
-  }
-  .pc-nav-tab.active { background: #F7F3E9; color: #2E3B22; font-weight: 700; }
   .pc-nav-icongrid {
     background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 24px;
-    display: flex; flex-wrap: wrap; gap: 8px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   }
+  .pc-nav-group-divider {
+    font-size: 10px; color: #A69B7A; padding: 0 8px 0 4px; align-self: center;
+  }
+  .pc-nav-group-divider:not(:first-child) { border-left: 1px solid #D6CBAA; margin-left: 6px; padding-left: 14px; }
   .pc-nav-icon-item {
     text-align: center; padding: 10px 16px; border-radius: 8px; text-decoration: none;
     min-width: 84px; cursor: pointer; border: none; background: none; font-family: inherit;
