@@ -50,6 +50,9 @@ var NAV_LINKS = [
   ] },
   { group: '管理', items: [
     { href: 'staff-management.html', label: 'スタッフ管理', icon: 'ti-users' }
+  ] },
+  { group: '設定', items: [
+    { action: 'openDisplaySettings', label: '表示設定', icon: 'ti-adjustments' }
   ] }
 ];
 
@@ -69,6 +72,10 @@ function initNavDrawer(currentFile) {
   NAV_LINKS.forEach(function (group) {
     html += '<p class="nav-drawer-group-label">' + group.group + '</p>';
     group.items.forEach(function (item) {
+      if (item.action) {
+        html += '<a class="nav-drawer-link" href="#" onclick="handleNavAction(\'' + item.action + '\'); return false;"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+        return;
+      }
       var itemBaseFile = item.href.split('?')[0];
       var isCurrent = itemBaseFile === currentFile;
       html += '<a class="nav-drawer-link' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
@@ -113,4 +120,18 @@ function toggleNavDrawer() {
 function closeNavDrawer() {
   document.getElementById('navDrawer').classList.remove('show');
   document.getElementById('navOverlay').classList.remove('show');
+}
+
+// サイドバーの「表示設定」など、リンクではなくアクションが指定された項目がクリックされた時の処理
+function handleNavAction(action) {
+  if (action === 'openDisplaySettings') {
+    closeNavDrawer();
+    if (typeof openDisplaySettingsModal === 'function') {
+      // すでにホーム画面を開いている場合は、そのままモーダルを開く
+      openDisplaySettingsModal();
+    } else {
+      // 他のページからの場合は、ホーム画面に移動してから開く
+      window.location.href = 'index.html?openSettings=1';
+    }
+  }
 }
