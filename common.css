@@ -57,13 +57,14 @@
   .pc-nav-group-label { font-size: 10px; color: #A69B7A; margin: 0 0 6px; }
   .pc-nav-group-row { display: flex; gap: 6px; }
   .pc-nav-icon-item {
-    text-align: center; padding: 10px 16px; border-radius: 8px; text-decoration: none;
-    min-width: 84px; cursor: pointer; border: none; background: none; font-family: inherit;
+    text-align: center; padding: 10px 6px; border-radius: 8px; text-decoration: none;
+    width: 92px; height: 68px; cursor: pointer; border: none; background: none; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
   .pc-nav-icon-item:hover { background: #EFE8D8; }
   .pc-nav-icon-item.current { background: #EFE8D8; }
-  .pc-nav-icon-item i { font-size: 22px; color: #3E6B22; display: block; margin: 0 auto 4px; }
-  .pc-nav-icon-item p { font-size: 11px; color: #4A4738; margin: 0; }
+  .pc-nav-icon-item i { font-size: 20px; color: #3E6B22; display: block; margin: 0 0 4px; }
+  .pc-nav-icon-item p { font-size: 11px; color: #4A4738; margin: 0; line-height: 1.3; }
   .pc-nav-subitem-row { background: #F7F3E9; padding: 0 24px 12px; display: flex; gap: 12px; flex-wrap: wrap; }
   .pc-nav-subitem { font-size: 11px; color: #7A7256; text-decoration: none; padding: 3px 10px; border-radius: 12px; background: #EFE8D8; }
   .pc-nav-subitem.current { background: #2E3B22; color: #F7F3E9; }
