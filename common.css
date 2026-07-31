@@ -32,15 +32,40 @@
 .nav-drawer-link.current { background: rgba(255,255,255,0.1); font-weight: 700; }
 .nav-drawer-link i { font-size: 15px; }
 
-/* PC・タブレット幅では、メニューを常時表示のサイドバーにする */
+/* PC・タブレット幅では、モバイル用ドロワーは使わず、上部ヘッダー＋タブ＋アイコングリッドに切り替える */
+.pc-nav-wrapper { display: none; }
 @media (min-width: 900px) {
   .nav-hamburger-btn { display: none; }
   .nav-overlay { display: none !important; }
-  .nav-drawer {
-    position: sticky; top: 0; left: auto; transform: none; height: 100vh;
-    flex-shrink: 0; width: 220px; max-width: 220px; border-radius: 0;
+  .nav-drawer { display: none !important; }
+
+  .pc-nav-wrapper { display: block; }
+  .pc-nav-header {
+    background: #2E3B22; color: #F7F3E9; padding: 12px 24px;
+    display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700;
   }
-  body.has-responsive-layout { display: flex; align-items: flex-start; }
-  .page-content-area { flex: 1; min-width: 0; padding: 24px 32px; }
-  .page-content-area .wrap { max-width: 900px; margin: 0; padding: 0; }
+  .pc-nav-tabs { background: #8A5A2A; padding: 0 16px; display: flex; gap: 2px; }
+  .pc-nav-tab {
+    border: none; background: none; color: #F3E6D6; font-family: inherit; font-size: 12px;
+    padding: 9px 16px; cursor: pointer; border-radius: 6px 6px 0 0;
+  }
+  .pc-nav-tab.active { background: #F7F3E9; color: #2E3B22; font-weight: 700; }
+  .pc-nav-icongrid {
+    background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 24px;
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .pc-nav-icon-item {
+    text-align: center; padding: 10px 16px; border-radius: 8px; text-decoration: none;
+    min-width: 84px; cursor: pointer; border: none; background: none; font-family: inherit;
+  }
+  .pc-nav-icon-item:hover { background: #EFE8D8; }
+  .pc-nav-icon-item.current { background: #EFE8D8; }
+  .pc-nav-icon-item i { font-size: 22px; color: #3E6B22; display: block; margin: 0 auto 4px; }
+  .pc-nav-icon-item p { font-size: 11px; color: #4A4738; margin: 0; }
+  .pc-nav-subitem-row { background: #F7F3E9; padding: 0 24px 12px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .pc-nav-subitem { font-size: 11px; color: #7A7256; text-decoration: none; padding: 3px 10px; border-radius: 12px; background: #EFE8D8; }
+  .pc-nav-subitem.current { background: #2E3B22; color: #F7F3E9; }
+
+  .page-content-area { padding: 24px 32px; }
+  .page-content-area .wrap { max-width: 1000px; margin: 0 auto; padding: 0; }
 }
