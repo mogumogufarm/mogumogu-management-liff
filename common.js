@@ -10,6 +10,40 @@ function callServer(payload) {
   }).then(function (res) { return res.json(); });
 }
 
+// 診断用：callServerを呼びつつ、所要時間（ms）を計測してwindow.__perfResultsに記録する。
+// 本番の挙動（結果の中身）は一切変えない。計測が終わったら不要になれば削除して良い。
+window.__perfResults = [];
+function timedCallServer(payload, label) {
+  var start = performance.now();
+  return callServer(payload).then(function (result) {
+    var ms = Math.round(performance.now() - start);
+    window.__perfResults.push({ label: label || payload.action, ms: ms });
+    return result;
+  }).catch(function (err) {
+    var ms = Math.round(performance.now() - start);
+    window.__perfResults.push({ label: (label || payload.action) + '（エラー）', ms: ms });
+    throw err;
+  });
+}
+
+// 記録した計測結果を、遅い順に並べてコンソール表＋ページ上のパネルに表示する
+function showPerfResults() {
+  var sorted = window.__perfResults.slice().sort(function (a, b) { return b.ms - a.ms; });
+  console.table(sorted);
+
+  var totalWallClock = window.__perfWallClockMs || null;
+  var panel = document.createElement('div');
+  panel.style.cssText = 'position:fixed; bottom:10px; right:10px; z-index:9999; background:#2E3B22; color:#F7F3E9; ' +
+    'font-family:monospace; font-size:12px; padding:12px 14px; border-radius:8px; max-width:320px; max-height:60vh; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.3);';
+  var html = '<p style="margin:0 0 8px; font-weight:bold;">計測結果（' + sorted.length + '本）' + (totalWallClock ? '　全体：' + totalWallClock + 'ms' : '') + '</p>';
+  sorted.forEach(function (r) {
+    html += '<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0;"><span>' + r.label + '</span><span>' + r.ms + 'ms</span></div>';
+  });
+  html += '<button onclick="this.parentNode.remove()" style="margin-top:8px; width:100%; padding:4px; font-size:11px;">閉じる</button>';
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+}
+
 function withTimeout(promise, ms, label) {
   return Promise.race([
     promise,
