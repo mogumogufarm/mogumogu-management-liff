@@ -1,1034 +1,3475 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>もぐもぐ農園 運営管理</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<link rel="stylesheet" href="common.css">
-<script src="common.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: 'Noto Sans JP', sans-serif;
-    background: #EFE8D8;
-    color: #2E3B22;
-    min-height: 100vh;
+/**
+ * ============================================================
+ * もぐもぐ農園 運営管理システム（GAS本体）
+ * ------------------------------------------------------------
+ * これはタイムカードシステムとは完全に別のApps Scriptプロジェクトです。
+ * このファイルを、運営管理用に新しく作ったスプレッドシートに
+ * コンテナバインドして使ってください（打刻用のスプレッドシートとは別物）。
+ *
+ * このシステムは、タイムカード側のスプレッドシートを「参照」しますが、
+ * 書き込みは一切行いません。なので、このシステム側でどんなに機能を
+ * 追加・変更しても、タイムカード側の動作には影響しません。
+ *
+ * 事前にスクリプトプロパティに以下を設定してください。
+ * （Apps Scriptエディタ左側の「プロジェクトの設定」→「スクリプト プロパティ」）
+ *   LINE_CHANNEL_ACCESS_TOKEN : タイムカードと同じLINEチャネルアクセストークン
+ *   TIMECARD_SPREADSHEET_ID   : タイムカード用スプレッドシートのID
+ *                               （タイムカードのスプレッドシートのURLの
+ *                                /d/ と /edit の間の文字列）
+ *
+ * ※ このLIFFページ群もGitHub Pagesでホストします（タイムカードとは別のリポジトリ推奨）。
+ * ============================================================
+ */
+
+var SHEET_LOG = '打刻ログ';
+var SHEET_MASTER = '従業員マスタ';
+var SHEET_ADMIN = '管理者マスタ';
+var SHEET_PAYSLIP = '給与明細ログ';
+var SHEET_DASHBOARD = '今月ダッシュボード';
+var SHEET_SALES = '売上ログ';
+var SALES_STORES = ['道の駅しらね', 'い～なとうぶ竜王店', 'い～なとうぶ昭和店'];
+var SHEET_VARIETY_MASTER = '品種マスタ';
+var SHEET_STOCK_LOG = '在庫ログ';
+var GMAIL_LABEL_PROCESSED = '売上処理済み';
+var SHEET_SANCHOKU_LOG = '産直注文ログ';
+var SHEET_SANCHOKU_PRICE = '産直商品価格マスタ';
+var SANCHOKU_SITES = ['食べチョク', 'ポケットマルシェ', 'アウル', 'BASE'];
+var SHEET_FIELD_MASTER = '圃場マスタ';
+var SHEET_PESTICIDE_MASTER = '農薬マスタ';
+var SHEET_SPRAY_LOG = '防除記録';
+var GMAIL_LABEL_SANCHOKU_PROCESSED = '産直処理済み';
+
+function getProp_(key) {
+  return PropertiesService.getScriptProperties().getProperty(key);
+}
+
+// タイムカード側のスプレッドシートを開く（参照専用。書き込みはしない）
+var __timecardSpreadsheetCache_ = null;
+function getTimecardSpreadsheet_() {
+  if (__timecardSpreadsheetCache_) return __timecardSpreadsheetCache_;
+  var id = getProp_('TIMECARD_SPREADSHEET_ID');
+  if (!id) throw new Error('スクリプトプロパティ TIMECARD_SPREADSHEET_ID が設定されていません。');
+  __timecardSpreadsheetCache_ = SpreadsheetApp.openById(id);
+  return __timecardSpreadsheetCache_;
+}
+
+function getTimecardSheet_(name) {
+  var sheet = getTimecardSpreadsheet_().getSheetByName(name);
+  if (!sheet) throw new Error('タイムカード側に「' + name + '」シートが見つかりません。');
+  return sheet;
+}
+
+// 運営管理システム自身のスプレッドシート（このGASがひも付いている方）にシートを作る・取得する
+// CacheService用の共通ヘルパー。keyに対応するキャッシュがあればそれを返し、無ければcomputeFn()を実行して結果をキャッシュに保存してから返す。
+// ※CacheServiceは1キーあたり100KBまでという制限があるため、保存に失敗しても（try-catchで無視して）計算結果自体は正常に返す。
+function getCached_(key, ttlSeconds, computeFn) {
+  var cache = CacheService.getScriptCache();
+  try {
+    var cached = cache.get(key);
+    if (cached !== null) return JSON.parse(cached);
+  } catch (e) {}
+
+  var result = computeFn();
+  try {
+    cache.put(key, JSON.stringify(result), ttlSeconds);
+  } catch (e) {
+    // 100KB超過等で保存できない場合は、キャッシュせずに結果だけ返す
   }
-  .wrap { max-width: 480px; margin: 0 auto; padding: 28px 16px 40px; }
-  .eyebrow { font-size: 12px; color: #7A7256; margin: 0 0 2px; }
-  .site-title { font-size: 21px; font-weight: 700; margin: 0 0 20px; color: #2E3B22; }
+  return result;
+}
 
-  .status {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-    width: calc(100% - 32px); max-width: 448px; z-index: 2000;
-    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
-    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+function getOrCreateOwnSheet_(name, headers) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
   }
-  .status.show { display: block; }
-  .status.error { background: #8B3A2E; color: #fff; }
-  .status.loading { background: #4A4436; color: #fff; }
+  return sheet;
+}
 
-  .section-label { font-size: 12px; font-weight: 700; color: #7A7256; margin: 20px 0 8px; display: flex; align-items: center; gap: 6px; }
-  .block-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; overflow: hidden; margin: 16px 0; }
-  @media (min-width: 900px) {
-    .dashboard-grid { columns: 2; column-gap: 16px; }
-    .dashboard-grid .block-card { margin: 0 0 16px; break-inside: avoid; }
-    .mobile-page-header { display: none !important; }
+// スプレッドシートが日付/時刻をDate型に自動変換してしまう問題への対策（タイムカード側と共通の考え方）
+function cellDateStr_(val) {
+  if (Object.prototype.toString.call(val) === '[object Date]' && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, 'Asia/Tokyo', 'yyyy-MM-dd');
   }
-  .mobile-header-row { display: flex; align-items: center; gap: 8px; }
-  .display-settings-btn { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 12px; padding: 6px 12px; border: 1px solid #D6CBAA; border-radius: 8px; background: #F7F3E9; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
-  .display-settings-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
-  .display-settings-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2E3B22; padding: 8px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
-  .display-settings-item:last-child { border-bottom: none; }
-  .display-settings-item input { width: 16px; height: 16px; }
-  .pc-only-block { display: none; }
-  @media (min-width: 900px) {
-    .pc-only-block { display: block; }
+  return String(val);
+}
+function cellTimeStr_(val) {
+  if (Object.prototype.toString.call(val) === '[object Date]' && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, 'Asia/Tokyo', 'HH:mm');
   }
-  .weather-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #D6CBAA; font-size: 12px; }
-  .weather-row:last-child { border-bottom: none; }
-  .weather-date { font-weight: 700; color: #2E3B22; width: 70px; flex-shrink: 0; }
-  .weather-icon { font-size: 16px; color: #8A5A2A; flex-shrink: 0; margin-right: 4px; }
-  .weather-desc { flex: 1; color: #6B6048; }
-  .weather-temp { color: #7A7256; font-size: 11px; white-space: nowrap; }
-  .block-header { background: #2E3B22; color: #fff; padding: 9px 14px; font-size: 13px; font-weight: 700; }
-  .block-body { padding: 12px 14px; }
-  .section-label-tag { font-size: 10px; font-weight: 400; color: #A69B7A; }
-  .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
-  .stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
-  .stat-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px; }
-  .stat-card-mini { padding: 8px; border-radius: 8px; }
-  .stat-value-mini { font-size: 14px !important; }
-  .store-group { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-  .sanchoku-site-block { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-  .sanchoku-site-title { font-size: 15px; font-weight: 700; color: #3E5A1F; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #D6CBAA; }
-  .sanchoku-period-label { font-size: 12px; font-weight: 700; color: #6B6048; margin: 8px 0 4px; }
-  .sanchoku-period-label:first-of-type { margin-top: 0; }
-  .sanchoku-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .sanchoku-table th, .sanchoku-table td { padding: 4px 3px; text-align: right; border-bottom: 1px dashed #D6CBAA; }
-  .sanchoku-table th:first-child, .sanchoku-table td:first-child { text-align: left; }
-  .sanchoku-table th { color: #7A7256; font-weight: 500; }
-  .sanchoku-table tr.total-row td { font-weight: 700; border-top: 1px solid #D6CBAA; border-bottom: none; }
-  .sanchoku-unfilled { color: #8B3A2E; }
-  .crop-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #D6CBAA; font-size: 14px; font-weight: 700; color: #2E3B22; }
-  .crop-row-muted { color: #A69B7A; font-weight: 500; cursor: pointer; }
-  .crop-row-clickable { cursor: pointer; }
-  .crop-row-clickable:active, .crop-row-muted:active { opacity: 0.6; }
-  .crop-mode-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
-  .crop-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
-  .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
-  .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
-  .crop-row-qty { font-size: 10px; color: #A69B7A; font-weight: 400; }
-  .ja-mail-row { padding: 10px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
-  .nikki-home-type-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 12px 0 4px; }
-  .nikki-home-type-label:first-child { margin-top: 0; }
-  .nikki-home-row { display: block; padding: 6px 0; font-size: 12px; color: #2E3B22; text-decoration: none; border-bottom: 1px dashed #D6CBAA; }
-  .nikki-home-row:last-child { border-bottom: none; }
-  .nikki-home-row-date { color: #A69B7A; font-size: 10px; }
-  .ja-mail-row:active { opacity: 0.6; }
-  .ja-mail-date { font-size: 11px; color: #7A7256; margin: 0 0 2px; }
-  .ja-mail-subject { font-size: 13px; font-weight: 700; color: #2E3B22; margin: 0; }
-  .ja-mail-badge { display: inline-block; background: #F0DAD0; color: #8B3A2E; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle; }
-  .badge-boujo { background: #F0DAD0; color: #8B3A2E; }
-  .badge-setsumei { background: #DCE6EA; color: #3D5A75; }
-  .badge-mihon { background: #F0DEB8; color: #8A5A2A; }
-  .badge-koushu { background: #E3ECD3; color: #3E5A1F; }
-  .crop-row-muted:active { opacity: 0.7; }
-  .crop-row-total { border-bottom: none; border-top: 2px solid #2E3B22; margin-top: 4px; padding-top: 12px; font-size: 15px; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
-  .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
-  .modal-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 0 0 12px; }
-  .modal-close-btn { width: 100%; margin-top: 12px; padding: 10px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
-  .crop-detail-item { border: 1px solid #D6CBAA; border-radius: 10px; padding: 10px; margin-bottom: 8px; background: #fff; }
-  .crop-detail-meta { font-size: 12px; color: #6B6048; margin: 0 0 6px; }
-  .crop-detail-select-row { display: flex; gap: 6px; }
-  .crop-detail-select-row select { flex: 1; min-width: 0; padding: 6px; font-size: 12px; border-radius: 6px; border: 1px solid #D6CBAA; font-family: inherit; }
-  .crop-detail-select-row button { flex-shrink: 0; padding: 6px 12px; border: none; border-radius: 6px; background: #3E5A1F; color: #fff; font-family: inherit; font-size: 12px; cursor: pointer; }
-  .sales-store-name { font-size: 12px; font-weight: 700; color: #6B6048; margin: 8px 0 6px; }
-  .sales-store-name:first-child { margin-top: 0; }
-  .sales-today-card { background: #F0DEB8; border: 1px solid #E0CC9E; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; display: block; text-decoration: none; }
-  .sales-today-value { font-size: 28px; font-weight: 700; color: #8A5A2A; margin: 0; }
-  .tap-hint { font-size: 10px; font-weight: 400; color: #9B8B5E; }
-  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px; margin-bottom: 6px; }
-  .select-row { display: flex; gap: 8px; margin-bottom: 10px; }
-  .select-row select { flex: 1; min-width: 0; padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
-  .variety-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .variety-row input, .variety-row select { flex: 1; min-width: 0; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
-  .variety-btn { flex-shrink: 0; padding: 10px 14px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
-  .stat-label { font-size: 12px; color: #7A7256; margin: 0 0 4px; }
-  .stat-value { font-size: 22px; font-weight: 700; margin: 0; }
-  .stock-store-header { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px; }
-  .store-stock-list { margin-bottom: 6px; }
-  .stock-entry-mini { border-top: 1px dashed #D6CBAA; padding-top: 10px; margin-top: 4px; }
-  .stock-store-header:first-child { margin-top: 0; }
-  .stock-store-header span { font-size: 12px; font-weight: 700; color: #3D5A75; }
-  .clear-stock-btn { font-size: 11px; padding: 4px 10px; border: 1px solid #8B3A2E; border-radius: 999px; background: #F7F3E9; color: #8B3A2E; font-family: inherit; cursor: pointer; }
-  .stock-row { border: 1px solid #D6CBAA; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-  .stock-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-  .stock-variety { font-size: 13px; font-weight: 700; }
-  .stock-crop { font-size: 11px; color: #7A7256; font-weight: 400; }
-  .stock-remaining { font-size: 16px; font-weight: 700; }
-  .stock-remaining.low { color: #8B3A2E; }
-  .stock-sub { font-size: 11px; color: #7A7256; }
+  return String(val);
+}
 
-  .menu-list { display: flex; flex-direction: column; gap: 8px; }
-  @media (min-width: 900px) {
-    .menu-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .menu-item { flex-direction: column; align-items: flex-start; text-align: left; }
-  }
-  .menu-item {
-    display: flex; align-items: center; gap: 12px;
-    background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px;
-    text-decoration: none; color: inherit;
-  }
-  .menu-item.disabled { opacity: 0.5; pointer-events: none; }
-  .menu-icon-badge {
-    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 20px;
-  }
-  .menu-text-title { font-weight: 500; font-size: 14px; margin: 0; }
-  .menu-text-sub { font-size: 12px; color: #7A7256; margin: 0; }
-  .menu-tag {
-    margin-left: auto; font-size: 10px; color: #7A7256; white-space: nowrap;
-  }
+// タイムカード側の管理者マスタを見て、管理者かどうか判定する
+// 運営管理システム自身のスプレッドシートに「管理者マスタ」を用意する（タイムカード側と同じ内容を手動でコピーしておく）
+function getOwnAdminSheet_() {
+  return getOrCreateOwnSheet_(SHEET_ADMIN, ['userId', '氏名（任意・メモ用）']);
+}
 
-  .badge-blue { background: #DCE6EA; color: #3D5A75; }
-  .badge-teal { background: #DCEAE0; color: #2E5A4A; }
-  .badge-amber { background: #F0DEB8; color: #8A5A2A; }
-  .badge-purple { background: #EAE0E8; color: #6A4A5E; }
-  .badge-green { background: #E3ECD3; color: #3E5A1F; }
-  .badge-red { background: #F0DAD0; color: #8B3A2E; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="mobile-page-header mobile-header-row">
-    <div id="navHamburgerSlot"></div>
-    <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
-  </div>
-  <h1 class="site-title mobile-page-header">運営管理システム</h1>
-
-  <div id="displaySettingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeDisplaySettingsModal();">
-    <div class="modal-box">
-      <p class="modal-title">表示するブロックを選ぶ</p>
-      <div class="display-settings-list">
-        <label class="display-settings-item"><input type="checkbox" id="dsWeather"> 天気予報</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsSales"> 直売所の売上</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsCropSummary"> 売上集計（年間）</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsNikki"> 農園日誌</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsSanchoku"> 産直サイトの受注</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsJaMail"> JA南アルプス指導メール</label>
-        <label class="display-settings-item"><input type="checkbox" id="dsStaff"> スタッフ・人件費</label>
-      </div>
-      <button class="modal-close-btn" onclick="saveDisplaySettings()">保存する</button>
-    </div>
-  </div>
-
-  <div id="blockedMessage" style="display:none; background: #F7F3E9; border:1px solid #D6CBAA; border-radius:12px; padding:24px;">
-    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
-  </div>
-
-  <div id="menu" style="display:none;">
-    <p class="section-label">メニュー</p>
-    <div class="menu-list">
-      <a class="menu-item" href="staff-management.html">
-        <span class="menu-icon-badge badge-blue"><i class="ti ti-users" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">スタッフ管理</p>
-          <p class="menu-text-sub">今月の勤怠状況・過去の給与履歴</p>
-        </span>
-      </a>
-      <a class="menu-item" href="https://liff.line.me/2010745560-uXP5sKwZ">
-        <span class="menu-icon-badge badge-teal"><i class="ti ti-calendar-time" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">シフト管理</p>
-          <p class="menu-text-sub">確定・急募・名簿の管理（タイムカード側）</p>
-        </span>
-        <i class="ti ti-external-link" style="color:#7A7256; font-size:16px;" aria-hidden="true"></i>
-      </a>
-      <a class="menu-item" href="sales-management.html">
-        <span class="menu-icon-badge badge-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">直売所売上集計</p>
-          <p class="menu-text-sub">道の駅しらね・い～なとうぶ</p>
-        </span>
-      </a>
-      <a class="menu-item" href="sanchoku-management.html">
-        <span class="menu-icon-badge badge-green"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">産直サイト集計</p>
-          <p class="menu-text-sub">食べチョク・ポケマル・アウル・BASE</p>
-        </span>
-      </a>
-      <a class="menu-item" href="nikki.html">
-        <span class="menu-icon-badge badge-purple"><i class="ti ti-notebook" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">農園日誌</p>
-          <p class="menu-text-sub">防除・生育記録・メモをまとめて記録</p>
-        </span>
-      </a>
-      <a class="menu-item" href="ja-kyousen.html">
-        <span class="menu-icon-badge badge-amber"><i class="ti ti-file-invoice" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">JA共選・丸統 取り込み</p>
-          <p class="menu-text-sub">市況速報・荷受票・精算通知書の読み取り</p>
-        </span>
-      </a>
-      <a class="menu-item" href="ja-mail.html">
-        <span class="menu-icon-badge badge-blue"><i class="ti ti-mail" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">JA南アルプス指導メール</p>
-          <p class="menu-text-sub">JAからのお知らせ一覧</p>
-        </span>
-      </a>
-    </div>
-
-    <div id="weatherCard" class="block-card pc-only-block">
-      <div class="block-header">天気予報（気象庁データ）</div>
-      <div class="block-body">
-        <div id="weatherContent">
-          <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="dashboard-grid">
-    <div class="block-card" id="blockSales">
-      <div class="block-header" id="salesSection">直売所の売上</div>
-      <div class="block-body">
-    <div class="store-group">
-      <div class="sales-store-name">道の駅しらね</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-shirane-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-shirane-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-shirane-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-shirane-thisMonth">-</p></div>
-        </div>
-      <div id="stock-shirane-list" class="store-stock-list"></div>
-      <div class="stock-entry-mini">
-        <div class="variety-row">
-          <select id="cropInput-shirane" onchange="onStockCropChangeFor('shirane')"></select>
-          <select id="varietyInput-shirane"></select>
-        </div>
-        <div class="variety-row">
-          <input type="number" id="qtyInput-shirane" placeholder="入荷数量" min="1">
-          <button onclick="submitHomeStock('shirane', '道の駅しらね')" class="variety-btn">登録する</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="store-group">
-      <div class="sales-store-name">い～なとうぶ竜王店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-ryuo-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-ryuo-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-ryuo-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-ryuo-thisMonth">-</p></div>
-        </div>
-      <div id="stock-ryuo-list" class="store-stock-list"></div>
-      <div class="stock-entry-mini">
-        <div class="variety-row">
-          <select id="cropInput-ryuo" onchange="onStockCropChangeFor('ryuo')"></select>
-          <select id="varietyInput-ryuo"></select>
-        </div>
-        <div class="variety-row">
-          <input type="number" id="qtyInput-ryuo" placeholder="入荷数量" min="1">
-          <button onclick="submitHomeStock('ryuo', 'い～なとうぶ竜王店')" class="variety-btn">登録する</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="store-group">
-      <div class="sales-store-name">い～なとうぶ昭和店</div>
-      <a class="stat-card sales-today-card" href="#" id="sales-showa-link">
-        <p class="stat-label">本日の売上 <span class="tap-hint">タップで時間別を表示</span></p>
-        <p class="sales-today-value" id="sales-showa-today">-</p>
-      </a>
-      <div class="stat-grid">
-        <div class="stat-card stat-card-mini"><p class="stat-label">昨日</p><p class="stat-value stat-value-mini" id="sales-showa-yesterday">-</p></div>
-        <div class="stat-card stat-card-mini"><p class="stat-label">今月</p><p class="stat-value stat-value-mini" id="sales-showa-thisMonth">-</p></div>
-        </div>
-      <div id="stock-showa-list" class="store-stock-list"></div>
-      <div class="stock-entry-mini">
-        <div class="variety-row">
-          <select id="cropInput-showa" onchange="onStockCropChangeFor('showa')"></select>
-          <select id="varietyInput-showa"></select>
-        </div>
-        <div class="variety-row">
-          <input type="number" id="qtyInput-showa" placeholder="入荷数量" min="1">
-          <button onclick="submitHomeStock('showa', 'い～なとうぶ昭和店')" class="variety-btn">登録する</button>
-        </div>
-      </div>
-    </div>
-
-      </div>
-    </div>
-
-    <div class="block-card" id="blockCropSummary">
-      <div class="block-header">売上集計（年間）</div>
-      <div class="block-body">
-      <div class="select-row">
-        <select id="cropYearSelect" onchange="loadCropSummary()"></select>
-      </div>
-      <div class="crop-mode-toggle">
-        <button class="crop-mode-btn active" id="cropModeCropBtn" onclick="switchCropMode('crop')">品目別</button>
-        <button class="crop-mode-btn" id="cropModeVarietyBtn" onclick="switchCropMode('variety')">品種別</button>
-      </div>
-      <div id="cropSummaryList">
-        <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
-      </div>
-      </div>
-    </div>
-
-    <div id="cropDetailModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeCropDetailModal();">
-      <div class="modal-box">
-        <p class="modal-title" id="cropDetailModalTitle">内訳</p>
-        <div id="cropDetailList"></div>
-        <button class="modal-close-btn" onclick="closeCropDetailModal()">閉じる</button>
-      </div>
-    </div>
-
-    <div class="block-card" id="blockNikki">
-      <div class="block-header">農園日誌</div>
-      <div class="block-body">
-      <div id="nikkiRecentList">
-        <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
-      </div>
-      </div>
-    </div>
-
-    <div id="jaMailBodyModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeJaMailBodyModal();">
-      <div class="modal-box">
-        <p class="modal-title" id="jaMailBodyTitle"></p>
-        <p style="font-size:11px; color:#7A7256; margin:-8px 0 12px;" id="jaMailBodyDate"></p>
-        <p id="jaMailBodyText" style="font-size:13px; color:#2E3B22; white-space:pre-wrap; line-height:1.6;"></p>
-        <button class="modal-close-btn" onclick="closeJaMailBodyModal()">閉じる</button>
-      </div>
-    </div>
-
-    <div class="block-card" id="blockSanchoku">
-      <div class="block-header">産直サイトの受注</div>
-      <div class="block-body">
-    <div id="sanchokuSummary">
-      <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="block-card" id="blockJaMail">
-      <div class="block-header">JA南アルプス指導メール</div>
-      <div class="block-body">
-      <div id="jaMailList">
-        <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
-      </div>
-      </div>
-    </div>
-
-    <div class="block-card" id="blockStaff">
-      <div class="block-header">スタッフ・人件費</div>
-      <div class="block-body">
-    <div class="store-group">
-      <div class="stat-grid">
-        <div class="stat-card">
-          <p class="stat-label">稼働スタッフ</p>
-          <p class="stat-value" id="statStaffCount">-</p>
-        </div>
-        <div class="stat-card">
-          <p class="stat-label">今月の人件費</p>
-          <p class="stat-value" id="expThisMonth">-</p>
-        </div>
-        <div class="stat-card">
-          <p class="stat-label">先月の人件費</p>
-          <p class="stat-value" id="expLastMonth">-</p>
-        </div>
-        <div class="stat-card">
-          <p class="stat-label">年間の人件費</p>
-          <p class="stat-value" id="expYearTotal">-</p>
-        </div>
-      </div>
-    </div>
-      </div>
-    </div>
-    </div>
-  </div>
-
-  <div class="processing-overlay" id="processingOverlay" style="display:none;">
-    <div class="processing-box">
-      <div class="spinner"></div>
-      <p id="processingText">処理中...</p>
-    </div>
-  </div>
-
-  <div class="status" id="initStatus" style="display:none;"></div>
-
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.52</p>
-</div>
-
-<script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
-var LIFF_ID = '2010745560-GD4XbdoK';
-var currentUserId = null;
-var currentIdToken = null;
-initNavDrawer('index.html');
-
-var homeVarietyByCrop = {};
-var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
-
-function loadHomeVarietyList() {
-  callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') {
-      console.error('品種一覧の取得に失敗：', result.message);
-      return;
+function isAdmin_(userId) {
+  var adminIds = getCached_('adminUserIdList', 1800, function () {
+    var data = getOwnAdminSheet_().getDataRange().getValues();
+    var ids = [];
+    for (var i = 1; i < data.length; i++) {
+      ids.push(String(data[i][0]).trim());
     }
-    homeVarietyByCrop = result.byCrop;
+    return ids;
+  });
+  return adminIds.indexOf(String(userId).trim()) !== -1;
+}
 
-    STORE_KEYS.forEach(function (key) {
-      var cropSel = document.getElementById('cropInput-' + key);
-      if (!cropSel) return;
-      cropSel.innerHTML = '';
-      result.crops.forEach(function (crop) {
-        var opt = document.createElement('option');
-        opt.value = crop;
-        opt.textContent = crop;
-        cropSel.appendChild(opt);
+function getEmployeeName_(userId) {
+  var nameMap = getCached_('employeeNameMap', 1800, function () {
+    var data = getTimecardSheet_(SHEET_MASTER).getDataRange().getValues();
+    var map = {};
+    for (var i = 1; i < data.length; i++) {
+      map[data[i][0]] = data[i][1];
+    }
+    return map;
+  });
+  return nameMap[userId] || null;
+}
+
+// ==== Webアプリのエントリーポイント ====
+
+// ==== 初期セットアップ用：必要なシートを一括で作成する ====
+// Apps Scriptエディタ上部の関数選択で「setupSheets」を選び、実行ボタン(▷)を押してください。
+// （実行しなくても、各機能を初めて使ったタイミングで自動的に作られますが、
+// 　最初にまとめて作っておきたい場合はこれを実行してください）
+function setupSheets() {
+  getSalesLogSheet_();
+  getVarietyMasterSheet_();
+  getStockLogSheet_();
+  getOwnAdminSheet_();
+  Logger.log('シートの初期化が完了しました。スプレッドシートを開いて確認してください。');
+}
+
+function doGet(e) {
+  return HtmlService.createHtmlOutput(
+    '<p style="font-family:sans-serif;padding:24px;">このURLはAPI専用です。運営管理ページは別のURL（LIFFページ）からご利用ください。</p>');
+}
+
+function doPost(e) {
+  var body = JSON.parse(e.postData.contents);
+  var result;
+  try {
+    result = handleAction_(body);
+  } catch (err) {
+    result = { status: 'error', message: 'サーバーエラー：' + err.message };
+  }
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// LIFFのIDトークンをLINEのサーバーに問い合わせて検証する。
+// 「userIdを名乗るリクエスト」が、本当に今LINEにログインしている本人からのものかを確認するため。
+var lastVerifyDebug_ = '';
+
+function handleAction_(body) {
+  var action = body.action;
+  var userId = body.userId;
+
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  // IDトークン検証は運用の安定性を優先して撤去（管理者マスタでの判定のみで運用する）
+
+  if (action === 'checkAdmin') {
+    if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+    return { status: 'ok', name: getEmployeeName_(userId) || '' };
+  } else if (action === 'getStaffMonthlyStatus') {
+    return getStaffMonthlyStatus_(userId);
+  } else if (action === 'getExpenseSummary') {
+    return getExpenseSummary_(userId);
+  } else if (action === 'getStaffNames') {
+    return getStaffNames_(userId);
+  } else if (action === 'getStaffAttendanceLedger') {
+    return getStaffAttendanceLedger_(userId, body.staffName, body.yearMonth);
+  } else if (action === 'getAllStaffHistory') {
+    return getAllStaffHistory_(userId);
+  } else if (action === 'getSalesSummary') {
+    return getSalesSummary_(userId);
+  } else if (action === 'getTodaySalesDetail') {
+    return getTodaySalesDetail_(userId);
+  } else if (action === 'getIntradayProgress') {
+    return getIntradayProgress_(userId, body.store, body.date);
+  } else if (action === 'getDailyTotalsForAllStores') {
+    return getDailyTotalsForAllStores_(userId, body.date);
+  } else if (action === 'getDailyHistory') {
+    return getDailyHistory_(userId, body.store);
+  } else if (action === 'getVarietyList') {
+    return getVarietyList_(userId);
+  } else if (action === 'addVariety') {
+    return addVariety_(userId, body.crop, body.variety);
+  } else if (action === 'submitStockEntry') {
+    return submitStockEntry_(userId, body.date, body.store, body.variety, body.qty);
+  } else if (action === 'clearStock') {
+    return clearStockForStore_(userId, body.store, body.date);
+  } else if (action === 'getStockStatus') {
+    return getStockStatus_(userId);
+  } else if (action === 'getSanchokuMonthlySummary') {
+    return getSanchokuMonthlySummary_(userId);
+  } else if (action === 'getTodaySanchokuOrders') {
+    return getTodaySanchokuOrders_(userId);
+  } else if (action === 'getSanchokuDailyHistory') {
+    return getSanchokuDailyHistory_(userId, body.site);
+  } else if (action === 'getUnfilledSanchokuOrders') {
+    return getUnfilledSanchokuOrders_(userId);
+  } else if (action === 'submitSanchokuAmount') {
+    return submitSanchokuAmount_(userId, body.rowIndex, body.amount);
+  } else if (action === 'getFieldList') {
+    return getFieldList_(userId);
+  } else if (action === 'getPesticideList') {
+    return getPesticideList_(userId);
+  } else if (action === 'submitSprayRecord') {
+    return submitSprayRecord_(userId, body.date, body.field, body.crop, body.variety, body.note, body.items);
+  } else if (action === 'getSprayRecords') {
+    return getSprayRecords_(userId, body.field, body.crop);
+  } else if (action === 'getPesticideUsageSummary') {
+    return getPesticideUsageSummary_(userId, body.year);
+  } else if (action === 'getYearlyCropSummary') {
+    return getYearlyCropSummary_(userId, body.year);
+  } else if (action === 'getDailyCropHistory') {
+    return getDailyCropHistory_(userId, body.crop);
+  } else if (action === 'assignCropToItem') {
+    return assignCropToItem_(userId, body.itemName, body.crop);
+  } else if (action === 'updateSanchokuOrder') {
+    return updateSanchokuOrder_(userId, body.rowIndex, body.variety, body.qtyLabel, body.amount);
+  } else if (action === 'getJaMailList') {
+    return getJaMailList_(userId, body.limit);
+  } else if (action === 'getJaMailBody') {
+    return getJaMailBody_(userId, body.messageId);
+  } else if (action === 'submitManualJaMail') {
+    return submitManualJaMail_(userId, body.date, body.subject, body.bodyText);
+  } else if (action === 'submitMemo') {
+    return submitMemo_(userId, body.text, body.visibility, body.photoBase64, body.photoMimeType);
+  } else if (action === 'getMemoList') {
+    return getMemoList_(userId, body.limit);
+  } else if (action === 'updateMemo') {
+    return updateMemo_(userId, body.rowIndex, body.text, body.visibility);
+  } else if (action === 'deleteMemo') {
+    return deleteMemo_(userId, body.rowIndex);
+  } else if (action === 'testMemoAiStatus') {
+    return testMemoAiStatus_(userId);
+  } else if (action === 'submitNikki') {
+    return submitNikki_(userId, body.type, body.visibility, body.field, body.crop, body.variety, body.pesticide, body.amount, body.text, body.photoBase64, body.photoMimeType);
+  } else if (action === 'getNikkiList') {
+    return getNikkiList_(userId, body.limit, body.filterType, body.filterField, body.filterCrop);
+  } else if (action === 'getRecentNikkiByType') {
+    return getRecentNikkiByType_(userId, body.limitPerType);
+  } else if (action === 'updateNikki') {
+    return updateNikki_(userId, body.rowIndex, body.text, body.visibility);
+  } else if (action === 'deleteNikki') {
+    return deleteNikki_(userId, body.rowIndex);
+  } else if (action === 'analyzeJaDocument') {
+    return analyzeJaDocument_(userId, body.photoBase64, body.photoMimeType);
+  } else if (action === 'submitJaMarketPrices') {
+    return submitJaMarketPrices_(userId, body.reportDate, body.prices);
+  } else if (action === 'submitJaUkeoi') {
+    return submitJaUkeoi_(userId, body.date, body.memberCode, body.producerName, body.variety, body.unitWeight, body.entries, body.photoBase64, body.photoMimeType);
+  } else if (action === 'submitJaSettlement') {
+    return submitJaSettlement_(userId, body.memberCode, body.variety, body.settlements);
+  } else if (action === 'submitMarutou') {
+    return submitMarutou_(userId, body.sellDate, body.items, body.finalAmount, body.photoBase64, body.photoMimeType);
+  } else if (action === 'processJaInputSheet') {
+    return processJaInputSheet_(userId, body.docType);
+  } else if (action === 'addJaGridBlock') {
+    return addJaGridBlock_(userId, body.docType);
+  } else if (action === 'processJaGridSheet') {
+    return processJaGridSheet_(userId, body.docType);
+  } else if (action === 'generateJaSummaryTable') {
+    return generateJaSummaryTable_(userId);
+  } else if (action === 'getJaRecordsList') {
+    return getJaRecordsList_(userId, body.source, body.limit);
+  } else if (action === 'getMonthlySalesByStoreAndCrop') {
+    return getMonthlySalesByStoreAndCrop_(userId, body.yearMonth);
+  } else if (action === 'getWeatherForecast') {
+    return getWeatherForecast_(userId);
+  } else if (action === 'getDisplaySettings') {
+    return getDisplaySettings_(userId);
+  } else if (action === 'submitDisplaySettings') {
+    return submitDisplaySettings_(userId, body.settings);
+  }
+  return { status: 'error', message: '不明な操作です' };
+}
+
+// ==== ホーム画面のサマリータイル ====
+
+// ホーム画面上部のタイル用：今月・先月・年間の人件費サマリー
+function getExpenseSummary_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('expenseSummary', 180, function () {
+
+  var now = new Date();
+  var thisYearMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
+  var lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  var lastYearMonth = Utilities.formatDate(lastMonthDate, 'Asia/Tokyo', 'yyyy-MM');
+  var thisYear = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy');
+
+  // 今月：今月ダッシュボードの給与見込み合計
+  var dashData = getTimecardSheet_(SHEET_DASHBOARD).getDataRange().getValues();
+  var thisMonthTotal = 0;
+  for (var i = 1; i < dashData.length; i++) {
+    if (!dashData[i][0]) continue;
+    thisMonthTotal += Number(dashData[i][5]) || 0;
+  }
+
+  // 先月・年間：給与明細ログ（確定済み）から集計
+  var payslipData = getTimecardSheet_(SHEET_PAYSLIP).getDataRange().getValues();
+  var lastMonthTotal = 0;
+  var yearConfirmedTotal = 0;
+  for (var j = 1; j < payslipData.length; j++) {
+    var ym = cellDateStr_(payslipData[j][0]).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+    var pay = Number(payslipData[j][7]) || 0;
+    if (ym === lastYearMonth) lastMonthTotal += pay;
+    if (ym.indexOf(thisYear) === 0) yearConfirmedTotal += pay;
+  }
+
+  return {
+    status: 'ok',
+    thisMonth: Math.round(thisMonthTotal),
+    lastMonth: Math.round(lastMonthTotal),
+    yearTotal: Math.round(yearConfirmedTotal + thisMonthTotal) // 確定済み分＋今月の見込み
+  };
+  });
+}
+// ==== ①スタッフ管理：今月の状況（今月ダッシュボード＋本日の打刻） ====
+
+function getStaffMonthlyStatus_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('staffMonthlyStatus', 180, function () {
+
+  var dashData = getTimecardSheet_(SHEET_DASHBOARD).getDataRange().getValues();
+  var staffList = [];
+  for (var i = 1; i < dashData.length; i++) {
+    if (!dashData[i][0]) continue;
+    staffList.push({
+      name: dashData[i][0],
+      wage: Number(dashData[i][1]) || 0,
+      workDays: Number(dashData[i][2]) || 0,
+      totalHours: Number(dashData[i][3]) || 0,
+      transportFee: Number(dashData[i][4]) || 0,
+      estimatedWage: Number(dashData[i][5]) || 0
+    });
+  }
+
+  var now = new Date();
+  var today = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+  var yearMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
+  var todayDate = Number(today.slice(8, 10)); // 今日までの日数ぶんだけ表示する
+  var weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+
+  var logSheet = getTimecardSheet_(SHEET_LOG);
+  var logData = logSheet.getDataRange().getValues();
+  var lastRow = logSheet.getLastRow();
+  // 地図リンク列（11列目）は =HYPERLINK(url,"地図で見る") という数式で入っているため、
+  // getValues()では表示文字（"地図で見る"）しか取れない。getFormulas()でURLを取り出す。
+  var mapFormulas = (lastRow > 1) ? logSheet.getRange(2, 11, lastRow - 1, 1).getFormulas() : [];
+
+  // 氏名・日付ごとに打刻ログをまとめておく
+  var byNameDate = {};
+  for (var j = 1; j < logData.length; j++) {
+    var dateStr = cellDateStr_(logData[j][0]);
+    if (dateStr.indexOf(yearMonth) !== 0) continue;
+    var name = logData[j][2];
+    var mapUrl = '';
+    var formula = mapFormulas[j - 1] ? mapFormulas[j - 1][0] : '';
+    var match = formula && formula.match(/HYPERLINK\("([^"]+)"/);
+    if (match) mapUrl = match[1];
+
+    if (!byNameDate[name]) byNameDate[name] = {};
+    byNameDate[name][dateStr] = {
+      clockIn: logData[j][3] ? cellTimeStr_(logData[j][3]) : '',
+      clockOut: logData[j][4] ? cellTimeStr_(logData[j][4]) : '',
+      breakUsed: !!logData[j][5],
+      hoursLabel: logData[j][6] !== '' ? Number(logData[j][6]).toFixed(2) : '',
+      mapUrl: mapUrl
+    };
+  }
+
+  // スタッフごとに、月初〜今日までの日別一覧を作る
+  staffList.forEach(function (s) {
+    var days = [];
+    for (var d = 1; d <= todayDate; d++) {
+      var dateObj = new Date(now.getFullYear(), now.getMonth(), d);
+      var dateStr2 = Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
+      var wd = weekdayLabels[dateObj.getDay()];
+      var rec = (byNameDate[s.name] && byNameDate[s.name][dateStr2]) || null;
+      days.push({
+        date: dateStr2, day: d, weekday: wd,
+        clockIn: rec ? rec.clockIn : '',
+        clockOut: rec ? rec.clockOut : '',
+        breakUsed: rec ? rec.breakUsed : false,
+        hoursLabel: rec ? rec.hoursLabel : '',
+        mapUrl: rec ? rec.mapUrl : '',
+        noRecord: !rec
       });
-      onStockCropChangeFor(key);
-    });
-  }).catch(function (err) {
-    console.error('通信エラー：', err);
+    }
+    s.days = days;
+  });
+
+  return { status: 'ok', today: today, staff: staffList };
   });
 }
 
-function onStockCropChangeFor(key) {
-  var crop = document.getElementById('cropInput-' + key).value;
-  var varietySel = document.getElementById('varietyInput-' + key);
-  varietySel.innerHTML = '';
-  (homeVarietyByCrop[crop] || []).forEach(function (v) {
-    var opt = document.createElement('option');
-    opt.value = v;
-    opt.textContent = v;
-    varietySel.appendChild(opt);
-  });
-}
+// ==== ①スタッフ管理：月別履歴（給与明細ログ） ====
 
-function submitHomeStock(key, storeName) {
-  var variety = document.getElementById('varietyInput-' + key).value;
-  var qty = document.getElementById('qtyInput-' + key).value;
-  if (!variety || !qty) {
-    alert('品種と数量を入力してください。');
-    return;
+// 月別履歴を、月×氏名の一覧表としてまとめて返す（スタッフ数が少ないので、月を選ばず全部一覧で見せる）
+// ==== ①スタッフ管理：出勤簿確認（個人×月） ====
+
+function getStaffNames_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var data = getTimecardSheet_(SHEET_MASTER).getDataRange().getValues();
+  var names = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) names.push(data[i][1]);
   }
-  var ok = confirm(storeName + 'に「' + variety + '」を' + qty + '個、入荷登録します。\nよろしいですか？');
-  if (!ok) return;
 
-  var today = new Date();
-  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-
-  showProcessing('登録中...');
-
-  callServer({ action: 'submitStockEntry', userId: currentUserId, date: todayStr, store: storeName, variety: variety, qty: qty }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-    if (result.status === 'ok') {
-      document.getElementById('qtyInput-' + key).value = '';
-      loadHomeStockStatus();
-    }
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
-}
-
-var cropYearSelectInit = false;
-var lastCropDetails = {}; // crop -> [{date, store, item, amount}]
-var lastVarietyDetails = {}; // 「品目|品種」 -> [{date, store, item, amount}]
-var lastCropResult = null;
-var cropMode = 'crop';
-var CROP_OPTIONS = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'];
-
-function switchCropMode(mode) {
-  cropMode = mode;
-  document.getElementById('cropModeCropBtn').classList.toggle('active', mode === 'crop');
-  document.getElementById('cropModeVarietyBtn').classList.toggle('active', mode === 'variety');
-  renderCropSummary();
-}
-
-function loadCropSummary() {
-  if (!cropYearSelectInit) {
-    cropYearSelectInit = true;
-    var sel = document.getElementById('cropYearSelect');
-    var thisYear = new Date().getFullYear();
-    for (var y = thisYear; y >= thisYear - 4; y--) {
-      var opt = document.createElement('option');
-      opt.value = String(y);
-      opt.textContent = y + '年度';
-      sel.appendChild(opt);
-    }
+  // 各スタッフごとに、打刻記録が存在する年月の一覧を作る（月選択でのグレーアウトに使う）
+  var logData = getTimecardSheet_(SHEET_LOG).getDataRange().getValues();
+  var monthsSetByName = {};
+  for (var j = 1; j < logData.length; j++) {
+    var name = logData[j][2];
+    if (!name) continue;
+    var ym = cellDateStr_(logData[j][0]).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+    if (!monthsSetByName[name]) monthsSetByName[name] = {};
+    monthsSetByName[name][ym] = true;
   }
-  var year = document.getElementById('cropYearSelect').value;
-  var el = document.getElementById('cropSummaryList');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">集計中...</p>';
-
-  callServer({ action: 'getYearlyCropSummary', userId: currentUserId, year: year }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-      return;
-    }
-    lastCropResult = result;
-    lastCropDetails = result.cropDetails || {};
-    lastVarietyDetails = result.varietyDetails || {};
-    renderCropSummary();
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  var monthsByName = {};
+  Object.keys(monthsSetByName).forEach(function (name) {
+    monthsByName[name] = Object.keys(monthsSetByName[name]);
   });
+
+  return { status: 'ok', names: names, monthsByName: monthsByName };
 }
 
-function renderCropSummary() {
-  var result = lastCropResult;
-  var el = document.getElementById('cropSummaryList');
-  if (!result) return;
+// 指定したスタッフ・年月の、1日〜末日まで全日付ぶんの出退勤を返す（打刻ページの「今月のタイムカード」と同じ考え方）
+function getStaffAttendanceLedger_(userId, staffName, yearMonth) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!staffName || !yearMonth) return { status: 'error', message: 'スタッフ・年月を指定してください。' };
 
-  var html = '';
-  if (cropMode === 'crop') {
-    result.rows.forEach(function (r) {
-      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'crop\', \'' + r.crop + '\')"><span>' + r.crop + '（タップで詳細）</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
-    });
-  } else {
-    result.varietyRows.forEach(function (r) {
-      var key = r.crop + '|' + r.variety;
-      var sourceBreakdown = Object.keys(r.countBySource || {})
-        .map(function (src) { return src + '×' + r.countBySource[src]; })
-        .join('　');
-      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'variety\', \'' + key.replace(/'/g, "\\'") + '\')">' +
-        '<span>' + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span>' +
-        '<br><span class="crop-row-qty">' + r.weightKg.toLocaleString() + 'kg　' + r.count + '件　' + sourceBreakdown + '</span></span>' +
-        '<span>¥' + r.amount.toLocaleString() + '</span></div>';
+  var parts = yearMonth.split('-');
+  var year = Number(parts[0]), month = Number(parts[1]) - 1;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+
+  var logData = getTimecardSheet_(SHEET_LOG).getDataRange().getValues();
+  var byDate = {};
+  for (var j = 1; j < logData.length; j++) {
+    if (logData[j][2] !== staffName) continue;
+    var dateStr = cellDateStr_(logData[j][0]);
+    if (dateStr.indexOf(yearMonth) !== 0) continue;
+    byDate[dateStr] = logData[j];
+  }
+
+  var days = [];
+  var totalHours = 0;
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateObj = new Date(year, month, d);
+    var dateStr2 = Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd');
+    var wd = weekdayLabels[dateObj.getDay()];
+    var row = byDate[dateStr2];
+
+    if (!row || !row[3]) {
+      days.push({ date: dateStr2, weekday: wd, clockIn: '', clockOut: '', breakUsed: false, hoursLabel: '', noRecord: true });
+      continue;
+    }
+
+    var hoursLabel = '-';
+    if (row[6] !== '') {
+      var h = Number(row[6]);
+      totalHours += h;
+      hoursLabel = h.toFixed(2);
+    }
+    days.push({
+      date: dateStr2, weekday: wd,
+      clockIn: cellTimeStr_(row[3]),
+      clockOut: row[4] ? cellTimeStr_(row[4]) : '(未退勤)',
+      breakUsed: !!row[5],
+      hoursLabel: hoursLabel,
+      noRecord: false
     });
   }
-  if (result.unclassifiedAmount > 0) {
-    html += '<div class="crop-row crop-row-muted" onclick="openCropDetailModal(\'crop\', \'未分類\')"><span>未分類（タップで詳細）</span><span>¥' + result.unclassifiedAmount.toLocaleString() + '</span></div>';
+
+  // その月に確定済みの給与明細があれば、あわせて取得する
+  var payslipData = getTimecardSheet_(SHEET_PAYSLIP).getDataRange().getValues();
+  var payslip = null;
+  for (var k = 1; k < payslipData.length; k++) {
+    if (payslipData[k][2] !== staffName) continue;
+    if (cellDateStr_(payslipData[k][0]).slice(0, 7) !== yearMonth) continue;
+    payslip = {
+      totalHours: Number(payslipData[k][3]) || 0,
+      hourlyWage: Number(payslipData[k][4]) || 0,
+      wagePay: Number(payslipData[k][5]) || 0,
+      transportFee: Number(payslipData[k][6]) || 0,
+      totalPay: Number(payslipData[k][7]) || 0
+    };
+    break;
   }
-  html += '<div class="crop-row crop-row-total"><span>売上合計</span><span>¥' + result.grandTotal.toLocaleString() + '</span></div>';
-  el.innerHTML = html;
+
+  return { status: 'ok', staffName: staffName, yearMonth: yearMonth, totalHours: Math.round(totalHours * 100) / 100, days: days, payslip: payslip };
 }
 
-var currentCropDetailKey = null;
-var currentCropDetailMode = null;
+// ==== ①スタッフ管理：月別一覧（給与明細ログ） ====
 
-function openCropDetailModal(mode, key) {
-  currentCropDetailMode = mode;
-  currentCropDetailKey = key;
-  var details = mode === 'crop' ? (lastCropDetails[key] || []) : (lastVarietyDetails[key] || []);
-  var titleLabel = mode === 'variety' ? key.split('|')[1] : key;
-  var el = document.getElementById('cropDetailList');
-  document.getElementById('cropDetailModalTitle').textContent = titleLabel + 'の内訳（' + details.length + '件）';
+function getAllStaffHistory_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
 
-  if (details.length === 0) {
-    el.innerHTML = '<p style="font-size:13px; color:#7A7256;">データがありません。</p>';
-  } else {
-    el.innerHTML = '';
-    details.forEach(function (d, idx) {
-      var block = document.createElement('div');
-      block.className = 'crop-detail-item';
-      if (mode === 'crop' && key === '未分類') {
-        var options = CROP_OPTIONS.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
-        block.innerHTML =
-          '<p class="crop-detail-meta">' + d.date + '　' + d.store + '　' + d.item + '　¥' + d.amount.toLocaleString() + '</p>' +
-          '<div class="crop-detail-select-row">' +
-          '<select id="cropDetailSelect_' + idx + '">' + options + '</select>' +
-          '<button onclick="assignCropForItem(' + idx + ')">この品目にする</button>' +
-          '</div>';
-      } else {
-        block.innerHTML = '<p class="crop-detail-meta" style="margin:0;">' + d.date + '　' + d.store + '　' + d.item + '　¥' + d.amount.toLocaleString() + '</p>';
+  var data = getTimecardSheet_(SHEET_PAYSLIP).getDataRange().getValues();
+  var monthsSet = {};
+  var namesSet = {};
+  var grid = {}; // grid[年月][氏名] = 給与額
+
+  for (var i = 1; i < data.length; i++) {
+    var ym = cellDateStr_(data[i][0]).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+    var name = data[i][2];
+    var pay = Number(data[i][7]) || 0;
+
+    monthsSet[ym] = true;
+    namesSet[name] = true;
+    if (!grid[ym]) grid[ym] = {};
+    grid[ym][name] = (grid[ym][name] || 0) + pay;
+  }
+
+  var months = Object.keys(monthsSet).sort().reverse();
+  var names = Object.keys(namesSet).sort();
+
+  var rows = months.map(function (ym) {
+    var rowTotal = 0;
+    var cells = names.map(function (name) {
+      var v = (grid[ym] && grid[ym][name]) || 0;
+      rowTotal += v;
+      return v;
+    });
+    return { yearMonth: ym, cells: cells, total: rowTotal };
+  });
+
+  return { status: 'ok', names: names, rows: rows };
+}
+
+// ==== ②直売所売上集計 ====
+
+function getSalesLogSheet_() {
+  return getOrCreateOwnSheet_(SHEET_SALES, ['受信日時', '対象日', '店舗', '品目', '数量', '金額', 'メールID']);
+}
+
+// 品種マスタ：品目・品種の一覧。管理者がスプレッドシート上で直接編集する想定。
+// シートが無ければ、初期データ（さくらんぼ・もも・スモモ・葡萄）を入れて作成する。
+function getVarietyMasterSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_VARIETY_MASTER);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(SHEET_VARIETY_MASTER);
+  var header = ['品目', '品種'];
+  var initialData = [
+    ['さくらんぼ', '高砂'], ['さくらんぼ', '佐藤錦'], ['さくらんぼ', '紅秀峰'], ['さくらんぼ', '紅おうぎ'], ['さくらんぼ', '甲斐ルビー'], ['さくらんぼ', '静御前'],
+    ['もも', 'あかつき'], ['もも', '一宮白桃'], ['もも', 'おどろき'], ['もも', 'みさと'], ['もも', 'なつっこ'], ['もも', 'アルプス美人'],
+    ['スモモ', 'サマーエンジェル'], ['スモモ', '貴陽'], ['スモモ', '太陽'], ['スモモ', '皇寿'],
+    ['葡萄', '巨峰'], ['葡萄', 'ピオーネ'], ['葡萄', 'シャインマスカット'], ['葡萄', '富士の輝き'], ['葡萄', 'サンシャインレッド'], ['葡萄', 'BKシードレス'], ['葡萄', 'ナガノパープル'], ['葡萄', 'マイハート'],
+    ['柿', '平核無'], ['柿', '大和百目'], ['柿', '甲州百目'], ['柿', '勝平'], ['柿', '刀根早生']
+  ];
+  sheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
+  sheet.getRange(2, 1, initialData.length, 2).setValues(initialData);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+// 品種マスタに無い品種名が見つかった場合、「未分類」として自動で追加登録する
+function autoRegisterVariety_(varietyName) {
+  var sheet = getVarietyMasterSheet_();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() === varietyName) return; // 既に登録済み
+  }
+  sheet.appendRow(['未分類', varietyName]);
+  CacheService.getScriptCache().remove('varietyList');
+}
+
+function getStockLogSheet_() {
+  return getOrCreateOwnSheet_(SHEET_STOCK_LOG, ['日付', '店舗', '品種', '入荷数量', '記入者', '記入日時']);
+}
+
+// 「道の駅しらね」（JA湖南）のメールを解析する
+// 件名例：「07月19日 16時04分時点の売上報告」
+// 本文例：
+//   総合計      ¥5,400
+//   --------------------
+//   貴陽
+//         8コ 合計    ¥5,400
+function parseShiraneEmail_(body) {
+  var records = [];
+  var lines = body.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+
+  for (var i = 0; i < lines.length - 1; i++) {
+    var itemLine = lines[i];
+    var qtyLine = lines[i + 1];
+    if (/^総合計|^-+$|^\(注\)|様$/.test(itemLine)) continue;
+
+    var m = qtyLine.match(/(\d+)コ\s*合計\s*[¥￥]([\d,]+)/);
+    if (m) {
+      records.push({ item: itemLine, qty: Number(m[1]), amount: Number(m[2].replace(/,/g, '')) });
+    }
+  }
+  return records;
+}
+
+// 「い～なとうぶ」（JA山梨みらい）のメールを解析する。1通に竜王店・昭和店の両方が入っている。
+// 本文例：
+//   《い～なとうぶ竜王店》
+//   桃(あかつき)
+//    @450 売 6
+//   《い～なとうぶ昭和店》
+//   桃(あかつき)
+//    @450 売 6
+//   貴陽
+//    @500 売 2
+//   ★ 合 計 ★
+//    売  14 ￥6,400
+function parseInatobuEmail_(body) {
+  var results = [];
+  var parts = body.split(/《([^》]+)》/);
+  // parts[0]=前置き, parts[1]=店名1, parts[2]=内容1, parts[3]=店名2, parts[4]=内容2...
+
+  for (var i = 1; i < parts.length; i += 2) {
+    var storeNameRaw = parts[i].trim();
+    var content = (parts[i + 1] || '').split('★')[0]; // 合計行より前だけを対象にする
+    var lines = content.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+
+    var records = [];
+    for (var j = 0; j < lines.length - 1; j++) {
+      var m = lines[j + 1].match(/@(\d+)\s*売\s*(\d+)/);
+      if (m) {
+        var unitPrice = Number(m[1]);
+        var qty = Number(m[2]);
+        records.push({ item: lines[j], qty: qty, amount: unitPrice * qty });
       }
-      el.appendChild(block);
-    });
+    }
+
+    var storeName = SALES_STORES.filter(function (s) { return storeNameRaw.indexOf(s.replace('い～なとうぶ', '')) !== -1 || storeNameRaw === s; })[0] || storeNameRaw;
+    results.push({ store: storeName, records: records });
   }
-  document.getElementById('cropDetailModal').style.display = 'flex';
+  return results;
 }
 
-function closeCropDetailModal() {
-  document.getElementById('cropDetailModal').style.display = 'none';
-}
+// Gmailを確認し、未処理の売上メールを解析してシートに記録する。時間主導トリガーで定期実行する想定。
+// テストしたい場合は、Apps Scriptエディタでこの関数を直接実行してもよい。
+function checkSalesEmails_() {
+  var query = '(from:ja-04tyokubai@ja-komano.or.jp OR from:ja-i-natobu_uriage@y-mirai.or.jp) -label:' + GMAIL_LABEL_PROCESSED;
+  var threads = GmailApp.search(query, 0, 30);
+  if (threads.length === 0) return 0;
 
-function assignCropForItem(idx) {
-  var detail = lastCropDetails[currentCropDetailKey][idx];
-  var crop = document.getElementById('cropDetailSelect_' + idx).value;
-  var ok = confirm('「' + detail.item + '」を「' + crop + '」として今後分類します。よろしいですか？');
-  if (!ok) return;
+  var label = GmailApp.getUserLabelByName(GMAIL_LABEL_PROCESSED) || GmailApp.createLabel(GMAIL_LABEL_PROCESSED);
+  var sheet = getSalesLogSheet_();
+  var rowsToAdd = [];
 
-  showProcessing('登録中...');
-  callServer({ action: 'assignCropToItem', userId: currentUserId, itemName: detail.item, crop: crop }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-    if (result.status === 'ok') {
-      closeCropDetailModal();
-      loadCropSummary();
-    }
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
-}
+  threads.forEach(function (thread) {
+    thread.getMessages().forEach(function (message) {
+      var from = message.getFrom();
+      var body = message.getPlainBody();
+      var receivedDate = message.getDate();
+      var dateStr = Utilities.formatDate(receivedDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+      var msgId = message.getId();
 
-var lastJaMails = [];
-
-// 件名に含まれるキーワードから、該当するバッジをすべて組み立てる
-var JA_MAIL_BADGE_RULES = [
-  { keywords: ['防除', '薬剤', '散布'], label: '防除', cls: 'badge-boujo' },
-  { keywords: ['説明'], label: '出荷説明会', cls: 'badge-setsumei' },
-  { keywords: ['見本', '熟度', '展示', 'サンプル', '目合わせ'], label: '熟度見本', cls: 'badge-mihon' },
-  { keywords: ['講習会'], label: '講習会', cls: 'badge-koushu' }
-];
-var JA_MAIL_CROP_COLORS = {
-  'さくらんぼ': { bg: '#F0DAD0', fg: '#8B3A2E' },
-  'もも': { bg: '#F0DEB8', fg: '#8A5A2A' },
-  'スモモ': { bg: '#EAE0E8', fg: '#6A4A5E' },
-  '葡萄': { bg: '#E3ECD3', fg: '#3E5A1F' },
-  '柿': { bg: '#F0DEB8', fg: '#8A5A2A' }
-};
-
-function buildJaMailBadges(subject) {
-  var html = '';
-  JA_MAIL_BADGE_RULES.forEach(function (rule) {
-    var matched = rule.keywords.some(function (kw) { return subject.indexOf(kw) !== -1; });
-    if (matched) html += '<span class="ja-mail-badge ' + rule.cls + '">' + rule.label + '</span>';
-  });
-  return html;
-}
-
-var DISPLAY_BLOCK_MAP = {
-  weather: { elId: 'weatherCard', checkId: 'dsWeather' },
-  sales: { elId: 'blockSales', checkId: 'dsSales' },
-  cropSummary: { elId: 'blockCropSummary', checkId: 'dsCropSummary' },
-  nikki: { elId: 'blockNikki', checkId: 'dsNikki' },
-  sanchoku: { elId: 'blockSanchoku', checkId: 'dsSanchoku' },
-  jaMail: { elId: 'blockJaMail', checkId: 'dsJaMail' },
-  staff: { elId: 'blockStaff', checkId: 'dsStaff' }
-};
-var lastDisplaySettings = null;
-
-function loadDisplaySettings() {
-  callServer({ action: 'getDisplaySettings', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') return;
-    lastDisplaySettings = result.settings;
-    applyDisplaySettings();
-  });
-}
-
-function applyDisplaySettings() {
-  if (!lastDisplaySettings) return;
-  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
-    var el = document.getElementById(DISPLAY_BLOCK_MAP[key].elId);
-    if (!el) return;
-    var visible = lastDisplaySettings[key] !== false;
-    if (key === 'weather') {
-      // 天気予報はPC限定表示のクラス（pc-only-block）を保ったまま、非表示指定の時だけ強制的に隠す
-      el.style.display = visible ? '' : 'none';
-    } else {
-      el.style.display = visible ? '' : 'none';
-    }
-  });
-}
-
-function openDisplaySettingsModal() {
-  var settings = lastDisplaySettings || {};
-  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
-    document.getElementById(DISPLAY_BLOCK_MAP[key].checkId).checked = settings[key] !== false;
-  });
-  document.getElementById('displaySettingsModal').style.display = 'flex';
-}
-
-function closeDisplaySettingsModal() {
-  document.getElementById('displaySettingsModal').style.display = 'none';
-}
-
-function saveDisplaySettings() {
-  var settings = {};
-  Object.keys(DISPLAY_BLOCK_MAP).forEach(function (key) {
-    settings[key] = document.getElementById(DISPLAY_BLOCK_MAP[key].checkId).checked;
-  });
-
-  showProcessing('保存中...');
-  callServer({ action: 'submitDisplaySettings', userId: currentUserId, settings: settings }).then(function (result) {
-    hideProcessing();
-    if (result.status === 'ok') {
-      lastDisplaySettings = settings;
-      applyDisplaySettings();
-      closeDisplaySettingsModal();
-    } else {
-      alert(result.message);
-    }
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
-}
-
-
-function loadWeatherForecast() {
-  var el = document.getElementById('weatherContent');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
-
-  callServer({ action: 'getWeatherForecast', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-      return;
-    }
-    var html = '<p style="font-size:11px; color:#A69B7A; margin:0 0 8px;">' + result.areaName + '（気象庁発表・無料データ）</p>';
-    result.days.forEach(function (d) {
-      var tempHtml = (d.tempMin || d.tempMax) ? (d.tempMin + '〜' + d.tempMax) : '';
-      html += '<div class="weather-row"><span class="weather-date">' + d.date + '</span><i class="ti ' + d.icon + ' weather-icon" aria-hidden="true"></i><span class="weather-desc">' + d.weather + '　降水' + d.pop + '</span><span class="weather-temp">' + tempHtml + '</span></div>';
-    });
-    el.innerHTML = html;
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
-  });
-}
-
-function loadNikkiRecent() {
-  var el = document.getElementById('nikkiRecentList');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
-
-  callServer({ action: 'getRecentNikkiByType', userId: currentUserId, limitPerType: 3 }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-      return;
-    }
-    var types = ['防除', '生育記録', 'メモ'];
-    var html = '';
-    types.forEach(function (t) {
-      var items = result.byType[t] || [];
-      html += '<p class="nikki-home-type-label">' + t + '</p>';
-      if (items.length === 0) {
-        html += '<p style="font-size:11px; color:#A69B7A; margin:0 0 8px;">記録なし</p>';
-      } else {
-        items.forEach(function (n) {
-          html += '<a class="nikki-home-row" href="nikki.html">' + n.title + '　<span class="nikki-home-row-date">' + n.date + '</span></a>';
+      if (from.indexOf('ja-04tyokubai@ja-komano.or.jp') !== -1) {
+        parseShiraneEmail_(body).forEach(function (r) {
+          rowsToAdd.push([receivedDate, dateStr, '道の駅しらね', r.item, r.qty, r.amount, msgId]);
+        });
+      } else if (from.indexOf('ja-i-natobu_uriage@y-mirai.or.jp') !== -1) {
+        parseInatobuEmail_(body).forEach(function (storeResult) {
+          storeResult.records.forEach(function (r) {
+            rowsToAdd.push([receivedDate, dateStr, storeResult.store, r.item, r.qty, r.amount, msgId]);
+          });
         });
       }
     });
-    el.innerHTML = html;
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    thread.addLabel(label);
+  });
+
+  if (rowsToAdd.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAdd.length, 7).setValues(rowsToAdd);
+    var cache = CacheService.getScriptCache();
+    var currentYear = String(new Date().getFullYear());
+    cache.remove('salesSummary');
+    cache.remove('stockStatus');
+    cache.remove('yearlyCropSummary_' + currentYear);
+  }
+  return rowsToAdd.length;
+}
+
+// 手動テスト用：Apps Scriptエディタで関数選択を「testCheckSalesEmails」にして実行してください
+function testCheckSalesEmails() {
+  var count = checkSalesEmails_();
+  Logger.log(count + '件のデータを記録しました。');
+}
+
+// ホーム画面のタイル用：本日・昨日・今月・先月の店舗別売上を返す
+// 同じ日・同じ店舗に複数回の報告がある場合（途中経過）は、一番新しい報告だけを合計に使う
+function getSalesSummary_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('salesSummary', 120, function () {
+
+  var data = getSalesLogSheet_().getDataRange().getValues();
+
+  // (対象日, 店舗) ごとに一番新しいメールIDを特定する
+  var latestMsgByKey = {};
+  for (var i = 1; i < data.length; i++) {
+    var receivedAt = data[i][0];
+    var date = cellDateStr_(data[i][1]);
+    var store = data[i][2];
+    var msgId = data[i][6];
+    var key = date + '|' + store;
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    if (!latestMsgByKey[key] || t > latestMsgByKey[key].time) {
+      latestMsgByKey[key] = { msgId: msgId, time: t };
+    }
+  }
+
+  // 一番新しい報告の行だけを対象に、(対象日,店舗)ごとの合計を作る
+  var dailyTotals = {}; // key: date|store -> 金額合計
+  for (var j = 1; j < data.length; j++) {
+    var date2 = cellDateStr_(data[j][1]);
+    var store2 = data[j][2];
+    var msgId2 = data[j][6];
+    var key2 = date2 + '|' + store2;
+    if (!latestMsgByKey[key2] || latestMsgByKey[key2].msgId !== msgId2) continue;
+    dailyTotals[key2] = (dailyTotals[key2] || 0) + (Number(data[j][5]) || 0);
+  }
+
+  var now = new Date();
+  var today = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+  var yesterday = Utilities.formatDate(new Date(now.getTime() - 86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var thisYearMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
+  var lastYearMonth = Utilities.formatDate(new Date(now.getFullYear(), now.getMonth() - 1, 1), 'Asia/Tokyo', 'yyyy-MM');
+
+  var result = {};
+  SALES_STORES.forEach(function (store) {
+    result[store] = { today: 0, yesterday: 0, thisMonth: 0, lastMonth: 0 };
+  });
+
+  Object.keys(dailyTotals).forEach(function (key) {
+    var parts = key.split('|');
+    var date = parts[0], store = parts[1];
+    if (!result[store]) return;
+    if (date === today) result[store].today += dailyTotals[key];
+    if (date === yesterday) result[store].yesterday += dailyTotals[key];
+    if (date.indexOf(thisYearMonth) === 0) result[store].thisMonth += dailyTotals[key];
+    if (date.indexOf(lastYearMonth) === 0) result[store].lastMonth += dailyTotals[key];
+  });
+
+  return { status: 'ok', stores: result };
   });
 }
 
-function loadJaMailList() {
-  var el = document.getElementById('jaMailList');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+// ==== 売上管理ページ用 ====
 
-  callServer({ action: 'getJaMailList', userId: currentUserId, limit: 10 }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
-      return;
+// 本日の詳細：店舗ごとに、最新の報告時点での品目別内訳を返す
+function getTodaySalesDetail_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var data = getSalesLogSheet_().getDataRange().getValues();
+  var today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+
+  var latestByStore = {};
+  for (var i = 1; i < data.length; i++) {
+    if (cellDateStr_(data[i][1]) !== today) continue;
+    var store = data[i][2];
+    var receivedAt = data[i][0];
+    var msgId = data[i][6];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    if (!latestByStore[store] || t > latestByStore[store].time) {
+      latestByStore[store] = { msgId: msgId, time: t, receivedAt: receivedAt };
     }
-    lastJaMails = result.mails;
-    if (result.mails.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">メールがありません。</p>';
-      return;
+  }
+
+  var result = {};
+  SALES_STORES.forEach(function (store) { result[store] = { reportTime: null, items: [], total: 0 }; });
+
+  for (var j = 1; j < data.length; j++) {
+    if (cellDateStr_(data[j][1]) !== today) continue;
+    var store2 = data[j][2];
+    var msgId2 = data[j][6];
+    if (!latestByStore[store2] || latestByStore[store2].msgId !== msgId2) continue;
+
+    if (!result[store2].reportTime && latestByStore[store2].receivedAt instanceof Date) {
+      result[store2].reportTime = Utilities.formatDate(latestByStore[store2].receivedAt, 'Asia/Tokyo', 'HH:mm');
     }
-    el.innerHTML = '';
-    result.mails.forEach(function (m, idx) {
-      var row = document.createElement('div');
-      row.className = 'ja-mail-row';
-      row.onclick = function () { openJaMailBody(m.id); };
-      var badge = buildJaMailBadges(m.subject);
-      var cropBadge = '';
-      if (m.crop) {
-        var cc = JA_MAIL_CROP_COLORS[m.crop] || { bg: '#E8E4DA', fg: '#6B6048' };
-        cropBadge = '<span class="ja-mail-badge" style="background:' + cc.bg + ';color:' + cc.fg + ';">' + m.crop + '</span>';
-      }
-      row.innerHTML = '<p class="ja-mail-date">' + m.date + '</p><p class="ja-mail-subject">' + cropBadge + badge + m.subject + '</p>';
-      el.appendChild(row);
+    var amount = Number(data[j][5]) || 0;
+    result[store2].items.push({ item: data[j][3], qty: Number(data[j][4]) || 0, amount: amount });
+    result[store2].total += amount;
+  }
+
+  return { status: 'ok', today: today, stores: result };
+}
+
+// 途中経過：指定した店舗・日付に届いた報告を、時系列で全部返す
+// 指定した日付の、店舗ごとの合計金額を返す（途中経過タブの各店舗タブに表示する用）
+function getDailyTotalsForAllStores_(userId, date) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!date) return { status: 'error', message: '日付を指定してください。' };
+
+  var data = getSalesLogSheet_().getDataRange().getValues();
+  var latestByStore = {};
+  for (var i = 1; i < data.length; i++) {
+    if (cellDateStr_(data[i][1]) !== date) continue;
+    var store = data[i][2];
+    var receivedAt = data[i][0];
+    var msgId = data[i][6];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    if (!latestByStore[store] || t > latestByStore[store].time) {
+      latestByStore[store] = { msgId: msgId, time: t };
+    }
+  }
+
+  var totals = {};
+  SALES_STORES.forEach(function (store) { totals[store] = 0; });
+  for (var j = 1; j < data.length; j++) {
+    if (cellDateStr_(data[j][1]) !== date) continue;
+    var store2 = data[j][2];
+    var msgId2 = data[j][6];
+    if (!latestByStore[store2] || latestByStore[store2].msgId !== msgId2) continue;
+    totals[store2] = (totals[store2] || 0) + (Number(data[j][5]) || 0);
+  }
+
+  return { status: 'ok', date: date, totals: totals };
+}
+
+function getIntradayProgress_(userId, store, date) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!store || !date) return { status: 'error', message: '店舗・日付を指定してください。' };
+
+  // その日・その店舗の入荷数量（品種ごと）を先に集計しておく
+  var stockData = getStockLogSheet_().getDataRange().getValues();
+  var incomingByVariety = {};
+  for (var s = 1; s < stockData.length; s++) {
+    if (cellDateStr_(stockData[s][0]) !== date || stockData[s][1] !== store) continue;
+    var v0 = stockData[s][2];
+    incomingByVariety[v0] = (incomingByVariety[v0] || 0) + (Number(stockData[s][3]) || 0);
+  }
+
+  var data = getSalesLogSheet_().getDataRange().getValues();
+  var byMsg = {};
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][2] !== store || cellDateStr_(data[i][1]) !== date) continue;
+    var msgId = data[i][6];
+    if (!byMsg[msgId]) byMsg[msgId] = { receivedAt: data[i][0], items: [], total: 0 };
+    var amount = Number(data[i][5]) || 0;
+    var varietyName = normalizeItemName_(data[i][3]);
+    byMsg[msgId].items.push({ item: data[i][3], variety: varietyName, qty: Number(data[i][4]) || 0, amount: amount });
+    byMsg[msgId].total += amount;
+  }
+
+  var reports = Object.keys(byMsg).map(function (msgId) {
+    var r = byMsg[msgId];
+    // このレポート（その時点の累計販売数）ごとに、在庫登録がある品種だけ残り在庫を計算する
+    var stockSummary = [];
+    r.items.forEach(function (it) {
+      if (incomingByVariety[it.variety] === undefined) return;
+      stockSummary.push({ variety: it.variety, remaining: incomingByVariety[it.variety] - it.qty });
     });
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    return {
+      time: (r.receivedAt instanceof Date) ? Utilities.formatDate(r.receivedAt, 'Asia/Tokyo', 'HH:mm') : '',
+      timestamp: (r.receivedAt instanceof Date) ? r.receivedAt.getTime() : 0,
+      items: r.items,
+      total: r.total,
+      stockSummary: stockSummary
+    };
+  });
+  reports.sort(function (a, b) { return b.timestamp - a.timestamp; });
+
+  return { status: 'ok', store: store, date: date, reports: reports };
+}
+
+// 日別推移：指定した店舗の、日ごとの合計金額を一覧で返す
+function getDailyHistory_(userId, store) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!store) return { status: 'error', message: '店舗を指定してください。' };
+
+  var data = getSalesLogSheet_().getDataRange().getValues();
+
+  var latestByDate = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][2] !== store) continue;
+    var date = cellDateStr_(data[i][1]);
+    var receivedAt = data[i][0];
+    var msgId = data[i][6];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    if (!latestByDate[date] || t > latestByDate[date].time) {
+      latestByDate[date] = { msgId: msgId, time: t };
+    }
+  }
+
+  var totals = {};
+  var itemsByDate = {};
+  for (var j = 1; j < data.length; j++) {
+    if (data[j][2] !== store) continue;
+    var date2 = cellDateStr_(data[j][1]);
+    var msgId2 = data[j][6];
+    if (!latestByDate[date2] || latestByDate[date2].msgId !== msgId2) continue;
+    var amount = Number(data[j][5]) || 0;
+    totals[date2] = (totals[date2] || 0) + amount;
+    if (!itemsByDate[date2]) itemsByDate[date2] = [];
+    itemsByDate[date2].push({ item: data[j][3], qty: Number(data[j][4]) || 0, amount: amount });
+  }
+
+  var rows = Object.keys(totals).sort().reverse().map(function (date) {
+    return { date: date, total: totals[date], items: itemsByDate[date] || [] };
+  });
+
+  return { status: 'ok', store: store, rows: rows };
+}
+
+// ==== 在庫管理 ====
+
+// 品種マスタを、品目ごとにグループ化して返す（入力フォームのプルダウン用）
+function getVarietyList_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('varietyList', 1800, function () {
+  var data = getVarietyMasterSheet_().getDataRange().getValues();
+  var byCrop = {};
+  var crops = [];
+  for (var i = 1; i < data.length; i++) {
+    var crop = data[i][0], variety = data[i][1];
+    if (!crop || !variety) continue;
+    if (!byCrop[crop]) { byCrop[crop] = []; crops.push(crop); }
+    byCrop[crop].push(variety);
+  }
+  return { status: 'ok', crops: crops, byCrop: byCrop };
   });
 }
 
-function openJaMailBody(messageId) {
-  document.getElementById('jaMailBodyTitle').textContent = '読み込み中...';
-  document.getElementById('jaMailBodyDate').textContent = '';
-  document.getElementById('jaMailBodyText').textContent = '';
-  document.getElementById('jaMailBodyModal').style.display = 'flex';
+// 品種マスタに新しい品目・品種を追加する（同じ組み合わせがすでにあれば追加しない）
+function addVariety_(userId, crop, variety) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  crop = (crop || '').trim();
+  variety = (variety || '').trim();
+  if (!crop || !variety) return { status: 'error', message: '品目・品種を入力してください。' };
 
-  callServer({ action: 'getJaMailBody', userId: currentUserId, messageId: messageId }).then(function (result) {
-    if (result.status !== 'ok') {
-      document.getElementById('jaMailBodyTitle').textContent = 'エラー';
-      document.getElementById('jaMailBodyText').textContent = result.message;
-      return;
+  var sheet = getVarietyMasterSheet_();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === crop && data[i][1] === variety) {
+      return { status: 'error', message: 'すでに登録されています。' };
     }
-    document.getElementById('jaMailBodyTitle').textContent = result.subject;
-    document.getElementById('jaMailBodyDate').textContent = result.date;
-    document.getElementById('jaMailBodyText').textContent = result.body;
-  }).catch(function (err) {
-    document.getElementById('jaMailBodyTitle').textContent = 'エラー';
-    document.getElementById('jaMailBodyText').textContent = '通信エラーが発生しました：' + (err && err.message ? err.message : err);
+  }
+  sheet.appendRow([crop, variety]);
+  CacheService.getScriptCache().remove('varietyList');
+  return { status: 'ok', message: crop + '「' + variety + '」を登録しました。' };
+}
+
+// 品種名を売上データの品目名と照合できる形にそろえる（例："桃(あかつき)" → "あかつき"、"貴陽" → "貴陽" そのまま）
+function normalizeItemName_(raw) {
+  var m = String(raw).match(/\(([^)]+)\)/);
+  return m ? m[1] : String(raw).trim();
+}
+
+// 入荷数量を記録する（同じ日・同じ品種の入力は積み上げ足し算にする＝再入荷にも対応）
+function submitStockEntry_(userId, date, store, variety, qty) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!date || !store || !variety || !qty) return { status: 'error', message: '日付・店舗・品種・数量を入力してください。' };
+
+  var sheet = getStockLogSheet_();
+  var name = getEmployeeName_(userId) || userId;
+  sheet.appendRow([date, store, variety, Number(qty), name, new Date()]);
+  CacheService.getScriptCache().remove('stockStatus');
+  return { status: 'ok', message: store + 'に' + variety + 'を' + qty + '個、入荷登録しました。' };
+}
+
+// 指定した店舗・日付の入荷記録を削除する（閉店後の在庫回収時に使う）
+function clearStockForStore_(userId, store, date) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!store || !date) return { status: 'error', message: '店舗・日付を指定してください。' };
+
+  var sheet = getStockLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var deletedCount = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (cellDateStr_(data[i][0]) === date && data[i][1] === store) {
+      sheet.deleteRow(i + 1);
+      deletedCount++;
+    }
+  }
+  CacheService.getScriptCache().remove('stockStatus');
+  return { status: 'ok', message: store + 'の本日の入荷記録をクリアしました（' + deletedCount + '件）。' };
+}
+
+// 道の駅しらねは当日中の回収が必須なため、毎日夜（23時台）に自動でその日の入荷記録をクリアする。
+// 時間主導トリガーで「毎日・午後11時〜深夜0時」に実行するよう設定してください。
+function autoClearShiraneStock() {
+  var today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var sheet = getStockLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var deletedCount = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (cellDateStr_(data[i][0]) === today && data[i][1] === '道の駅しらね') {
+      sheet.deleteRow(i + 1);
+      deletedCount++;
+    }
+  }
+  Logger.log('道の駅しらねの自動クリア：' + deletedCount + '件を削除しました。');
+  return deletedCount;
+}
+
+// 本日の在庫状況：品種ごとに「入荷数量－本日の販売数量＝残り在庫」を計算する
+function getStockStatus_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('stockStatus', 90, function () {
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+
+  // 本日の入荷数量（店舗・品種ごとに合算）
+  var stockData = getStockLogSheet_().getDataRange().getValues();
+  var incomingByKey = {}; // key: 店舗|品種
+  for (var i = 1; i < stockData.length; i++) {
+    if (cellDateStr_(stockData[i][0]) !== today) continue;
+    var store0 = stockData[i][1], variety = stockData[i][2];
+    var key0 = store0 + '|' + variety;
+    incomingByKey[key0] = (incomingByKey[key0] || 0) + (Number(stockData[i][3]) || 0);
+  }
+
+  // 本日の販売数量（各店舗の最新報告だけを使い、店舗・品種ごとに合算。品目名は品種名にそろえる）
+  var salesData = getSalesLogSheet_().getDataRange().getValues();
+  var latestByStore = {};
+  for (var j = 1; j < salesData.length; j++) {
+    if (cellDateStr_(salesData[j][1]) !== today) continue;
+    var store = salesData[j][2];
+    var receivedAt = salesData[j][0];
+    var msgId = salesData[j][6];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    if (!latestByStore[store] || t > latestByStore[store].time) {
+      latestByStore[store] = { msgId: msgId, time: t };
+    }
+  }
+  var soldByKey = {}; // key: 店舗|品種
+  for (var k = 1; k < salesData.length; k++) {
+    if (cellDateStr_(salesData[k][1]) !== today) continue;
+    var store2 = salesData[k][2];
+    var msgId2 = salesData[k][6];
+    if (!latestByStore[store2] || latestByStore[store2].msgId !== msgId2) continue;
+    var varietyName = normalizeItemName_(salesData[k][3]);
+    var key2 = store2 + '|' + varietyName;
+    soldByKey[key2] = (soldByKey[key2] || 0) + (Number(salesData[k][4]) || 0);
+  }
+
+  // 店舗×品種マスタの全組み合わせぶん、在庫状況を組み立てる（入荷・販売どちらも無いものは一覧に出さない）
+  var varietyData = getVarietyMasterSheet_().getDataRange().getValues();
+  var items = [];
+  var coveredKeys = {};
+  SALES_STORES.forEach(function (store3) {
+    for (var m = 1; m < varietyData.length; m++) {
+      var crop = varietyData[m][0], variety2 = varietyData[m][1];
+      var key3 = store3 + '|' + variety2;
+      coveredKeys[key3] = true;
+      var incoming = incomingByKey[key3] || 0;
+      var sold = soldByKey[key3] || 0;
+      if (incoming === 0 && sold === 0) continue;
+      items.push({ store: store3, crop: crop, variety: variety2, incoming: incoming, sold: sold, remaining: incoming - sold });
+    }
+  });
+
+  // 品種マスタの表記と一致しなかった品目は、「未分類」として自動でマスタに追加登録しつつ一覧にも含める
+  var allKeys = {};
+  Object.keys(incomingByKey).forEach(function (k) { allKeys[k] = true; });
+  Object.keys(soldByKey).forEach(function (k) { allKeys[k] = true; });
+  Object.keys(allKeys).forEach(function (key4) {
+    if (coveredKeys[key4]) return;
+    var parts = key4.split('|');
+    autoRegisterVariety_(parts[1]);
+    items.push({
+      store: parts[0], crop: '未分類', variety: parts[1],
+      incoming: incomingByKey[key4] || 0, sold: soldByKey[key4] || 0,
+      remaining: (incomingByKey[key4] || 0) - (soldByKey[key4] || 0)
+    });
+  });
+
+  return { status: 'ok', today: today, items: items };
   });
 }
 
-function closeJaMailBodyModal() {
-  document.getElementById('jaMailBodyModal').style.display = 'none';
+// ==== ⑤産直サイト売上集計 ====
+
+function getSanchokuLogSheet_() {
+  return getOrCreateOwnSheet_(SHEET_SANCHOKU_LOG, ['受信日時', '対象日', 'サイト', '商品名', '品種', '数量表示', '重さ(kg)', '金額', '取り分', '注文番号']);
 }
 
-function loadSanchokuSummary() {
-  var el = document.getElementById('sanchokuSummary');
-  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+function getSanchokuPriceSheet_() {
+  return getOrCreateOwnSheet_(SHEET_SANCHOKU_PRICE, ['サイト', '品種', '単価(円/kg)']);
+}
 
-  callServer({ action: 'getSanchokuMonthlySummary', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') {
-      el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
+// 商品名の中に、品種マスタの品種名が含まれていないか調べる（長い名前を優先してマッチさせる）
+function matchVarietyInText_(text, varietyList) {
+  var sorted = varietyList.slice().sort(function (a, b) { return b.length - a.length; });
+  for (var i = 0; i < sorted.length; i++) {
+    if (text.indexOf(sorted[i]) !== -1) return sorted[i];
+  }
+  return '';
+}
+
+// 商品名やテキストから重さを抜き出し、kgに換算する（例："2kg"→2、"888g"→0.888）
+function extractWeightKg_(text) {
+  var mKg = text.match(/(\d+(?:\.\d+)?)\s*kg/);
+  if (mKg) return Number(mKg[1]);
+  var mG = text.match(/(\d+(?:\.\d+)?)\s*g/);
+  if (mG) return Number(mG[1]) / 1000;
+  return null;
+}
+
+function getAllVarietyNames_() {
+  var data = getVarietyMasterSheet_().getDataRange().getValues();
+  var names = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1]) names.push(data[i][1]);
+  }
+  return names;
+}
+
+// 産直商品価格マスタから、サイト・品種にあう単価(円/kg)を探す
+function findSanchokuUnitPrice_(site, variety) {
+  var data = getSanchokuPriceSheet_().getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === site && data[i][1] === variety) return Number(data[i][2]) || null;
+  }
+  return null;
+}
+
+// そのサイト・品種の単価が無い場合、他サイトに登録されている同じ品種の単価を参考にする（平均値）
+function findSanchokuUnitPriceOtherSites_(variety, excludeSite) {
+  var data = getSanchokuPriceSheet_().getDataRange().getValues();
+  var prices = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1] === variety && data[i][0] !== excludeSite) {
+      var p = Number(data[i][2]);
+      if (p) prices.push(p);
+    }
+  }
+  if (prices.length === 0) return null;
+  var sum = prices.reduce(function (a, b) { return a + b; }, 0);
+  return Math.round((sum / prices.length) * 100) / 100;
+}
+
+// 産直商品価格マスタに単価を登録・更新する
+function upsertSanchokuUnitPrice_(site, variety, unitPrice) {
+  var sheet = getSanchokuPriceSheet_();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === site && data[i][1] === variety) {
+      sheet.getRange(i + 1, 3).setValue(unitPrice);
       return;
     }
-    el.innerHTML = '';
-    var sites = ['食べチョク', 'ポケットマルシェ', 'アウル', 'BASE'];
-    sites.forEach(function (site) {
-      var data = result.sites[site];
-      var block = document.createElement('div');
-      block.className = 'sanchoku-site-block';
-      var html = '<p class="sanchoku-site-title">' + site + '</p>';
+  }
+  sheet.appendRow([site, variety, unitPrice]);
+}
 
-      ['thisMonth', 'lastMonth'].forEach(function (period) {
-        var p = data[period];
-        var label = (period === 'thisMonth') ? '今月' : '先月';
-        html += '<p class="sanchoku-period-label">' + label + '</p>';
-        if (p.rows.length === 0) {
-          html += '<p style="font-size:12px; color:#A69B7A; margin:0;">受注なし</p>';
+// 食べチョクのメール本文を解析する
+function parseTabechokuEmail_(body, varietyList) {
+  var results = [];
+  var lines = body.split('\n').map(function (l) { return l.trim(); });
+
+  var orderNoMatch = body.match(/■注文No\s*\n?\s*([A-Z0-9\-]+)/);
+  var orderNo = orderNoMatch ? orderNoMatch[1] : '';
+
+  for (var i = 0; i < lines.length; i++) {
+    var itemMatch = lines[i].match(/^・(.+?)\s*\((\d+)点\)/);
+    if (!itemMatch) continue;
+    var productName = itemMatch[1];
+    var qty = Number(itemMatch[2]);
+    var variety = matchVarietyInText_(productName, varietyList);
+    var weightKg = extractWeightKg_(productName);
+
+    // この商品行のすぐ後ろに「支払額合計」「商品価格」が続く想定
+    var payTotal = null, price = null;
+    for (var j = i; j < Math.min(i + 5, lines.length); j++) {
+      var payMatch = lines[j].match(/支払額合計:\s*([\d,]+)円/);
+      if (payMatch) payTotal = Number(payMatch[1].replace(/,/g, ''));
+      var priceMatch = lines[j].match(/商品価格:\s*([\d,]+)円/);
+      if (priceMatch) price = Number(priceMatch[1].replace(/,/g, ''));
+    }
+
+    results.push({
+      productName: productName, variety: variety, qtyLabel: qty + '点',
+      weightKg: weightKg, amount: price, netAmount: payTotal, orderNo: orderNo
+    });
+  }
+  return results;
+}
+
+// ポケットマルシェの「本日の受注数が確定しました」メールを解析する（金額は入っていない）
+function parsePokemaruEmail_(subject, body, varietyList) {
+  var results = [];
+  var productMatch = body.match(/商品名：(.+)/) || subject.match(/商品名：(.+?)）/);
+  var productName = productMatch ? productMatch[1].trim() : '';
+  var variety = matchVarietyInText_(productName, varietyList);
+
+  var blocks = body.split(/受注日時：/).slice(1);
+  blocks.forEach(function (block) {
+    var orderNoMatch = block.match(/注文番号：(\S+)/);
+    var qtyMatch = block.match(/分量：([^\n]+)/);
+    var qtyLabel = qtyMatch ? qtyMatch[1].trim() : '';
+    var weightKg = qtyLabel ? extractWeightKg_(qtyLabel) : null;
+
+    results.push({
+      productName: productName, variety: variety, qtyLabel: qtyLabel,
+      weightKg: weightKg, amount: null, netAmount: null,
+      orderNo: orderNoMatch ? orderNoMatch[1] : ''
+    });
+  });
+  return results;
+}
+
+// アウルのメール本文を解析する
+function parseOwlEmail_(body, varietyList) {
+  var productMatch = body.match(/商品名：(.+)/);
+  var orderNoMatch = body.match(/注文番号：(\S+)/);
+  // 「商品名」「注文番号」のどちらも無い場合は、事務局からのお知らせ等の注文以外のメールと判断し、何も記録しない
+  if (!productMatch || !orderNoMatch) return [];
+
+  var productName = productMatch[1].trim();
+  var variety = matchVarietyInText_(productName, varietyList);
+  var weightKg = extractWeightKg_(productName);
+
+  var priceMatch = body.match(/商品金額：([\d,]+)円/);
+  var amount = priceMatch ? Number(priceMatch[1].replace(/,/g, '')) : null;
+
+  var qtyLabel = weightKg ? (weightKg >= 1 ? weightKg + 'kg' : (weightKg * 1000) + 'g') : '';
+
+  return [{
+    productName: productName, variety: variety, qtyLabel: qtyLabel,
+    weightKg: weightKg, amount: amount, netAmount: null,
+    orderNo: orderNoMatch[1]
+  }];
+}
+
+// BASE（thebase.in）のメールを解析する
+function parseBaseEmail_(body, varietyList) {
+  var orderIdMatch = body.match(/注文ID\s*[:：]\s*(\S+)/);
+  var productMatch = body.match(/商品名\s*[:：]\s*(.+)/);
+  // 「商品名」「注文ID」のどちらも無い場合は、発送完了などの注文以外のメールと判断し、何も記録しない
+  if (!productMatch || !orderIdMatch) return [];
+
+  var productName = productMatch[1].trim();
+  var variety = matchVarietyInText_(productName, varietyList);
+  var unitWeightKg = extractWeightKg_(productName);
+
+  // 「価格」は商品単価（送料・オプション抜き）。個数をかけて商品合計金額にする
+  var priceMatch = body.match(/価格\s*[:：]\s*([\d,]+)円/);
+  var qtyMatch = body.match(/個数\s*[:：]\s*(\d+)個/);
+  var unitPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, '')) : null;
+  var qty = qtyMatch ? Number(qtyMatch[1]) : 1;
+
+  var amount = (unitPrice !== null) ? unitPrice * qty : null;
+  var totalWeightKg = unitWeightKg ? unitWeightKg * qty : null;
+  var qtyLabel = totalWeightKg
+    ? (totalWeightKg >= 1 ? totalWeightKg + 'kg' : Math.round(totalWeightKg * 1000) + 'g')
+    : (qty + '個');
+
+  return [{
+    productName: productName, variety: variety, qtyLabel: qtyLabel,
+    weightKg: totalWeightKg, amount: amount, netAmount: null,
+    orderNo: orderIdMatch[1]
+  }];
+}
+
+// Gmailを確認し、未処理の産直サイト注文メールを解析してシートに記録する。時間主導トリガーで定期実行する想定。
+function checkSanchokuEmails_() {
+  // 件名も条件に含めて、注文と無関係な通知メール（発送完了・お知らせ・投稿通知など）を検索の時点で除外する
+  var query = '(' +
+    '(from:no-reply@tabechoku.com subject:"商品受注のご連絡") OR ' +
+    '(from:info@poke-m.com subject:"本日の受注数が確定しました") OR ' +
+    '(from:noreply@owl-food.com subject:"の注文が入りました") OR ' +
+    '(from:noreply@thebase.in)' +
+    ') -label:' + GMAIL_LABEL_SANCHOKU_PROCESSED;
+  var threads = GmailApp.search(query, 0, 100);
+  Logger.log('検索でヒットしたスレッド数：' + threads.length);
+  if (threads.length === 0) return 0;
+
+  var label = GmailApp.getUserLabelByName(GMAIL_LABEL_SANCHOKU_PROCESSED) || GmailApp.createLabel(GMAIL_LABEL_SANCHOKU_PROCESSED);
+  var sheet = getSanchokuLogSheet_();
+  var varietyList = getAllVarietyNames_();
+  var rowsToAdd = [];
+
+  // 既に記録済みの「サイト|注文番号」を集めておき、二重登録を防ぐ
+  var existingKeys = {};
+  var existingData = sheet.getDataRange().getValues();
+  for (var e = 1; e < existingData.length; e++) {
+    var existingKey = existingData[e][2] + '|' + existingData[e][9];
+    existingKeys[existingKey] = true;
+  }
+
+  threads.forEach(function (thread) {
+    thread.getMessages().forEach(function (message) {
+      var from = message.getFrom();
+      var subject = message.getSubject();
+      var body = message.getPlainBody();
+      var receivedDate = message.getDate();
+      var dateStr = Utilities.formatDate(receivedDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+
+      var site = '', records = [];
+      if (from.indexOf('no-reply@tabechoku.com') !== -1) {
+        site = '食べチョク';
+        records = parseTabechokuEmail_(body, varietyList);
+        Logger.log('[食べチョク] 件名：' + subject + ' → ' + records.length + '件抽出');
+      } else if (from.indexOf('info@poke-m.com') !== -1) {
+        // ポケットマルシェは「本日の受注数が確定しました」系のメールだけを対象にする（個別の注文通知には金額も分量の確定情報も無いため）
+        if (body.indexOf('受注日時：') === -1) {
+          Logger.log('[ポケマル] 件名：' + subject + ' → 「受注日時：」が本文に無いためスキップ（個別注文通知の可能性）');
           return;
         }
-        html += '<table class="sanchoku-table"><thead><tr><th>品種</th><th>数量</th><th>件数</th><th>合計</th><th>金額</th></tr></thead><tbody>';
-        p.rows.forEach(function (r) {
-          html += '<tr><td>' + r.variety + '</td><td>' + r.qtyLabel + '</td><td>' + r.count + '件</td><td>' + r.weightKg + 'kg</td>' +
-            '<td>' + (r.hasUnfilled ? '<span class="sanchoku-unfilled">¥' + r.amount.toLocaleString() + '＋未入力</span>' : '¥' + r.amount.toLocaleString()) + '</td></tr>';
-        });
-        html += '<tr class="total-row"><td>合計</td><td></td><td>' + p.totalCount + '件</td><td>' + p.totalWeight + 'kg</td>' +
-          '<td>' + (p.hasUnfilled ? '<span class="sanchoku-unfilled">¥' + p.totalAmount.toLocaleString() + '＋未入力</span>' : '¥' + p.totalAmount.toLocaleString()) + '</td></tr>';
-        html += '</tbody></table>';
-      });
-
-      block.innerHTML = html;
-      el.appendChild(block);
-    });
-  }).catch(function (err) {
-    el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
-  });
-}
-
-function loadHomeStockStatus() {
-  var storeIdMap = { '道の駅しらね': 'stock-shirane-list', 'い～なとうぶ竜王店': 'stock-ryuo-list', 'い～なとうぶ昭和店': 'stock-showa-list' };
-  Object.values(storeIdMap).forEach(function (id) {
-    document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#7A7256;">読み込み中...</p>';
-  });
-
-  callServer({ action: 'getStockStatus', userId: currentUserId }).then(function (result) {
-    if (result.status !== 'ok') {
-      Object.values(storeIdMap).forEach(function (id) {
-        document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8B3A2E;">' + result.message + '</p>';
-      });
-      return;
-    }
-
-    Object.keys(storeIdMap).forEach(function (storeName) {
-      var container = document.getElementById(storeIdMap[storeName]);
-      var items = result.items.filter(function (it) { return it.store === storeName; });
-      if (items.length === 0) {
-        container.innerHTML = '';
+        site = 'ポケットマルシェ';
+        records = parsePokemaruEmail_(subject, body, varietyList);
+        Logger.log('[ポケマル] 件名：' + subject + ' → ' + records.length + '件抽出');
+      } else if (from.indexOf('noreply@owl-food.com') !== -1) {
+        site = 'アウル';
+        records = parseOwlEmail_(body, varietyList);
+        Logger.log('[アウル] 件名：' + subject + ' → ' + records.length + '件抽出');
+      } else if (from.indexOf('noreply@thebase.in') !== -1) {
+        site = 'BASE';
+        records = parseBaseEmail_(body, varietyList);
+        Logger.log('[BASE] 件名：' + subject + ' → ' + records.length + '件抽出');
+      } else {
         return;
       }
-      var html =
-        '<div class="stock-store-header"><span>本日の在庫</span>' +
-        '<button class="clear-stock-btn" onclick="confirmClearStock(\'' + storeName.replace(/'/g, "\\'") + '\')">在庫クリア</button></div>';
-      items.forEach(function (it) {
-        var lowClass = it.remaining <= 0 ? ' low' : '';
-        html +=
-          '<div class="stock-row">' +
-          '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
-          '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
-          '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div></div>';
+
+      records.forEach(function (r) {
+        var dupKey = site + '|' + r.orderNo;
+        if (r.orderNo && existingKeys[dupKey]) {
+          Logger.log('[' + site + '] 注文番号' + r.orderNo + 'は記録済みのためスキップ（重複防止）');
+          return;
+        }
+        var amount = r.amount;
+        // 金額が取れなかった場合は、まず同じサイトの価格マスタ（サイト・品種・単価/kg）を参照し、
+        // それも無ければ他サイト（食べチョク・BASE等）の同じ品種の平均単価を参考に自動計算する
+        if ((amount === null || amount === undefined) && r.variety && r.weightKg) {
+          var unitPrice = findSanchokuUnitPrice_(site, r.variety);
+          if (!unitPrice) unitPrice = findSanchokuUnitPriceOtherSites_(r.variety, site);
+          if (unitPrice) amount = Math.round(unitPrice * r.weightKg);
+          if (site === 'ポケットマルシェ') {
+            Logger.log('[ポケマル金額推測] 品種：[' + r.variety + '] 重さ：' + r.weightKg + ' 見つかった単価：' + unitPrice + ' → 金額：' + amount);
+          }
+        } else if (amount !== null && amount !== undefined && r.variety && r.weightKg) {
+          // 逆に、最初から金額が分かっている注文（食べチョク・アウル・BASE等）は、
+          // その単価を価格マスタに自動登録しておき、ポケマル等の推測に使えるようにする
+          upsertSanchokuUnitPrice_(site, r.variety, Math.round((amount / r.weightKg) * 100) / 100);
+        } else if (site === 'ポケットマルシェ') {
+          Logger.log('[ポケマル金額推測] スキップ：品種=[' + r.variety + '] 重さ=[' + r.weightKg + '] amount=[' + amount + ']（品種か重さが空のため計算できません）');
+        }
+        rowsToAdd.push([receivedDate, dateStr, site, r.productName, r.variety, r.qtyLabel, r.weightKg || '', amount === null || amount === undefined ? '' : amount, r.netAmount || '', r.orderNo]);
+        if (r.orderNo) existingKeys[dupKey] = true; // 同一実行内での重複も防ぐ
       });
-      container.innerHTML = html;
     });
-  }).catch(function (err) {
-    Object.values(storeIdMap).forEach(function (id) {
-      document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8B3A2E;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
-    });
+    thread.addLabel(label);
   });
+
+  if (rowsToAdd.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAdd.length, 10).setValues(rowsToAdd);
+  }
+  return rowsToAdd.length;
 }
 
-function confirmClearStock(store) {
-  var ok = confirm(store + 'の本日の入荷記録をクリアします。よろしいですか？\nこの操作は取り消せません。');
-  if (!ok) return;
-
-  var today = new Date();
-  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-
-  showProcessing('削除中...');
-
-  callServer({ action: 'clearStock', userId: currentUserId, store: store, date: todayStr }).then(function (result) {
-    hideProcessing();
-    alert(result.message);
-    loadHomeStockStatus();
-  }).catch(function (err) {
-    hideProcessing();
-    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
-  });
+// 手動テスト用：Apps Scriptエディタで関数選択を「testCheckSanchokuEmails」にして実行してください
+function testCheckSanchokuEmails() {
+  var count = checkSanchokuEmails_();
+  Logger.log(count + '件のデータを記録しました。');
 }
 
-function loadStats(userId) {
-  callServer({ action: 'getStaffMonthlyStatus', userId: userId }).then(function (result) {
-    if (result.status !== 'ok') return;
-    document.getElementById('statStaffCount').textContent = result.staff.length + '人';
-  });
+// 金額未入力の注文一覧を返す
+function getUnfilledSanchokuOrders_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
 
-  callServer({ action: 'getExpenseSummary', userId: userId }).then(function (result) {
-    if (result.status !== 'ok') return;
-    document.getElementById('expThisMonth').textContent = '¥' + result.thisMonth.toLocaleString();
-    document.getElementById('expLastMonth').textContent = '¥' + result.lastMonth.toLocaleString();
-    document.getElementById('expYearTotal').textContent = '¥' + result.yearTotal.toLocaleString();
-  });
-
-  callServer({ action: 'getSalesSummary', userId: userId }).then(function (result) {
-    if (result.status !== 'ok') return;
-    var idMap = { '道の駅しらね': 'shirane', 'い～なとうぶ竜王店': 'ryuo', 'い～なとうぶ昭和店': 'showa' };
-    var today = new Date();
-    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-
-    Object.keys(idMap).forEach(function (storeName) {
-      var s = result.stores[storeName];
-      if (!s) return;
-      var prefix = idMap[storeName];
-      ['today', 'yesterday', 'thisMonth'].forEach(function (period) {
-        var el = document.getElementById('sales-' + prefix + '-' + period);
-        if (el) el.textContent = '¥' + s[period].toLocaleString();
-      });
-      var link = document.getElementById('sales-' + prefix + '-link');
-      if (link) link.href = 'sales-management.html?tab=progress&store=' + encodeURIComponent(storeName) + '&date=' + todayStr;
+  var data = getSanchokuLogSheet_().getDataRange().getValues();
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] !== '') continue; // 金額列(H列)が空のものだけ対象
+    rows.push({
+      rowIndex: i + 1,
+      date: cellDateStr_(data[i][1]),
+      site: data[i][2],
+      productName: data[i][3],
+      variety: data[i][4],
+      qtyLabel: data[i][5],
+      weightKg: data[i][6],
+      orderNo: data[i][9]
     });
-  });
+  }
+  rows.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  return { status: 'ok', rows: rows };
 }
 
-if (typeof liff === 'undefined') {
-  document.getElementById('initStatus').style.display = 'none';
-  hideProcessing();
-  document.getElementById('initStatus').className = 'status show error';
-  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
-} else {
-  showProcessing('読み込み中...しばらくお待ちください');
-  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
-    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
-    return withTimeout(liff.getProfile(), 10000);
-  }).then(function (p) {
-    currentIdToken = liff.getIDToken();
-    return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
-      return { result: result, userId: p.userId };
-    });
-  }).then(function (data) {
-    hideProcessing();
-    document.getElementById('initStatus').style.display = 'none';
-    if (data.result.status === 'ok') {
-      document.getElementById('menu').style.display = 'block';
-      currentUserId = data.userId;
-      loadStats(data.userId);
-      loadHomeVarietyList();
-      loadHomeStockStatus();
-      loadSanchokuSummary();
-      loadCropSummary();
-      loadJaMailList();
-      loadNikkiRecent();
-      loadWeatherForecast();
-      loadDisplaySettings();
-      if (new URLSearchParams(window.location.search).get('openSettings') === '1') {
-        setTimeout(openDisplaySettingsModal, 300);
-      }
-    } else {
-      document.getElementById('blockedMessage').style.display = 'block';
+// 金額未入力の注文に、金額を入力する。あわせて価格マスタ（サイト・品種・単価/kg）に保存し、
+// 同じサイト・品種で他に未入力のものがあれば、まとめて自動反映する。
+function submitSanchokuAmount_(userId, rowIndex, amount) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!rowIndex || !amount) return { status: 'error', message: '金額を入力してください。' };
+
+  var sheet = getSanchokuLogSheet_();
+  var row = sheet.getRange(Number(rowIndex), 1, 1, 10).getValues()[0];
+  var site = row[2], variety = row[4], weightKg = Number(row[6]) || null;
+
+  sheet.getRange(Number(rowIndex), 8).setValue(Number(amount));
+
+  var backfilledCount = 0;
+  if (variety && weightKg) {
+    var unitPrice = Math.round((Number(amount) / weightKg) * 100) / 100;
+    upsertSanchokuUnitPrice_(site, variety, unitPrice);
+
+    // 同じサイト・品種で他に未入力のものがあれば、この単価から自動計算して埋める
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (i + 1 === Number(rowIndex)) continue;
+      if (data[i][2] !== site || data[i][4] !== variety) continue;
+      if (data[i][7] !== '') continue;
+      var w = Number(data[i][6]);
+      if (!w) continue;
+      sheet.getRange(i + 1, 8).setValue(Math.round(unitPrice * w));
+      backfilledCount++;
     }
-  }).catch(function (err) {
-    if (err === 'LOGIN_REDIRECT') return;
-    // トークンが失効・無効になっている場合は、エラー表示だけでなく自動でログインし直す
-    var msg = (err && err.message) ? err.message : String(err);
-    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
-      try { liff.logout(); } catch (e) {}
-      window.location.reload();
+  }
+
+  var msg = '金額を登録しました。';
+  if (backfilledCount > 0) msg += '（同じ品種の未入力分、他' + backfilledCount + '件にも自動反映しました）';
+  return { status: 'ok', message: msg };
+}
+
+// 産直サイトの注文（食べチョク・ポケマル・アウル・BASE）の内容を修正する。
+// 品種・数量表示・金額のうち、空でないものだけ上書きする。
+function updateSanchokuOrder_(userId, rowIndex, variety, qtyLabel, amount) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!rowIndex) return { status: 'error', message: '対象の注文が指定されていません。' };
+
+  var sheet = getSanchokuLogSheet_();
+  if (variety) sheet.getRange(Number(rowIndex), 5).setValue(variety);
+  if (qtyLabel) sheet.getRange(Number(rowIndex), 6).setValue(qtyLabel);
+  if (amount !== '' && amount !== null && amount !== undefined) sheet.getRange(Number(rowIndex), 8).setValue(Number(amount));
+
+  return { status: 'ok', message: '注文内容を修正しました。' };
+}
+
+// ホーム画面用：サイトごと・今月/先月の、品種×数量ごとの件数・重さ合計・金額合計
+function getSanchokuMonthlySummary_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  return getCached_('sanchokuMonthlySummary', 300, function () {
+
+  var now = new Date();
+  var thisYearMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
+  var lastYearMonth = Utilities.formatDate(new Date(now.getFullYear(), now.getMonth() - 1, 1), 'Asia/Tokyo', 'yyyy-MM');
+
+  var data = getSanchokuLogSheet_().getDataRange().getValues();
+  var result = {};
+  SANCHOKU_SITES.forEach(function (site) {
+    result[site] = { thisMonth: {}, lastMonth: {} };
+  });
+
+  for (var i = 1; i < data.length; i++) {
+    var date = cellDateStr_(data[i][1]);
+    var site = data[i][2];
+    if (!result[site]) continue;
+    var ym = date.slice(0, 7);
+    var period = (ym === thisYearMonth) ? 'thisMonth' : (ym === lastYearMonth) ? 'lastMonth' : null;
+    if (!period) continue;
+
+    var variety = data[i][4] || '(不明)';
+    var qtyLabel = data[i][5] || '-';
+    var weightKg = Number(data[i][6]) || 0;
+    var amount = data[i][7];
+    var key = variety + '|' + qtyLabel;
+
+    if (!result[site][period][key]) {
+      result[site][period][key] = { variety: variety, qtyLabel: qtyLabel, count: 0, weightKg: 0, amount: 0, hasUnfilled: false };
+    }
+    var bucket = result[site][period][key];
+    bucket.count += 1;
+    bucket.weightKg += weightKg;
+    if (amount === '') {
+      bucket.hasUnfilled = true;
+    } else {
+      bucket.amount += Number(amount) || 0;
+    }
+  }
+
+  var output = {};
+  SANCHOKU_SITES.forEach(function (site) {
+    output[site] = {};
+    ['thisMonth', 'lastMonth'].forEach(function (period) {
+      var rows = Object.keys(result[site][period]).map(function (key) { return result[site][period][key]; });
+      var totalCount = 0, totalWeight = 0, totalAmount = 0, anyUnfilled = false;
+      rows.forEach(function (r) {
+        totalCount += r.count; totalWeight += r.weightKg; totalAmount += r.amount;
+        if (r.hasUnfilled) anyUnfilled = true;
+      });
+      output[site][period] = { rows: rows, totalCount: totalCount, totalWeight: Math.round(totalWeight * 100) / 100, totalAmount: totalAmount, hasUnfilled: anyUnfilled };
+    });
+  });
+
+  return { status: 'ok', sites: output };
+  });
+}
+
+// 本日の受注（サイトごとの品種別一覧）
+function getTodaySanchokuOrders_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var data = getSanchokuLogSheet_().getDataRange().getValues();
+  var result = {};
+  SANCHOKU_SITES.forEach(function (site) { result[site] = { items: [], totalCount: 0, totalAmount: 0, hasUnfilled: false }; });
+
+  for (var i = 1; i < data.length; i++) {
+    if (cellDateStr_(data[i][1]) !== today) continue;
+    var site = data[i][2];
+    if (!result[site]) continue;
+    var amount = data[i][7];
+    result[site].items.push({
+      rowIndex: i + 1,
+      variety: data[i][4] || '(不明)', qtyLabel: data[i][5] || '-',
+      amount: amount === '' ? null : Number(amount)
+    });
+    result[site].totalCount += 1;
+    if (amount === '') {
+      result[site].hasUnfilled = true;
+    } else {
+      result[site].totalAmount += Number(amount) || 0;
+    }
+  }
+
+  return { status: 'ok', today: today, sites: result };
+}
+
+// 日別推移（指定サイトの、日ごとの件数・金額合計）
+function getSanchokuDailyHistory_(userId, site) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!site) return { status: 'error', message: '対象サイトを指定してください。' };
+
+  var data = getSanchokuLogSheet_().getDataRange().getValues();
+  var byDate = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][2] !== site) continue;
+    var date = cellDateStr_(data[i][1]);
+    if (!byDate[date]) byDate[date] = { count: 0, amount: 0, hasUnfilled: false, items: [] };
+    var amount = data[i][7];
+    byDate[date].count += 1;
+    byDate[date].items.push({ variety: data[i][4] || '(不明)', qtyLabel: data[i][5] || '-', amount: amount === '' ? null : Number(amount) });
+    if (amount === '') {
+      byDate[date].hasUnfilled = true;
+    } else {
+      byDate[date].amount += Number(amount) || 0;
+    }
+  }
+
+  var rows = Object.keys(byDate).sort().reverse().map(function (date) {
+    return { date: date, count: byDate[date].count, amount: byDate[date].amount, hasUnfilled: byDate[date].hasUnfilled, items: byDate[date].items };
+  });
+
+  return { status: 'ok', site: site, rows: rows };
+}
+
+// ==== ⑤防除日誌 ====
+
+// 圃場マスタ・農薬マスタは、スプレッドシート上で直接管理するシート（無ければエラーメッセージを返す）
+function getFieldMasterSheetOrNull_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(SHEET_FIELD_MASTER);
+}
+function getPesticideMasterSheetOrNull_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(SHEET_PESTICIDE_MASTER);
+}
+function getSprayLogSheet_() {
+  return getOrCreateOwnSheet_(SHEET_SPRAY_LOG, ['記録日', '圃場', '品目', '品種', '薬剤', '分類', '散布量', '備考', '記入者', '記入日時']);
+}
+
+// 圃場の一覧（品目・品種候補つき）を返す
+function getFieldList_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var sheet = getFieldMasterSheetOrNull_();
+  if (!sheet) return { status: 'error', message: '「圃場マスタ」シートが見つかりません。スプレッドシートに作成してください。' };
+
+  var data = sheet.getDataRange().getValues();
+  var fields = [];
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    var crops = String(data[i][1] || '').split('・').map(function (s) { return s.trim(); }).filter(Boolean);
+    var varieties = String(data[i][2] || '').split(/[・／]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    fields.push({ name: data[i][0], crops: crops, varieties: varieties });
+  }
+  return { status: 'ok', fields: fields };
+}
+
+// 農薬の一覧（分類・対象品目候補つき）を返す
+function getPesticideList_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var sheet = getPesticideMasterSheetOrNull_();
+  if (!sheet) return { status: 'error', message: '「農薬マスタ」シートが見つかりません。スプレッドシートに作成してください。' };
+
+  var data = sheet.getDataRange().getValues();
+  var pesticides = [];
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][1]) continue; // 薬剤名が無い行はスキップ
+    var cropCandidates = String(data[i][3] || '').split('・').map(function (s) { return s.trim(); }).filter(Boolean);
+    pesticides.push({
+      category: data[i][0], name: data[i][1], capacity: data[i][2],
+      cropCandidates: cropCandidates, dilution: data[i][4], preHarvestDays: data[i][5], note: data[i][6]
+    });
+  }
+  return { status: 'ok', pesticides: pesticides };
+}
+
+// 防除記録を登録する
+function submitSprayRecord_(userId, date, field, crop, variety, note, items) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!date || !field || !crop) return { status: 'error', message: '記録日・圃場・品目を入力してください。' };
+  if (!items || items.length === 0) return { status: 'error', message: '薬剤を1つ以上入力してください。' };
+
+  var sheet = getSprayLogSheet_();
+  var name = getEmployeeName_(userId) || userId;
+  var now = new Date();
+  var rows = items.map(function (it) {
+    return [date, field, crop, variety || '', it.pesticide, it.category || '', it.amount || '', note || '', name, now];
+  });
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 10).setValues(rows);
+
+  var pesticideNames = items.map(function (it) { return it.pesticide; }).join('・');
+  return { status: 'ok', message: field + '（' + crop + '）への「' + pesticideNames + '」散布を記録しました（' + items.length + '剤）。' };
+}
+
+// 記録一覧（品種・圃場でフィルター可能）
+function getSprayRecords_(userId, field, crop) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var data = getSprayLogSheet_().getDataRange().getValues();
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    if (field && data[i][1] !== field) continue;
+    if (crop && data[i][2] !== crop) continue;
+    rows.push({
+      date: cellDateStr_(data[i][0]), field: data[i][1], crop: data[i][2], variety: data[i][3],
+      pesticide: data[i][4], category: data[i][5], amount: data[i][6], note: data[i][7]
+    });
+  }
+  rows.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  return { status: 'ok', rows: rows };
+}
+
+// 使用薬剤まとめ（年間・来年の発注用）：薬剤ごとの使用回数・使用量、対象品目の内訳
+function getPesticideUsageSummary_(userId, year) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  year = year || String(new Date().getFullYear());
+
+  var data = getSprayLogSheet_().getDataRange().getValues();
+  var byPesticide = {};
+  for (var i = 1; i < data.length; i++) {
+    var dateStr = cellDateStr_(data[i][0]);
+    if (dateStr.indexOf(year) !== 0) continue;
+    var pesticide = data[i][4];
+    if (!byPesticide[pesticide]) {
+      byPesticide[pesticide] = { name: pesticide, category: data[i][5], count: 0, totalAmount: 0, cropBreakdown: {} };
+    }
+    var b = byPesticide[pesticide];
+    b.count += 1;
+    b.totalAmount += Number(data[i][6]) || 0;
+    var crop = data[i][2] || '(不明)';
+    b.cropBreakdown[crop] = (b.cropBreakdown[crop] || 0) + 1;
+  }
+
+  var rows = Object.keys(byPesticide).map(function (key) {
+    var b = byPesticide[key];
+    var cropSummary = Object.keys(b.cropBreakdown).map(function (crop) {
+      return crop + '：' + b.cropBreakdown[crop] + '回';
+    }).join('　');
+    return { name: b.name, category: b.category, count: b.count, totalAmount: b.totalAmount, cropSummary: cropSummary };
+  });
+  rows.sort(function (a, b) { return b.count - a.count; });
+
+  return { status: 'ok', year: year, rows: rows };
+}
+
+// 産直注文ログに紛れ込んだ重複行（同じサイト・同じ注文番号）を片付ける。
+// Apps Scriptエディタでこの関数を選んで一度だけ実行してください。
+function cleanupDuplicateSanchokuOrders() {
+  var sheet = getSanchokuLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var seen = {};
+  var rowsToDelete = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var site = data[i][2];
+    var orderNo = data[i][9];
+    if (!orderNo) continue; // 注文番号が無い行（他機能用の古いデータ等）は対象外
+    var key = site + '|' + orderNo;
+    if (seen[key]) {
+      rowsToDelete.push(i + 1); // シート上の実際の行番号（1始まり＋ヘッダー分）
+    } else {
+      seen[key] = true;
+    }
+  }
+
+  // 下の行から削除しないと、行番号がずれてしまうため逆順で処理する
+  rowsToDelete.sort(function (a, b) { return b - a; });
+  rowsToDelete.forEach(function (rowNum) { sheet.deleteRow(rowNum); });
+
+  Logger.log('重複行を' + rowsToDelete.length + '件削除しました。');
+  return rowsToDelete.length;
+}
+
+// ==== ⑥品目別年間売上集計 ====
+
+// 品種マスタから「品種名→品目」の対応表を作る（長い品種名を優先してマッチさせる）
+function buildVarietyCropMap_() {
+  var data = getVarietyMasterSheet_().getDataRange().getValues();
+  var list = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1]) list.push({ variety: String(data[i][1]).trim(), crop: data[i][0] });
+  }
+  list.sort(function (a, b) { return b.variety.length - a.variety.length; });
+  return list;
+}
+
+// ダッシュ記号のゆれ（－/ｰ/−/‐ など）を統一する（「ピオ－ネ」と「ピオーネ」等のズレ対策）
+function normalizeDash_(text) {
+  return String(text).replace(/[－ｰ−‐]/g, 'ー');
+}
+
+// 商品名から品目を判定する（品種マスタとの部分一致）。見つからなければnullを返す
+function classifyCropByName_(itemName, varietyCropList) {
+  var normalized = normalizeDash_(itemName);
+  for (var i = 0; i < varietyCropList.length; i++) {
+    if (normalized.indexOf(normalizeDash_(varietyCropList[i].variety)) !== -1) {
+      return varietyCropList[i].crop;
+    }
+  }
+  return null;
+}
+
+// 品目に加えて、実際にマッチした品種名も返す（無ければvarietyはnull）
+function classifyCropAndVarietyByName_(itemName, varietyCropList) {
+  var normalized = normalizeDash_(itemName);
+  for (var i = 0; i < varietyCropList.length; i++) {
+    if (normalized.indexOf(normalizeDash_(varietyCropList[i].variety)) !== -1) {
+      return { crop: varietyCropList[i].crop, variety: varietyCropList[i].variety };
+    }
+  }
+  return { crop: null, variety: null };
+}
+
+// 品目別・年間売上集計（直売所＋産直サイトを合算し、指定した年でリアルタイムに集計する）
+// 直売所の売上ログ全体を、店舗×対象日ごとの最新レポートだけに絞り、
+// 品目を判定（品種マスタとの一致→同じレポート内の他の品目から推測）した上でフラットな配列にする。
+// 日別推移の品目別表示など、複数の場所で使い回すための共通処理。
+function classifyAllSalesRecords_() {
+  var varietyCropList = buildVarietyCropMap_();
+  var salesData = getSalesLogSheet_().getDataRange().getValues();
+
+  var latestByStoreDate = {};
+  for (var i = 1; i < salesData.length; i++) {
+    var dStr = cellDateStr_(salesData[i][1]);
+    var store = salesData[i][2];
+    var msgId = salesData[i][6];
+    var receivedAt = salesData[i][0];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    var key = store + '|' + dStr;
+    if (!latestByStoreDate[key] || t > latestByStoreDate[key].time) {
+      latestByStoreDate[key] = { msgId: msgId, time: t };
+    }
+  }
+
+  var groupedByMsg = {};
+  for (var j = 1; j < salesData.length; j++) {
+    var dStr2 = cellDateStr_(salesData[j][1]);
+    var store2 = salesData[j][2];
+    var msgId2 = salesData[j][6];
+    var key2 = store2 + '|' + dStr2;
+    if (!latestByStoreDate[key2] || latestByStoreDate[key2].msgId !== msgId2) continue;
+
+    var itemName = String(salesData[j][3]);
+    var amount = Number(salesData[j][5]) || 0;
+    var crop = classifyCropByName_(itemName, varietyCropList);
+
+    if (!groupedByMsg[msgId2]) groupedByMsg[msgId2] = [];
+    groupedByMsg[msgId2].push({ item: itemName, amount: amount, crop: crop, date: dStr2, store: store2 });
+  }
+
+  var results = [];
+  Object.keys(groupedByMsg).forEach(function (mid) {
+    var items = groupedByMsg[mid];
+    var cropCounts = {};
+    items.forEach(function (it) { if (it.crop) cropCounts[it.crop] = (cropCounts[it.crop] || 0) + 1; });
+    var inferredCrop = null, maxCount = 0;
+    Object.keys(cropCounts).forEach(function (c) { if (cropCounts[c] > maxCount) { maxCount = cropCounts[c]; inferredCrop = c; } });
+
+    items.forEach(function (it) {
+      var finalCrop = it.crop || inferredCrop || '未分類';
+      results.push({ date: it.date, store: it.store, item: it.item, amount: it.amount, crop: finalCrop });
+    });
+  });
+
+  return results;
+}
+
+// 指定した品目の、日ごとの売上推移（全店舗合算）を返す
+function getDailyCropHistory_(userId, crop) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!crop) return { status: 'error', message: '品目を指定してください。' };
+
+  var records = classifyAllSalesRecords_().filter(function (r) { return r.crop === crop; });
+  var byDate = {};
+  records.forEach(function (r) {
+    if (!byDate[r.date]) byDate[r.date] = { amount: 0, items: [] };
+    byDate[r.date].amount += r.amount;
+    byDate[r.date].items.push({ store: r.store, item: r.item, amount: r.amount });
+  });
+
+  var rows = Object.keys(byDate).map(function (d) {
+    return { date: d, amount: byDate[d].amount, items: byDate[d].items };
+  });
+  rows.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+
+  return { status: 'ok', crop: crop, rows: rows };
+}
+
+function getYearlyCropSummary_(userId, year) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  year = String(year || new Date().getFullYear());
+  return getCached_('yearlyCropSummary_' + year, 300, function () {
+
+  var varietyCropList = buildVarietyCropMap_();
+  var cropTotals = {};
+  var cropDetails = {}; // crop -> [{date, store, item, amount}]
+  var varietyTotals = {}; // 「品目|品種」 -> 金額
+  var varietyDetails = {}; // 「品目|品種」 -> [{date, store, item, amount}]
+  var varietyWeights = {}; // 「品目|品種」 -> 数量(kg)合計
+  var varietyCounts = {}; // 「品目|品種」 -> 件数
+  var varietyCountsBySource = {}; // 「品目|品種」 -> { サイト/店舗名: 件数 }
+
+  function addDetail(crop, variety, date, store, item, amount, weightKg) {
+    if (!cropDetails[crop]) cropDetails[crop] = [];
+    cropDetails[crop].push({ date: date, store: store, item: item, amount: amount });
+
+    var vKey = crop + '|' + variety;
+    varietyTotals[vKey] = (varietyTotals[vKey] || 0) + amount;
+    if (!varietyDetails[vKey]) varietyDetails[vKey] = [];
+    varietyDetails[vKey].push({ date: date, store: store, item: item, amount: amount });
+
+    // 道の駅しらねは重さの情報が元データに無いため、数量(kg)・件数・サイト別内訳の集計からは除外する（金額の集計には含める）
+    if (store === '道の駅しらね') return;
+
+    varietyWeights[vKey] = (varietyWeights[vKey] || 0) + (weightKg || 0);
+    varietyCounts[vKey] = (varietyCounts[vKey] || 0) + 1;
+    if (!varietyCountsBySource[vKey]) varietyCountsBySource[vKey] = {};
+    varietyCountsBySource[vKey][store] = (varietyCountsBySource[vKey][store] || 0) + 1;
+  }
+
+  // ---- ①直売所（売上ログ）：店舗・対象日ごとに最新のレポートだけを対象にする ----
+  var salesData = getSalesLogSheet_().getDataRange().getValues();
+  var latestByStoreDate = {};
+  for (var i = 1; i < salesData.length; i++) {
+    var dStr = cellDateStr_(salesData[i][1]);
+    if (dStr.indexOf(year) !== 0) continue;
+    var store = salesData[i][2];
+    var msgId = salesData[i][6];
+    var receivedAt = salesData[i][0];
+    var t = (receivedAt instanceof Date) ? receivedAt.getTime() : 0;
+    var key = store + '|' + dStr;
+    if (!latestByStoreDate[key] || t > latestByStoreDate[key].time) {
+      latestByStoreDate[key] = { msgId: msgId, time: t };
+    }
+  }
+
+  // 品目・品種が商品名だけで判定できないものは、「同じレポート内の他の品目」から一番多い品目を採用する
+  // （品種は特定できないため、その場合は商品名そのものを品種名として扱う）
+  var groupedByMsg = {};
+  for (var j = 1; j < salesData.length; j++) {
+    var dStr2 = cellDateStr_(salesData[j][1]);
+    if (dStr2.indexOf(year) !== 0) continue;
+    var store2 = salesData[j][2];
+    var msgId2 = salesData[j][6];
+    var key2 = store2 + '|' + dStr2;
+    if (!latestByStoreDate[key2] || latestByStoreDate[key2].msgId !== msgId2) continue;
+
+    var itemName = String(salesData[j][3]);
+    var amount = Number(salesData[j][5]) || 0;
+    var classified = classifyCropAndVarietyByName_(itemName, varietyCropList);
+
+    if (!groupedByMsg[msgId2]) groupedByMsg[msgId2] = [];
+    groupedByMsg[msgId2].push({ item: itemName, amount: amount, crop: classified.crop, variety: classified.variety, date: dStr2, store: store2 });
+  }
+
+  Object.keys(groupedByMsg).forEach(function (mid) {
+    var items = groupedByMsg[mid];
+    var cropCounts = {};
+    items.forEach(function (it) { if (it.crop) cropCounts[it.crop] = (cropCounts[it.crop] || 0) + 1; });
+    var inferredCrop = null, maxCount = 0;
+    Object.keys(cropCounts).forEach(function (c) { if (cropCounts[c] > maxCount) { maxCount = cropCounts[c]; inferredCrop = c; } });
+
+    items.forEach(function (it) {
+      var finalCrop = it.crop || inferredCrop || '未分類';
+      var finalVariety = it.variety || it.item; // 品種が特定できない場合は商品名をそのまま使う
+      cropTotals[finalCrop] = (cropTotals[finalCrop] || 0) + it.amount;
+      var estimatedWeight = extractWeightKg_(it.item) || 0;
+      addDetail(finalCrop, finalVariety, it.date, it.store, it.item, it.amount, estimatedWeight);
+    });
+  });
+
+  // ---- ②産直サイト（産直注文ログ）----
+  var sanchokuData = getSanchokuLogSheet_().getDataRange().getValues();
+  for (var k = 1; k < sanchokuData.length; k++) {
+    var dStr3 = cellDateStr_(sanchokuData[k][1]);
+    if (dStr3.indexOf(year) !== 0) continue;
+    var variety3 = String(sanchokuData[k][4] || '').trim();
+    var amount3 = Number(sanchokuData[k][7]) || 0;
+    if (!amount3) continue;
+
+    var crop3 = '未分類';
+    for (var v = 0; v < varietyCropList.length; v++) {
+      if (varietyCropList[v].variety === variety3) { crop3 = varietyCropList[v].crop; break; }
+    }
+    cropTotals[crop3] = (cropTotals[crop3] || 0) + amount3;
+    var weight3 = Number(sanchokuData[k][6]) || 0;
+    addDetail(crop3, variety3 || sanchokuData[k][3], dStr3, sanchokuData[k][2], variety3 || sanchokuData[k][3], amount3, weight3);
+  }
+
+  var rows = Object.keys(cropTotals)
+    .filter(function (c) { return c !== '未分類'; })
+    .map(function (crop) { return { crop: crop, amount: cropTotals[crop] }; });
+  rows.sort(function (a, b) { return b.amount - a.amount; });
+
+  Object.keys(cropDetails).forEach(function (c) {
+    cropDetails[c].sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  });
+
+  var varietyRows = Object.keys(varietyTotals)
+    .map(function (vKey) {
+      var parts = vKey.split('|');
+      return {
+        crop: parts[0], variety: parts[1], amount: varietyTotals[vKey],
+        weightKg: Math.round((varietyWeights[vKey] || 0) * 100) / 100,
+        count: varietyCounts[vKey] || 0,
+        countBySource: varietyCountsBySource[vKey] || {}
+      };
+    })
+    .filter(function (r) { return r.crop !== '未分類'; });
+  varietyRows.sort(function (a, b) { return b.amount - a.amount; });
+
+  var unclassifiedAmount = cropTotals['未分類'] || 0;
+  var grandTotal = rows.reduce(function (sum, r) { return sum + r.amount; }, 0) + unclassifiedAmount;
+
+  return {
+    status: 'ok', year: year, rows: rows, unclassifiedAmount: unclassifiedAmount, grandTotal: grandTotal,
+    unclassifiedDetails: cropDetails['未分類'] || [], cropDetails: cropDetails,
+    varietyRows: varietyRows, varietyDetails: varietyDetails
+  };
+  });
+}
+
+// 未分類の商品名・品種名に、手動で品目を割り当てる（品種マスタに無ければ新規登録、あれば品目を更新する）
+function assignCropToItem_(userId, itemName, crop) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!itemName || !crop) return { status: 'error', message: '品目名・品目を指定してください。' };
+
+  var sheet = getVarietyMasterSheet_();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() === itemName.trim()) {
+      sheet.getRange(i + 1, 1).setValue(crop);
+      return { status: 'ok', message: '「' + itemName + '」を「' + crop + '」に分類しました。' };
+    }
+  }
+  sheet.appendRow([crop, itemName.trim()]);
+  return { status: 'ok', message: '「' + itemName + '」を新しく「' + crop + '」として品種マスタに登録しました。' };
+}
+
+// ==== ⑦JA指導メール ====
+
+var JA_MAIL_SENDER = 'jamail@ja-minami-alps-city.or.jp';
+
+// JAからの指導メール一覧を、新しい順にlimit件だけ返す（本文は含まない・軽量）
+// 緊急時の一時的な仕組み：他アドレスで受信したJAメールの内容を、直接スプレッドシートに手入力してもらうためのシート
+function getManualJaMailSheet_() {
+  return getOrCreateOwnSheet_('JA指導メール手動入力', ['受信日時', '件名', '本文']);
+}
+
+// 手動入力メールを1件追加する
+function submitManualJaMail_(userId, date, subject, bodyText) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この操作は管理者のみ利用できます。' };
+  if (!date || !subject) return { status: 'error', message: '受信日時・件名を入力してください。' };
+
+  var sheet = getManualJaMailSheet_();
+  sheet.appendRow([date, subject, bodyText || '']);
+  return { status: 'ok', message: '手動入力メールを登録しました。' };
+}
+
+// JAメールの件名から品目を判定した結果をキャッシュしておくシート（毎回AIに聞き直さないようにするため）
+function getJaMailCropCacheSheet_() {
+  return getOrCreateOwnSheet_('JAメール品目判定', ['メールID', '品目']);
+}
+
+// 件名から、話題になっている品目をAIで1つだけ判定する（判定できなければ空文字）
+function classifyTextCropWithGemini_(text) {
+  var apiKey = getProp_('GEMINI_API_KEY');
+  if (!apiKey) return '';
+  try {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+    var prompt = '次の件名で話題になっている果物の品目を判定してください。「' + NIKKI_CROPS.join('・') + '」のいずれかに該当すれば、その名前だけを出力してください。該当しない・分からない場合は「不明」とだけ出力してください。他の文字・記号は一切不要です。\n\n件名：' + text;
+    var payload = { contents: [{ parts: [{ text: prompt }] }] };
+    var response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) return '';
+    var data = JSON.parse(response.getContentText());
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text;
+    if (!raw) return '';
+    var result = raw.trim();
+    return NIKKI_CROPS.indexOf(result) !== -1 ? result : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// メールIDに対する品目判定を、キャッシュシートを見ながら取得する（無ければ判定して保存）
+// キャッシュシートの中身を、一度だけ読み込んでMap形式で返す（メールごとに読み直さないようにするため）
+function loadJaMailCropCacheMap_() {
+  var sheet = getJaMailCropCacheSheet_();
+  var data = sheet.getDataRange().getValues();
+  var map = {};
+  for (var i = 1; i < data.length; i++) {
+    map[data[i][0]] = data[i][1];
+  }
+  return map;
+}
+
+// 品目が未判定のメールを、まとめてAIで判定してキャッシュに保存しておく（裏側の自動実行専用。ページ表示では呼ばない）
+function precacheJaMailCrops() {
+  var threads = GmailApp.search('from:' + JA_MAIL_SENDER + ' OR "' + JA_MAIL_SENDER + '"', 0, 50);
+  var messages = [];
+  threads.forEach(function (thread) {
+    thread.getMessages().forEach(function (m) {
+      messages.push({ id: 'gmail:' + m.getId(), subject: m.getSubject() });
+    });
+  });
+
+  var cacheMap = loadJaMailCropCacheMap_();
+  var newRows = [];
+  messages.forEach(function (m) {
+    if (cacheMap.hasOwnProperty(m.id)) return;
+    var crop = classifyTextCropWithGemini_(m.subject);
+    newRows.push([m.id, crop]);
+  });
+
+  if (newRows.length > 0) {
+    var sheet = getJaMailCropCacheSheet_();
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 2).setValues(newRows);
+  }
+  Logger.log('JAメールの品目判定：新しく' + newRows.length + '件をキャッシュしました。');
+}
+
+function getJaMailList_(userId, limit) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  limit = Number(limit) || 10;
+  return getCached_('jaMailList_' + limit, 420, function () {
+
+  var threads = GmailApp.search('from:' + JA_MAIL_SENDER + ' OR "' + JA_MAIL_SENDER + '"', 0, 50);
+  var messages = [];
+  threads.forEach(function (thread) {
+    thread.getMessages().forEach(function (m) {
+      messages.push({ id: 'gmail:' + m.getId(), date: m.getDate(), subject: m.getSubject() });
+    });
+  });
+
+  // 緊急対応：手動でスプレッドシートに転記されたメールも合わせて表示する
+  var manualData = getManualJaMailSheet_().getDataRange().getValues();
+  for (var i = 1; i < manualData.length; i++) {
+    if (!manualData[i][1]) continue;
+    var manualDate = manualData[i][0] instanceof Date ? manualData[i][0] : new Date(manualData[i][0]);
+    messages.push({ id: 'manual:' + (i + 1), date: manualDate, subject: manualData[i][1] + '.' });
+  }
+
+  messages.sort(function (a, b) { return b.date - a.date; });
+
+  // 品目は、キャッシュに既にあるものだけ表示する（ここではAIを呼ばない。判定はprecacheJaMailCrops側で先に済ませておく）
+  var cacheMap = loadJaMailCropCacheMap_();
+  var mails = messages.slice(0, limit).map(function (m) {
+    return {
+      id: m.id, date: Utilities.formatDate(m.date, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'), subject: m.subject,
+      crop: cacheMap[m.id] || ''
+    };
+  });
+  return { status: 'ok', mails: mails };
+  });
+}
+
+// 指定したメールIDの本文を取得する（「gmail:」はGmailから、「manual:」は手動入力シートから取得する）
+function getJaMailBody_(userId, messageId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!messageId) return { status: 'error', message: 'メールが指定されていません。' };
+
+  if (messageId.indexOf('manual:') === 0) {
+    var rowNum = Number(messageId.replace('manual:', ''));
+    var sheet = getManualJaMailSheet_();
+    var row = sheet.getRange(rowNum, 1, 1, 3).getValues()[0];
+    var d = row[0] instanceof Date ? row[0] : new Date(row[0]);
+    return {
+      status: 'ok',
+      subject: row[1] + '.',
+      date: Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
+      body: row[2] || '(本文が入力されていません)'
+    };
+  }
+
+  try {
+    var message = GmailApp.getMessageById(messageId.replace('gmail:', ''));
+    return {
+      status: 'ok',
+      subject: message.getSubject(),
+      date: Utilities.formatDate(message.getDate(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
+      body: message.getPlainBody()
+    };
+  } catch (e) {
+    return { status: 'error', message: 'メールの取得に失敗しました：' + e.message };
+  }
+}
+
+// JA指導メールの検索状況を確認するためのテスト用関数。
+// Apps Scriptエディタでこの関数を選んで実行してください。
+function testJaMailSearch() {
+  var query = 'from:' + JA_MAIL_SENDER + ' OR "' + JA_MAIL_SENDER + '"';
+  var threads = GmailApp.search(query, 0, 50);
+  Logger.log('検索クエリ：' + query);
+  Logger.log('ヒットしたスレッド数：' + threads.length);
+
+  var totalMessages = 0;
+  threads.forEach(function (thread, i) {
+    var messages = thread.getMessages();
+    totalMessages += messages.length;
+    Logger.log('スレッド' + (i + 1) + '：件名「' + thread.getFirstMessageSubject() + '」、中のメッセージ数：' + messages.length);
+  });
+  Logger.log('合計メッセージ数：' + totalMessages);
+}
+
+// 既存の産直注文ログから、金額と重さが分かっている注文をもとに、価格マスタ（サイト・品種・単価/kg）を一括で作り直す。
+// Apps Scriptエディタでこの関数を選んで一度だけ実行してください。
+function backfillSanchokuUnitPrices() {
+  var data = getSanchokuLogSheet_().getDataRange().getValues();
+  var count = 0;
+  for (var i = 1; i < data.length; i++) {
+    var site = data[i][2];
+    var variety = data[i][4];
+    var weightKg = Number(data[i][6]);
+    var amount = data[i][7];
+    if (!site || !variety || !weightKg || amount === '' || amount === null || amount === undefined) continue;
+
+    var unitPrice = Math.round((Number(amount) / weightKg) * 100) / 100;
+    upsertSanchokuUnitPrice_(site, variety, unitPrice);
+    count++;
+  }
+  Logger.log('価格マスタを更新しました（対象' + count + '件）。');
+  return count;
+}
+
+// 既存の産直注文ログの中で、金額が未入力のものに、価格マスタ（自サイト→他サイトの順）を使って一括で金額を埋める。
+// Apps Scriptエディタでこの関数を選んで実行してください。
+function backfillUnfilledSanchokuAmounts() {
+  var sheet = getSanchokuLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var filledCount = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var site = data[i][2];
+    var variety = data[i][4];
+    var weightKg = Number(data[i][6]);
+    var amount = data[i][7];
+    if (amount !== '') continue; // 既に金額が入っているものはスキップ
+    if (!site || !variety || !weightKg) continue;
+
+    var unitPrice = findSanchokuUnitPrice_(site, variety);
+    if (!unitPrice) unitPrice = findSanchokuUnitPriceOtherSites_(variety, site);
+    if (!unitPrice) continue;
+
+    var newAmount = Math.round(unitPrice * weightKg);
+    sheet.getRange(i + 1, 8).setValue(newAmount);
+    filledCount++;
+  }
+
+  Logger.log('既存データへの金額反映：' + filledCount + '件を更新しました。');
+  return filledCount;
+}
+
+// ==== ⑧AIメモ機能 ====
+
+function getMemoSheet_() {
+  var headers = ['記入日時', '記入者userId', '記入者名', '公開範囲', '元のメモ', 'タイトル', '要約', '分類', '写真リンク'];
+  var sheet = getOrCreateOwnSheet_('メモ記録', headers);
+  // 以前のバージョン（列数が少ない）のまま残っている場合に備え、見出し行を必ず最新の形に合わせ直す
+  var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  var matches = headers.every(function (h, i) { return currentHeaders[i] === h; });
+  if (!matches) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  return sheet;
+}
+
+var MEMO_CATEGORIES = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿', '防除', '収穫', '出荷', 'その他'];
+
+// Geminiで、メモの内容から「タイトル・要約・分類」を1回のAPI呼び出しでまとめて作る。
+// APIキー未設定・エラー時は、aiWorking:false を返し、呼び出し元でフォールバック処理する
+function analyzeMemoWithGemini_(text, photoBase64, photoMimeType) {
+  var apiKey = getProp_('GEMINI_API_KEY');
+  if (!apiKey) return { aiWorking: false, reason: 'APIキーが設定されていません' };
+
+  try {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+    var prompt = '次の農作業メモ（写真が添付されている場合は、その写真の内容も判断材料にしてください）を分析し、' +
+      '以下のJSON形式のみで出力してください。前置きや説明、コードブロックの記号は一切不要です。\n' +
+      '{"title":"10文字程度の短い見出し","summary":"1〜2文の要点整理","category":"分類（' + MEMO_CATEGORIES.join('・') + 'のいずれか1つ）"}\n\n' +
+      'メモ：' + (text || '（本文なし。写真の内容から判断してください）');
+
+    var parts = [{ text: prompt }];
+    if (photoBase64) {
+      parts.push({ inline_data: { mime_type: photoMimeType || 'image/jpeg', data: photoBase64 } });
+    }
+
+    var payload = { contents: [{ parts: parts }] };
+    var response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    var responseCode = response.getResponseCode();
+    var data = JSON.parse(response.getContentText());
+
+    if (responseCode !== 200) {
+      var errMsg = (data.error && data.error.message) ? data.error.message : ('HTTPステータス' + responseCode);
+      return { aiWorking: false, reason: errMsg };
+    }
+
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text;
+    if (!raw) return { aiWorking: false, reason: 'AIから応答がありませんでした' };
+
+    var cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    var parsed = JSON.parse(cleaned);
+    var category = MEMO_CATEGORIES.indexOf(parsed.category) !== -1 ? parsed.category : 'その他';
+
+    return {
+      aiWorking: true,
+      title: parsed.title || (text ? text.slice(0, 15) : '写真のメモ'),
+      summary: parsed.summary || text || '（写真のみの投稿）',
+      category: category
+    };
+  } catch (e) {
+    return { aiWorking: false, reason: e.message };
+  }
+}
+
+// 画像をGoogleドライブに保存し、<img>タグでそのまま表示できる直リンクを返す
+function saveMemoPhotoToDrive_(photoBase64, photoMimeType) {
+  var folderId = getProp_('MEMO_PHOTO_FOLDER_ID');
+  var folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+  var blob = Utilities.newBlob(Utilities.base64Decode(photoBase64), photoMimeType || 'image/jpeg', 'memo_' + new Date().getTime() + '.jpg');
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // file.getUrl()はプレビューページのURLで<img>には使えないため、直接画像を返すURL形式に変換する
+  return 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w1000';
+}
+
+// メモを1件保存する（写真があればGoogleドライブに保存し、リンクも記録する）
+function submitMemo_(userId, text, visibility, photoBase64, photoMimeType) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (!text && !photoBase64) return { status: 'error', message: 'メモの内容か、写真のどちらかを入力してください。' };
+  if (visibility !== '個人' && visibility !== '共有') visibility = '個人';
+
+  var photoUrl = '';
+  var photoError = '';
+  if (photoBase64) {
+    try {
+      photoUrl = saveMemoPhotoToDrive_(photoBase64, photoMimeType);
+    } catch (e) {
+      photoError = e.message;
+    }
+  }
+
+  var analysis = analyzeMemoWithGemini_(text, photoBase64, photoMimeType);
+  var title = analysis.aiWorking ? analysis.title : (text ? text.slice(0, 15) : '写真のメモ');
+  var summary = analysis.aiWorking ? analysis.summary : (text || '（写真のみの投稿）');
+  var category = analysis.aiWorking ? analysis.category : 'その他';
+
+  var name = getEmployeeName_(userId) || userId;
+  var sheet = getMemoSheet_();
+  sheet.appendRow([new Date(), userId, name, visibility, text || '', title, summary, category, photoUrl]);
+
+  var msg = 'メモを保存しました。';
+  if (!analysis.aiWorking) msg += '\n（AIでの自動整理は今回使えませんでした：' + String(analysis.reason).slice(0, 150) + '）';
+  if (photoError) msg += '\n（写真の保存に失敗しました：' + String(photoError).slice(0, 150) + '）';
+
+  return { status: 'ok', message: msg, aiWorking: analysis.aiWorking };
+}
+
+// 既存のメモを編集する（本人のメモのみ編集可能）
+function updateMemo_(userId, rowIndex, text, visibility) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (!rowIndex || !text) return { status: 'error', message: 'メモの内容を入力してください。' };
+
+  var sheet = getMemoSheet_();
+  var row = sheet.getRange(Number(rowIndex), 1, 1, 9).getValues()[0];
+  if (row[1] !== userId) return { status: 'error', message: '自分のメモのみ編集できます。' };
+
+  if (visibility !== '個人' && visibility !== '共有') visibility = row[3];
+
+  var analysis = analyzeMemoWithGemini_(text);
+  var title = analysis.aiWorking ? analysis.title : text.slice(0, 15);
+  var summary = analysis.aiWorking ? analysis.summary : text;
+  var category = analysis.aiWorking ? analysis.category : row[7];
+
+  sheet.getRange(Number(rowIndex), 4).setValue(visibility);
+  sheet.getRange(Number(rowIndex), 5).setValue(text);
+  sheet.getRange(Number(rowIndex), 6).setValue(title);
+  sheet.getRange(Number(rowIndex), 7).setValue(summary);
+  sheet.getRange(Number(rowIndex), 8).setValue(category);
+
+  var msg = 'メモを更新しました。';
+  if (!analysis.aiWorking) msg += '\n（AIでの自動整理は今回使えませんでした：' + analysis.reason + '）';
+  return { status: 'ok', message: msg, aiWorking: analysis.aiWorking };
+}
+
+// メモを削除する（本人のメモのみ削除可能）
+function deleteMemo_(userId, rowIndex) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (!rowIndex) return { status: 'error', message: '対象のメモが指定されていません。' };
+
+  var sheet = getMemoSheet_();
+  var row = sheet.getRange(Number(rowIndex), 1, 1, 9).getValues()[0];
+  if (row[1] !== userId) return { status: 'error', message: '自分のメモのみ削除できます。' };
+
+  sheet.deleteRow(Number(rowIndex));
+  return { status: 'ok', message: 'メモを削除しました。' };
+}
+
+// メモ一覧を返す（自分の個人メモ＋全員の共有メモ、新しい順）
+function getMemoList_(userId, limit) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  limit = Number(limit) || 50;
+
+  var data = getMemoSheet_().getDataRange().getValues();
+  var memos = [];
+  for (var i = data.length - 1; i >= 1; i--) {
+    var visibility = data[i][3];
+    var owner = data[i][1];
+    if (visibility === '個人' && owner !== userId) continue;
+    var rawDate = data[i][0];
+    var dateObj = rawDate instanceof Date ? rawDate : new Date(rawDate);
+    memos.push({
+      rowIndex: i + 1,
+      date: Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
+      authorName: data[i][2], visibility: visibility, text: data[i][4],
+      title: data[i][5], summary: data[i][6], category: data[i][7], photoUrl: data[i][8],
+      isOwn: owner === userId
+    });
+    if (memos.length >= limit) break;
+  }
+  return { status: 'ok', memos: memos };
+}
+
+// Gemini APIキーが正しく機能しているか、その場で確認するためのテスト関数
+function testMemoAiStatus_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var result = analyzeMemoWithGemini_('テスト：東圃場でハダニの発生を確認したので、明日モベントフロアブルを散布する予定。');
+  if (result.aiWorking) {
+    return { status: 'ok', message: 'APIは正常に動作しています。\nタイトル例：' + result.title + '\n分類例：' + result.category };
+  }
+  var shortReason = String(result.reason).slice(0, 150);
+  return { status: 'error', message: 'APIが正常に動作していません：\n' + shortReason };
+}
+
+// Googleドライブへのアクセス権限を確認・許可するためのテスト用関数。
+// Apps Scriptエディタでこの関数を選んで実行ボタン(▷)を押してください。
+function testDrivePermission() {
+  var folder = DriveApp.getRootFolder();
+  var file = folder.createFile('memo_permission_test.txt', 'テストファイルです。削除して大丈夫です。');
+  Logger.log('ファイル作成に成功しました：' + file.getUrl());
+}
+
+// ==== ⑨農園日誌（防除・生育観察・メモの統合） ====
+
+var NIKKI_TYPES = ['防除', '生育記録', 'メモ'];
+var NIKKI_CROPS = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'];
+
+function getNikkiSheet_() {
+  var headers = ['記入日時', '記入者userId', '記入者名', '公開範囲', '種類', '圃場', '品目', '品種', '薬剤', '散布量', '本文', 'タイトル', '要約', '写真リンク'];
+  var sheet = getOrCreateOwnSheet_('農園日誌', headers);
+  var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  var matches = headers.every(function (h, i) { return currentHeaders[i] === h; });
+  if (!matches) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  return sheet;
+}
+
+// 種類ごとに、AIへ渡すプロンプトの主旨を変える
+function analyzeNikkiWithGemini_(type, text, photoBase64, photoMimeType, context) {
+  var apiKey = getProp_('GEMINI_API_KEY');
+  if (!apiKey) return { aiWorking: false, reason: 'APIキーが設定されていません' };
+
+  try {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+    var cropOptions = NIKKI_CROPS.join('・') + '・不明';
+    var instruction;
+    if (type === '生育記録') {
+      instruction = '次の生育観察の記録（写真があれば内容も判断材料にしてください）を分析し、以下のJSON形式のみで出力してください。前置き等は不要です。\n' +
+        '{"title":"10文字程度の短い見出し（生育状況が分かるもの）","summary":"1〜2文の要点整理","crop":"写真や文章から判断できる品目（' + cropOptions + 'のいずれか1つ。判断できなければ「不明」）"}';
+    } else if (type === '防除') {
+      instruction = '次の防除（農薬散布）の記録を分析し、以下のJSON形式のみで出力してください。前置き等は不要です。\n' +
+        '{"title":"10文字程度の短い見出し（品目・作業内容が分かるもの）","summary":"1〜2文の要点整理","crop":"写真や文章から判断できる品目（' + cropOptions + 'のいずれか1つ。判断できなければ「不明」）"}';
+    } else {
+      instruction = '次の農作業メモ（写真があれば内容も判断材料にしてください）を分析し、以下のJSON形式のみで出力してください。前置き等は不要です。\n' +
+        '{"title":"10文字程度の短い見出し","summary":"1〜2文の要点整理","crop":"写真や文章から判断できる品目（' + cropOptions + 'のいずれか1つ。判断できなければ「不明」）"}';
+    }
+
+    var prompt = instruction + '\n\n記録内容：' + (text || '（本文なし。写真の内容から判断してください）') + (context ? '\n参考情報：' + context : '');
+    var parts = [{ text: prompt }];
+    if (photoBase64) parts.push({ inline_data: { mime_type: photoMimeType || 'image/jpeg', data: photoBase64 } });
+
+    var payload = { contents: [{ parts: parts }] };
+    var response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    var responseCode = response.getResponseCode();
+    var data = JSON.parse(response.getContentText());
+    if (responseCode !== 200) {
+      var errMsg = (data.error && data.error.message) ? data.error.message : ('HTTPステータス' + responseCode);
+      return { aiWorking: false, reason: errMsg };
+    }
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text;
+    if (!raw) return { aiWorking: false, reason: 'AIから応答がありませんでした' };
+    var cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    var parsed = JSON.parse(cleaned);
+    var detectedCrop = NIKKI_CROPS.indexOf(parsed.crop) !== -1 ? parsed.crop : '';
+    return {
+      aiWorking: true, title: parsed.title || (text ? text.slice(0, 15) : type),
+      summary: parsed.summary || text || '', crop: detectedCrop
+    };
+  } catch (e) {
+    return { aiWorking: false, reason: e.message };
+  }
+}
+
+// 農園日誌を1件保存する（種類：防除／生育記録／メモ）
+function submitNikki_(userId, type, visibility, field, crop, variety, pesticide, amount, text, photoBase64, photoMimeType) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (NIKKI_TYPES.indexOf(type) === -1) return { status: 'error', message: '種類を指定してください。' };
+  if (!text && !photoBase64) return { status: 'error', message: '本文か写真のどちらかを入力してください。' };
+  if (visibility !== '個人' && visibility !== '共有') visibility = '個人';
+
+  var photoUrl = '';
+  var photoError = '';
+  if (photoBase64) {
+    try {
+      photoUrl = saveMemoPhotoToDrive_(photoBase64, photoMimeType);
+    } catch (e) {
+      photoError = e.message;
+    }
+  }
+
+  var context = '';
+  if (field) context += '圃場：' + field + '　';
+  if (crop) context += '品目：' + crop + '　';
+  if (pesticide) context += '薬剤：' + pesticide;
+
+  var analysis = analyzeNikkiWithGemini_(type, text, photoBase64, photoMimeType, context);
+  var title = analysis.aiWorking ? analysis.title : (text ? text.slice(0, 15) : type + 'の記録');
+  var summary = analysis.aiWorking ? analysis.summary : (text || '（写真のみの投稿）');
+  var finalCrop = crop || (analysis.aiWorking ? analysis.crop : '') || '';
+
+  var name = getEmployeeName_(userId) || userId;
+  var sheet = getNikkiSheet_();
+  sheet.appendRow([new Date(), userId, name, visibility, type, field || '', finalCrop, variety || '', pesticide || '', amount || '', text || '', title, summary, photoUrl]);
+
+  var msg = '記録を保存しました。';
+  if (!analysis.aiWorking) msg += '\n（AIでの自動整理は今回使えませんでした：' + String(analysis.reason).slice(0, 150) + '）';
+  if (photoError) msg += '\n（写真の保存に失敗しました：' + String(photoError).slice(0, 150) + '）';
+  CacheService.getScriptCache().remove('recentNikkiByType_' + userId + '_3');
+
+  return { status: 'ok', message: msg, aiWorking: analysis.aiWorking };
+}
+
+// 農園日誌の一覧を返す（自分の個人記録＋全員の共有記録、新しい順）。type/field/cropで絞り込み可能
+function getNikkiList_(userId, limit, filterType, filterField, filterCrop) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  limit = Number(limit) || 50;
+
+  var data = getNikkiSheet_().getDataRange().getValues();
+  var memos = [];
+  for (var i = data.length - 1; i >= 1; i--) {
+    var visibility = data[i][3];
+    var owner = data[i][1];
+    if (visibility === '個人' && owner !== userId) continue;
+
+    var type = data[i][4];
+    if (filterType && filterType !== 'すべて' && type !== filterType) continue;
+    if (filterField && data[i][5] !== filterField) continue;
+    if (filterCrop && data[i][6] !== filterCrop) continue;
+
+    var rawDate = data[i][0];
+    var dateObj = rawDate instanceof Date ? rawDate : new Date(rawDate);
+
+    memos.push({
+      rowIndex: i + 1,
+      date: Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
+      authorName: data[i][2], visibility: visibility, type: type,
+      field: data[i][5], crop: data[i][6], variety: data[i][7], pesticide: data[i][8], amount: data[i][9],
+      text: data[i][10], title: data[i][11], summary: data[i][12], photoUrl: data[i][13],
+      isOwn: owner === userId
+    });
+    if (memos.length >= limit) break;
+  }
+  return { status: 'ok', memos: memos };
+}
+
+// ホーム画面用：種類ごとに最新N件（日時・タイトルだけの軽量版）
+function getRecentNikkiByType_(userId, limitPerType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  limitPerType = Number(limitPerType) || 3;
+  return getCached_('recentNikkiByType_' + userId + '_' + limitPerType, 120, function () {
+
+  var data = getNikkiSheet_().getDataRange().getValues();
+  var result = {};
+  NIKKI_TYPES.forEach(function (t) { result[t] = []; });
+
+  for (var i = data.length - 1; i >= 1; i--) {
+    var visibility = data[i][3];
+    var owner = data[i][1];
+    if (visibility === '個人' && owner !== userId) continue;
+
+    var type = data[i][4];
+    if (!result[type] || result[type].length >= limitPerType) continue;
+
+    var rawDate = data[i][0];
+    var dateObj = rawDate instanceof Date ? rawDate : new Date(rawDate);
+    result[type].push({
+      rowIndex: i + 1,
+      date: Utilities.formatDate(dateObj, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
+      title: data[i][11], crop: data[i][6]
+    });
+  }
+  return { status: 'ok', byType: result };
+  });
+}
+
+// 農園日誌を編集する（本人の記録のみ編集可能）
+function updateNikki_(userId, rowIndex, text, visibility) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (!rowIndex || !text) return { status: 'error', message: '内容を入力してください。' };
+
+  var sheet = getNikkiSheet_();
+  var row = sheet.getRange(Number(rowIndex), 1, 1, 14).getValues()[0];
+  if (row[1] !== userId) return { status: 'error', message: '自分の記録のみ編集できます。' };
+  if (visibility !== '個人' && visibility !== '共有') visibility = row[3];
+
+  var type = row[4];
+  var context = '';
+  if (row[5]) context += '圃場：' + row[5] + '　';
+  if (row[6]) context += '品目：' + row[6] + '　';
+  if (row[8]) context += '薬剤：' + row[8];
+
+  var analysis = analyzeNikkiWithGemini_(type, text, null, null, context);
+  var title = analysis.aiWorking ? analysis.title : text.slice(0, 15);
+  var summary = analysis.aiWorking ? analysis.summary : text;
+
+  sheet.getRange(Number(rowIndex), 4).setValue(visibility);
+  sheet.getRange(Number(rowIndex), 11).setValue(text);
+  sheet.getRange(Number(rowIndex), 12).setValue(title);
+  sheet.getRange(Number(rowIndex), 13).setValue(summary);
+
+  var msg = '記録を更新しました。';
+  if (!analysis.aiWorking) msg += '\n（AIでの自動整理は今回使えませんでした：' + String(analysis.reason).slice(0, 150) + '）';
+  return { status: 'ok', message: msg, aiWorking: analysis.aiWorking };
+}
+
+// 農園日誌を削除する（本人の記録のみ削除可能）
+function deleteNikki_(userId, rowIndex) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  if (!rowIndex) return { status: 'error', message: '対象の記録が指定されていません。' };
+
+  var sheet = getNikkiSheet_();
+  var row = sheet.getRange(Number(rowIndex), 1, 1, 14).getValues()[0];
+  if (row[1] !== userId) return { status: 'error', message: '自分の記録のみ削除できます。' };
+
+  sheet.deleteRow(Number(rowIndex));
+  return { status: 'ok', message: '記録を削除しました。' };
+}
+
+// ==== ⑩JA共選：市況速報・荷受票・精算通知書 ====
+
+function getJaPriceHistorySheet_() {
+  return getOrCreateOwnSheet_('JA価格履歴', ['記入日時', '速報日付', '品種', '等級', '階級', '単価']);
+}
+
+function getJaUkeoiSheet_() {
+  return getOrCreateOwnSheet_('JA荷受記録', [
+    '記入日時', '選果年月日', '組合員コード', '生産者名', '品種', '等級', '階級',
+    '箱数', '量目(kg/箱)', '適用単価', '仮金額', '状態', '確定金額', '元画像リンク'
+  ]);
+}
+
+function getMarutouSheet_() {
+  return getOrCreateOwnSheet_('丸統記録', [
+    '記入日時', '売立日', '品名', '等級', '階級', '箱数', '単価', '金額', '差引仕切金額', '元画像リンク'
+  ]);
+}
+
+// アップロードされた画像が、市況速報／荷受票／精算通知書／売立案内書のどれかをAIで判定する
+function classifyUploadedDocument_(photoBase64, photoMimeType) {
+  var apiKey = getProp_('GEMINI_API_KEY');
+  if (!apiKey) return { aiWorking: false, reason: 'APIキーが設定されていません' };
+  try {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+    var prompt = 'この画像は、農産物の出荷に関する書類のいずれかです。以下のうちどれに該当するか1つだけ判定し、種類の名前だけを出力してください。他の文字・記号は一切不要です。\n' +
+      '・市況速報（品種・等級・サイズごとの価格が一覧になった表。「市況速報」「共選」等のタイトルが多い）\n' +
+      '・荷受票（「青果物荷受票」というタイトル。選果年月日・組合員コード・箱数の表）\n' +
+      '・精算通知書（「販売精算通知書」等のタイトル。確定した金額の明細）\n' +
+      '・売立案内書（「売立案内書」というタイトル。単価・金額が記載された明細）\n' +
+      '・不明';
+    var payload = { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: photoMimeType || 'image/jpeg', data: photoBase64 } }] }] };
+    var response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) {
+      var errData = JSON.parse(response.getContentText());
+      return { aiWorking: false, reason: (errData.error && errData.error.message) || 'HTTPエラー' };
+    }
+    var data = JSON.parse(response.getContentText());
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text;
+    if (!raw) return { aiWorking: false, reason: 'AIから応答がありませんでした' };
+    var docType = raw.trim();
+    var validTypes = ['市況速報', '荷受票', '精算通知書', '売立案内書'];
+    return { aiWorking: true, docType: validTypes.indexOf(docType) !== -1 ? docType : '不明' };
+  } catch (e) {
+    return { aiWorking: false, reason: e.message };
+  }
+}
+
+// 汎用：Geminiに画像を渡し、JSON形式の構造化データを取り出す
+function extractStructuredDataFromImage_(instructionPrompt, photoBase64, photoMimeType) {
+  var apiKey = getProp_('GEMINI_API_KEY');
+  if (!apiKey) return { aiWorking: false, reason: 'APIキーが設定されていません' };
+  try {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+    var payload = { contents: [{ parts: [{ text: instructionPrompt }, { inline_data: { mime_type: photoMimeType || 'image/jpeg', data: photoBase64 } }] }] };
+    var response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) {
+      var errData = JSON.parse(response.getContentText());
+      return { aiWorking: false, reason: (errData.error && errData.error.message) || 'HTTPエラー' };
+    }
+    var data = JSON.parse(response.getContentText());
+    var raw = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0].text;
+    if (!raw) return { aiWorking: false, reason: 'AIから応答がありませんでした' };
+    var cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    var parsed = JSON.parse(cleaned);
+    return { aiWorking: true, data: parsed };
+  } catch (e) {
+    return { aiWorking: false, reason: e.message };
+  }
+}
+
+// アップロードされた画像の種類を判定し、それぞれに合った読み取りを行って、確認用データを返す（まだ保存はしない）
+function analyzeJaDocument_(userId, photoBase64, photoMimeType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var classified = classifyUploadedDocument_(photoBase64, photoMimeType);
+  if (!classified.aiWorking) return { status: 'error', message: 'AIでの判定に失敗しました：' + String(classified.reason).slice(0, 150) };
+  var docType = classified.docType;
+
+  if (docType === '市況速報') {
+    var prompt = 'この画像は農産物の市況速報（価格表）です。表に書かれている速報日付と、価格が書かれている全てのセルを、' +
+      '品種名・等級・階級（サイズ）とともに読み取り、次のJSON形式のみで出力してください。空欄のセルは含めないでください。前置き等は不要です。\n' +
+      '{"reportDate":"YYYY-MM-DD","prices":[{"variety":"品種名","grade":"等級（秀・赤秀・丸　等）","size":"階級（4L・2L・L・M・S　等）","price":数値}]}';
+    var result = extractStructuredDataFromImage_(prompt, photoBase64, photoMimeType);
+    if (!result.aiWorking) return { status: 'error', message: '読み取りに失敗しました：' + String(result.reason).slice(0, 150) };
+    return { status: 'ok', docType: docType, data: result.data };
+  }
+
+  if (docType === '荷受票') {
+    var prompt2 = 'この画像は青果物荷受票です。選果年月日・組合員コード・生産者名・品種名・量目（1箱あたりのkg）と、' +
+      '等級（秀・赤秀・丸等）×階級（4L・2L・L・M・S等）ごとの箱数を読み取り、次のJSON形式のみで出力してください。' +
+      '箱数が空欄・0のマスは含めないでください。前置き等は不要です。\n' +
+      '{"date":"YYYY-MM-DD","memberCode":"組合員コード","producerName":"生産者名","variety":"品種名","unitWeight":1箱あたりのkg数値,' +
+      '"entries":[{"grade":"等級","size":"階級","boxes":箱数}]}';
+    var result2 = extractStructuredDataFromImage_(prompt2, photoBase64, photoMimeType);
+    if (!result2.aiWorking) return { status: 'error', message: '読み取りに失敗しました：' + String(result2.reason).slice(0, 150) };
+
+    // 読み取った各組み合わせに、現時点で分かっている最新単価を当てはめて仮金額を計算する
+    var entries = result2.data.entries || [];
+    entries.forEach(function (e) {
+      var priceInfo = findLatestJaPrice_(result2.data.variety, e.grade, e.size, result2.data.date);
+      e.unitPrice = priceInfo ? priceInfo.price : null;
+      e.weight = Math.round(e.boxes * (result2.data.unitWeight || 0) * 100) / 100;
+      e.amount = priceInfo ? Math.round(e.unitPrice * e.weight) : null;
+    });
+    return { status: 'ok', docType: docType, data: result2.data };
+  }
+
+  if (docType === '精算通知書') {
+    var prompt3 = 'この画像は農産物の精算通知書です。組合員コード・品種名と、明細行ごとの選果年月日・階級（サイズ）・出荷量(kg)・精算金額・1kg単価を読み取り、' +
+      '次のJSON形式のみで出力してください。前置き等は不要です。\n' +
+      '{"memberCode":"組合員コード","variety":"品種名","settlements":[{"date":"YYYY-MM-DD","size":"階級","weight":出荷量kg数値,"amount":精算金額数値,"unitPrice":1kg単価数値}]}';
+    var result3 = extractStructuredDataFromImage_(prompt3, photoBase64, photoMimeType);
+    if (!result3.aiWorking) return { status: 'error', message: '読み取りに失敗しました：' + String(result3.reason).slice(0, 150) };
+    return { status: 'ok', docType: docType, data: result3.data };
+  }
+
+  if (docType === '売立案内書') {
+    var prompt4 = 'この画像は農産物の売立案内書です。売立日と、明細行ごとの品名（種）・等級・階級（サイズ）・箱数・単価・金額を読み取り、' +
+      '一番下にある「差引仕切金額」も読み取って、次のJSON形式のみで出力してください。前置き等は不要です。\n' +
+      '{"sellDate":"YYYY-MM-DD","items":[{"itemName":"品名","grade":"等級","size":"階級","boxes":箱数,"unitPrice":単価,"amount":金額}],"finalAmount":差引仕切金額}';
+    var result4 = extractStructuredDataFromImage_(prompt4, photoBase64, photoMimeType);
+    if (!result4.aiWorking) return { status: 'error', message: '読み取りに失敗しました：' + String(result4.reason).slice(0, 150) };
+    return { status: 'ok', docType: docType, data: result4.data };
+  }
+
+  return { status: 'error', message: '書類の種類を判定できませんでした。市況速報・荷受票・精算通知書・売立案内書のいずれかの写真をアップロードしてください。' };
+}
+
+// 指定した品種・等級・階級について、指定日以前で一番新しい単価を探す
+function findLatestJaPrice_(variety, grade, size, onOrBeforeDate) {
+  var data = getJaPriceHistorySheet_().getDataRange().getValues();
+  var best = null;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][2] !== variety || data[i][3] !== grade || data[i][4] !== size) continue;
+    var reportDate = cellDateStr_(data[i][1]);
+    if (reportDate > onOrBeforeDate) continue;
+    if (!best || reportDate > best.date) best = { date: reportDate, price: Number(data[i][5]) };
+  }
+  return best;
+}
+
+// 確認済みの市況速報データを、価格履歴に保存する
+function submitJaMarketPrices_(userId, reportDate, prices) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var sheet = getJaPriceHistorySheet_();
+  var now = new Date();
+  prices.forEach(function (p) {
+    sheet.appendRow([now, reportDate, p.variety, p.grade, p.size, p.price]);
+  });
+  return { status: 'ok', message: '市況速報を' + prices.length + '件、価格履歴に登録しました。' };
+}
+
+// 確認済みの荷受票データを、荷受記録に保存する（写真も保存する）
+function submitJaUkeoi_(userId, dateStr, memberCode, producerName, variety, unitWeight, entries, photoBase64, photoMimeType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var photoUrl = '';
+  if (photoBase64) {
+    try { photoUrl = saveMemoPhotoToDrive_(photoBase64, photoMimeType); } catch (e) {}
+  }
+
+  var sheet = getJaUkeoiSheet_();
+  var now = new Date();
+  entries.forEach(function (e) {
+    var priceInfo = findLatestJaPrice_(variety, e.grade, e.size, dateStr);
+    var weight = Math.round(e.boxes * (unitWeight || 0) * 100) / 100;
+    var unitPrice = priceInfo ? priceInfo.price : '';
+    var amount = priceInfo ? Math.round(priceInfo.price * weight) : '';
+    sheet.appendRow([now, dateStr, memberCode, producerName, variety, e.grade, e.size, e.boxes, weight, unitPrice, amount, '仮', '', photoUrl]);
+  });
+  return { status: 'ok', message: '荷受記録を' + entries.length + '件登録しました（仮金額）。' };
+}
+
+// 確認済みの精算通知書データを、対応する荷受記録に反映する（組合員コード・品種・日付で突き合わせ）
+function submitJaSettlement_(userId, memberCode, variety, settlements) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var sheet = getJaUkeoiSheet_();
+  var data = sheet.getDataRange().getValues();
+  var matchedCount = 0, unmatchedCount = 0;
+
+  settlements.forEach(function (s) {
+    // 同じ組合員コード・品種・選果年月日の荷受記録（複数行の場合あり）を探す
+    var matchingRows = [];
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][2] === memberCode && data[i][4] === variety && cellDateStr_(data[i][1]) === s.date) {
+        matchingRows.push(i + 1);
+      }
+    }
+    if (matchingRows.length === 0) {
+      unmatchedCount++;
       return;
     }
-    hideProcessing();
-    var el = document.getElementById('initStatus');
-    el.className = 'status show error';
-    el.textContent = '初期化エラー：' + msg;
+    // 該当行の仮金額の合計に対する各行の割合で、確定金額を按分する
+    var totalTempAmount = 0;
+    matchingRows.forEach(function (rowNum) {
+      totalTempAmount += Number(sheet.getRange(rowNum, 11).getValue()) || 0;
+    });
+    matchingRows.forEach(function (rowNum) {
+      var tempAmount = Number(sheet.getRange(rowNum, 11).getValue()) || 0;
+      var share = totalTempAmount > 0 ? (tempAmount / totalTempAmount) : (1 / matchingRows.length);
+      var confirmedAmount = Math.round(s.amount * share);
+      sheet.getRange(rowNum, 12).setValue('確定');
+      sheet.getRange(rowNum, 13).setValue(confirmedAmount);
+    });
+    matchedCount += matchingRows.length;
+  });
+
+  var msg = '精算通知書を反映しました（確定：' + matchedCount + '件';
+  if (unmatchedCount > 0) msg += '、対応する荷受記録が見つからなかったもの：' + unmatchedCount + '件（組合員コード・品種・日付を確認してください）';
+  msg += '）。';
+  return { status: 'ok', message: msg };
+}
+
+// 確認済みの売立案内書（丸統商事）データを、丸統記録に保存する
+function submitMarutou_(userId, sellDate, items, finalAmount, photoBase64, photoMimeType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var photoUrl = '';
+  if (photoBase64) {
+    try { photoUrl = saveMemoPhotoToDrive_(photoBase64, photoMimeType); } catch (e) {}
+  }
+
+  var sheet = getMarutouSheet_();
+  var now = new Date();
+  items.forEach(function (item) {
+    sheet.appendRow([now, sellDate, item.itemName, item.grade, item.size, item.boxes, item.unitPrice, item.amount, finalAmount || '', photoUrl]);
+  });
+  return { status: 'ok', message: '丸統商事の売立案内書を' + items.length + '件登録しました。' };
+}
+
+// ==== JA共選：スプレッドシートで直接入力するための入力用シート ====
+
+var JA_GRADE_OPTIONS_MOMO = ['EX', '特青', '特赤', '青秀', '赤秀'];
+var JA_GRADE_OPTIONS_OTHER = ['秀', '赤秀', '丸秀'];
+var JA_SIZE_OPTIONS = ['4L', '3L', '2L', 'L', 'M', 'S'];
+
+// 品種名から、その品目が「もも」かどうかを調べ、対応する等級の選択肢を返す
+function getGradeOptionsForVariety_(variety) {
+  var data = getVarietyMasterSheet_().getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1] === variety) {
+      return data[i][0] === 'もも' ? JA_GRADE_OPTIONS_MOMO : JA_GRADE_OPTIONS_OTHER;
+    }
+  }
+  return JA_GRADE_OPTIONS_OTHER;
+}
+
+var JA_INPUT_SHEET_CONFIGS = {
+  '市況速報': { name: 'JA共選_市況速報_入力用', headers: ['取込済', '速報日付', '品種', '等級', '階級', '単価'] },
+  '荷受票': { name: 'JA共選_荷受票_入力用', headers: ['取込済', '選果年月日', '組合員コード', '生産者名', '品種', '量目(kg/箱)', '等級', '階級', '箱数'] },
+  '精算通知書': { name: 'JA共選_精算通知書_入力用', headers: ['取込済', '組合員コード', '品種', '選果年月日', '階級', '出荷量kg', '単価', '精算金額'] },
+  '売立案内書': { name: 'JA共選_売立案内書_入力用', headers: ['取込済', '売立日', '品名', '等級', '階級', '箱数', '単価', '金額', '差引仕切金額'] }
+};
+
+// 入力用シートを作成する（無ければ）。品種・等級・階級の列には、選びやすいようプルダウン（データ入力規則）を設定する
+function getOrCreateJaInputSheet_(docType) {
+  var config = JA_INPUT_SHEET_CONFIGS[docType];
+  var sheet = getOrCreateOwnSheet_(config.name, config.headers);
+
+  // 品種の列にプルダウンを設定
+  var varietyColIndex = config.headers.indexOf('品種') + 1;
+  if (varietyColIndex > 0) {
+    var varietyList = getAllVarietyNames_();
+    var rule = SpreadsheetApp.newDataValidation().requireValueInList(varietyList, true).setAllowInvalid(true).build();
+    sheet.getRange(2, varietyColIndex, 200, 1).setDataValidation(rule);
+  }
+  // 階級の列にプルダウンを設定（固定の6段階）
+  var sizeColIndex = config.headers.indexOf('階級') + 1;
+  if (sizeColIndex > 0) {
+    var sizeRule = SpreadsheetApp.newDataValidation().requireValueInList(JA_SIZE_OPTIONS, true).setAllowInvalid(true).build();
+    sheet.getRange(2, sizeColIndex, 200, 1).setDataValidation(sizeRule);
+  }
+  // 等級の列にプルダウンを設定（もも／それ以外の全候補をまとめて出す。品種によって使う欄が変わるため）
+  var gradeColIndex = config.headers.indexOf('等級') + 1;
+  if (gradeColIndex > 0) {
+    var allGrades = JA_GRADE_OPTIONS_MOMO.concat(JA_GRADE_OPTIONS_OTHER.filter(function (g) { return JA_GRADE_OPTIONS_MOMO.indexOf(g) === -1; }));
+    var gradeRule = SpreadsheetApp.newDataValidation().requireValueInList(allGrades, true).setAllowInvalid(true).build();
+    sheet.getRange(2, gradeColIndex, 200, 1).setDataValidation(gradeRule);
+  }
+  return sheet;
+}
+
+// あらかじめ入力用シートを4種類ぶん、まとめて用意する（プルダウンつき）
+function setupJaInputSheets() {
+  Object.keys(JA_INPUT_SHEET_CONFIGS).forEach(function (docType) {
+    getOrCreateJaInputSheet_(docType);
+  });
+  Logger.log('JA共選の入力用シートを4種類、準備しました。');
+}
+
+// 入力用シートから「取込済」でない行を読み込み、通常の登録処理と同じ関数で反映する
+function processJaInputSheet_(userId, docType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var config = JA_INPUT_SHEET_CONFIGS[docType];
+  if (!config) return { status: 'error', message: '種類が正しくありません。' };
+
+  var sheet = getOrCreateJaInputSheet_(docType);
+  var data = sheet.getDataRange().getValues();
+  var processedCount = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === '済') continue;
+    var row = data[i];
+    var isEmpty = row.slice(1).every(function (v) { return v === '' || v === null; });
+    if (isEmpty) continue;
+
+    if (docType === '市況速報') {
+      submitJaMarketPrices_(userId, cellDateStr_(row[1]), [{ variety: row[2], grade: row[3], size: row[4], price: Number(row[5]) }]);
+    } else if (docType === '荷受票') {
+      submitJaUkeoi_(userId, cellDateStr_(row[1]), row[2], row[3], row[4], Number(row[5]), [{ grade: row[6], size: row[7], boxes: Number(row[8]) }], null, null);
+    } else if (docType === '精算通知書') {
+      submitJaSettlement_(userId, row[1], row[2], [{ date: cellDateStr_(row[3]), size: row[4], weight: Number(row[5]), unitPrice: Number(row[6]), amount: Number(row[7]) }]);
+    } else if (docType === '売立案内書') {
+      submitMarutou_(userId, cellDateStr_(row[1]), [{ itemName: row[2], grade: row[3], size: row[4], boxes: Number(row[5]), unitPrice: Number(row[6]), amount: Number(row[7]) }], Number(row[8]), null, null);
+    }
+
+    sheet.getRange(i + 1, 1).setValue('済');
+    processedCount++;
+  }
+
+  return { status: 'ok', message: docType + 'の入力用シートから' + processedCount + '件を読み込みました。' };
+}
+
+// ==== JA共選：マス目形式（荷受票・市況速報）の入力シート ====
+
+var JA_GRID_GRADE_COLUMNS = ['秀', '赤秀', '丸秀', 'EX', '特青', '特赤', '青秀'];
+var JA_GRID_SIZE_ROWS = ['4L', '3L', '2L', 'L', 'M', 'S'];
+var JA_GRID_SHEET_NAMES = {
+  '荷受票': 'JA共選_荷受票_入力用(マス目)',
+  '市況速報': 'JA共選_市況速報_入力用(マス目)'
+};
+
+function getJaGridSheet_(docType) {
+  var name = JA_GRID_SHEET_NAMES[docType];
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  return sheet;
+}
+
+// マス目形式のブロックを1つ、シートの一番下に追加する
+function addJaGridBlock_(userId, docType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var sheet = getJaGridSheet_(docType);
+  var isUkeoi = docType === '荷受票';
+
+  var startRow = sheet.getLastRow() === 0 ? 1 : sheet.getLastRow() + 2;
+  var headerRow = isUkeoi
+    ? ['未', '選果年月日', '', '組合員コード', '', '生産者名', '', '品種', '', '量目(kg/箱)', '']
+    : ['未', '速報日付', '', '品種', ''];
+  sheet.getRange(startRow, 1, 1, headerRow.length).setValues([headerRow]);
+  sheet.getRange(startRow, 1, 1, headerRow.length).setFontWeight('bold');
+
+  var gradeHeaderRow = ['', '階級'].concat(JA_GRID_GRADE_COLUMNS);
+  sheet.getRange(startRow + 1, 1, 1, gradeHeaderRow.length).setValues([gradeHeaderRow]);
+  sheet.getRange(startRow + 1, 1, 1, gradeHeaderRow.length).setFontWeight('bold').setBackground('#EFE8D8');
+
+  JA_GRID_SIZE_ROWS.forEach(function (size, i) {
+    sheet.getRange(startRow + 2 + i, 2).setValue(size);
+  });
+
+  // 品種の欄にプルダウンを設定
+  var varietyCol = isUkeoi ? 9 : 5;
+  var varietyCell = sheet.getRange(startRow, varietyCol);
+  var varietyList = getAllVarietyNames_();
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList(varietyList, true).setAllowInvalid(true).build();
+  varietyCell.setDataValidation(rule);
+
+  return { status: 'ok', message: 'ブロックを1つ追加しました。スプレッドシートに入力してください。' };
+}
+
+// マス目形式のシートを読み込み、未処理（列Aが「未」）のブロックを登録する
+function processJaGridSheet_(userId, docType) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  var sheet = getJaGridSheet_(docType);
+  var data = sheet.getDataRange().getValues();
+  var isUkeoi = docType === '荷受票';
+  var processedCount = 0;
+
+  for (var r = 0; r < data.length; r++) {
+    var labelCol = data[r][1];
+    if (labelCol !== '選果年月日' && labelCol !== '速報日付') continue;
+    if (data[r][0] === '済') continue;
+
+    var headerRowNum = r; // 0始まりindex
+    var gradeHeaderRow = data[headerRowNum + 1] || [];
+    // グレード列のマッピング（列インデックス→グレード名）を、グレード見出し行から動的に読み取る
+    var gradeColMap = {};
+    for (var c = 2; c < gradeHeaderRow.length; c++) {
+      if (gradeHeaderRow[c]) gradeColMap[c] = gradeHeaderRow[c];
+    }
+
+    var entries = [];
+    JA_GRID_SIZE_ROWS.forEach(function (size, sizeIdx) {
+      var sizeRow = data[headerRowNum + 2 + sizeIdx];
+      if (!sizeRow) return;
+      Object.keys(gradeColMap).forEach(function (colIdx) {
+        var val = sizeRow[colIdx];
+        if (val === '' || val === null || val === undefined || Number(val) === 0) return;
+        entries.push({ grade: gradeColMap[colIdx], size: size, value: Number(val) });
+      });
+    });
+
+    if (entries.length > 0) {
+      if (isUkeoi) {
+        var dateStr = cellDateStr_(data[headerRowNum][2]);
+        var memberCode = data[headerRowNum][4];
+        var producerName = data[headerRowNum][6];
+        var variety = data[headerRowNum][8];
+        var unitWeight = Number(data[headerRowNum][10]);
+        var ukeoiEntries = entries.map(function (e) { return { grade: e.grade, size: e.size, boxes: e.value }; });
+        submitJaUkeoi_(userId, dateStr, memberCode, producerName, variety, unitWeight, ukeoiEntries, null, null);
+      } else {
+        var reportDate = cellDateStr_(data[headerRowNum][2]);
+        var variety2 = data[headerRowNum][4];
+        var prices = entries.map(function (e) { return { variety: variety2, grade: e.grade, size: e.size, price: e.value }; });
+        submitJaMarketPrices_(userId, reportDate, prices);
+      }
+      processedCount++;
+    }
+
+    sheet.getRange(headerRowNum + 1, 1).setValue('済');
+  }
+
+  return { status: 'ok', message: docType + 'のマス目シートから、ブロック' + processedCount + '件を読み込みました。' };
+}
+
+// ==== JA共選・丸統：見やすい「まとめ表」をスプレッドシートに作成する ====
+
+// JA荷受記録・丸統記録から、見やすい一覧表を「売上まとめ表」シートに作り直す
+function generateJaSummaryTable_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = '売上まとめ表';
+  var sheet = ss.getSheetByName(sheetName);
+  if (sheet) ss.deleteSheet(sheet);
+  sheet = ss.insertSheet(sheetName);
+
+  var currentRow = 1;
+
+  function writeSectionHeader(title) {
+    sheet.getRange(currentRow, 1).setValue(title);
+    sheet.getRange(currentRow, 1, 1, 6).merge().setFontWeight('bold').setFontSize(13).setBackground('#2E3B22').setFontColor('#FFFFFF');
+    currentRow++;
+    var headers = ['出荷日', '品種', '等級', '階級', '出荷量(kg)又は箱数', '金額'];
+    sheet.getRange(currentRow, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(currentRow, 1, 1, headers.length).setFontWeight('bold').setBackground('#EFE8D8');
+    currentRow++;
+  }
+
+  function writeRows(rows) {
+    if (rows.length === 0) {
+      sheet.getRange(currentRow, 1).setValue('データがありません');
+      currentRow++;
+      return;
+    }
+    sheet.getRange(currentRow, 1, rows.length, rows[0].length).setValues(rows);
+    currentRow += rows.length;
+    currentRow++; // セクション間の空行
+  }
+
+  // ---- ①JA共選（JA荷受記録：確定金額があればそちら、無ければ仮金額） ----
+  writeSectionHeader('JA共選');
+  var jaData = getJaUkeoiSheet_().getDataRange().getValues();
+  var jaRows = [];
+  for (var i = 1; i < jaData.length; i++) {
+    var amount = jaData[i][11] === '確定' ? jaData[i][12] : jaData[i][10];
+    var statusLabel = jaData[i][11] === '確定' ? '確定' : '未確定（仮）';
+    jaRows.push([cellDateStr_(jaData[i][1]), jaData[i][4], jaData[i][5], jaData[i][6], jaData[i][7] + '箱（' + jaData[i][8] + 'kg）', (amount === '' ? '' : '¥' + Number(amount).toLocaleString()) + '　' + statusLabel]);
+  }
+  jaRows.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+  writeRows(jaRows);
+
+  // ---- ②丸統商事 ----
+  writeSectionHeader('丸統商事（マルトウ）');
+  var maruData = getMarutouSheet_().getDataRange().getValues();
+  var maruRows = [];
+  for (var j = 1; j < maruData.length; j++) {
+    maruRows.push([cellDateStr_(maruData[j][1]), maruData[j][2], maruData[j][3], maruData[j][4], maruData[j][5] + '箱', '¥' + Number(maruData[j][7]).toLocaleString()]);
+  }
+  maruRows.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+  writeRows(maruRows);
+
+  sheet.setColumnWidths(1, 6, 150);
+  sheet.setFrozenRows(0);
+
+  return { status: 'ok', message: '「売上まとめ表」シートを作成しました。' };
+}
+
+// 登録済みのJA共選・丸統データを、新しい順に確認できるようにする
+function getJaRecordsList_(userId, source, limit) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  limit = Number(limit) || 50;
+
+  if (source === '荷受記録') {
+    var jaData = getJaUkeoiSheet_().getDataRange().getValues();
+    var jaRows = [];
+    for (var i = jaData.length - 1; i >= 1; i--) {
+      var amount = jaData[i][11] === '確定' ? jaData[i][12] : jaData[i][10];
+      jaRows.push({
+        date: cellDateStr_(jaData[i][1]), variety: jaData[i][4], grade: jaData[i][5], size: jaData[i][6],
+        boxes: jaData[i][7], weight: jaData[i][8], unitPrice: jaData[i][9],
+        amount: amount, status: jaData[i][11]
+      });
+      if (jaRows.length >= limit) break;
+    }
+    return { status: 'ok', rows: jaRows };
+  }
+
+  if (source === '丸統記録') {
+    var maruData = getMarutouSheet_().getDataRange().getValues();
+    var maruRows = [];
+    for (var j = maruData.length - 1; j >= 1; j--) {
+      maruRows.push({
+        date: cellDateStr_(maruData[j][1]), itemName: maruData[j][2], grade: maruData[j][3], size: maruData[j][4],
+        boxes: maruData[j][5], unitPrice: maruData[j][6], amount: maruData[j][7], finalAmount: maruData[j][8]
+      });
+      if (maruRows.length >= limit) break;
+    }
+    return { status: 'ok', rows: maruRows };
+  }
+
+  if (source === '価格履歴') {
+    var priceData = getJaPriceHistorySheet_().getDataRange().getValues();
+    var priceRows = [];
+    for (var k = priceData.length - 1; k >= 1; k--) {
+      priceRows.push({
+        reportDate: cellDateStr_(priceData[k][1]), variety: priceData[k][2], grade: priceData[k][3], size: priceData[k][4], price: priceData[k][5]
+      });
+      if (priceRows.length >= limit) break;
+    }
+    return { status: 'ok', rows: priceRows };
+  }
+
+  return { status: 'error', message: '種類が正しくありません。' };
+}
+
+// まとめ表作成のテスト用関数。Apps Scriptエディタでこれを選んで実行し、実行ログを確認してください。
+function testGenerateJaSummaryTable() {
+  var result = generateJaSummaryTable_('U20310d9c5196a28b505e5256162526a2');
+  Logger.log(JSON.stringify(result));
+}
+
+// 経営ダッシュボードのサンプルシートを作成する（見せてもらった画像の形を再現）。
+// Apps Scriptエディタでこの関数を選んで実行してください。
+function createManagementDashboardSample() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = '経営ダッシュボード（サンプル）';
+  var sheet = ss.getSheetByName(sheetName);
+  if (sheet) ss.deleteSheet(sheet);
+  sheet = ss.insertSheet(sheetName);
+
+  // ---- 上段：全体サマリー ----
+  var summaryLabels = ['販売数量', '販売金額', '1kg単価', '仕入金額', '仕入数量', '自社生産数量', '販売手数料', '利益', '利益率'];
+  sheet.getRange(1, 1, 1, summaryLabels.length).setValues([summaryLabels]);
+  sheet.getRange(1, 1, 1, summaryLabels.length).setFontWeight('bold').setBackground('#EFE8D8');
+
+  // ---- 明細表の見出し（品目情報→数量情報→売上情報→原価情報→手数料情報→結果、の順に並べ直した） ----
+  // A品目 B容量 | C販売件数 D販売総重量 E自社生産重量 F仕入重量 | G売上 H販売価格 | I仕入単価 J仕入金額 | K支払% L業者支払い M伝票発行手数料 N送料 | O利益 P利益率
+  var tableHeaders = ['', '容量', '販売件数', '販売総重量', '自社生産重量', '仕入重量', '売上', '販売価格', '仕入単価', '仕入金額', '支払%', '業者支払い', '伝票発行手数料', '送料', '利益', '利益率'];
+  var headerRowNum = 4;
+  sheet.getRange(headerRowNum, 1, 1, tableHeaders.length).setValues([tableHeaders]);
+  sheet.getRange(headerRowNum, 1, 1, tableHeaders.length).setFontWeight('bold').setBackground('#D6CBAA');
+
+  // ---- サンプルの明細データ（画像の内容を新しい列順に並べ直した） ----
+  var sampleRows = [
+    ['ポケマル訳あり1kg', 1, 0, '', '', '', 0, 4300, '', '', 0.20, '', 96, ''],
+    ['食べチョク500g', 0.5, 0, 0, '', 0, 0, 3700, '', '', 0.20, '', 76, ''],
+    ['BASE0.5g紅秀峰', 0.5, 5, 2.5, '', 2.5, 21500, 4300, 3000, 7500, 0.073, '', 0, ''],
+    ['BASE0.5g佐藤錦', 0.5, 1, 0.5, '', 0.5, 3700, 3700, 3000, 1500, 0.073, '', 0, ''],
+    ['直売', 0.5, 0, 7.5, '', 7.5, 80700, 2500, 3000, 22500, 0, '', 0, ''],
+    ['アウル', 0.5, 0, 0, '', '', 0, 3700, '', '', 0.10, '', 76, ''],
+    ['共選', '', '', 45.7, '', '', 142320, '', 3000, '', 0.20, 28464, '', ''],
+    ['道の駅白根（健さん）', '', '', '', '', '', 0, '', 3000, '', 0.17, '', '', ''],
+    ['ミチノエキシラネ', '', 316, 135.3, '', 75.3, 981900, '', 3000, 225900, 0.175, 171833, '', '']
+  ];
+  sheet.getRange(headerRowNum + 1, 1, sampleRows.length, tableHeaders.length - 2).setValues(sampleRows);
+
+  var lastDataRow = headerRowNum + sampleRows.length;
+  var totalRow = lastDataRow + 1;
+
+  // 利益・利益率は数式で自動計算する：利益＝売上－（業者支払いがあればそれ、無ければ売上×支払%）－送料－仕入金額／利益率＝利益÷売上
+  for (var rIdx = 0; rIdx < sampleRows.length; rIdx++) {
+    var rowNum = headerRowNum + 1 + rIdx;
+    var profitFormula = '=G' + rowNum + '-IF(L' + rowNum + '="",G' + rowNum + '*K' + rowNum + ',L' + rowNum + ')-IF(N' + rowNum + '="",0,N' + rowNum + ')-IF(J' + rowNum + '="",0,J' + rowNum + ')';
+    sheet.getRange(rowNum, 15).setFormula(profitFormula);
+    sheet.getRange(rowNum, 16).setFormula('=IF(G' + rowNum + '=0,0,O' + rowNum + '/G' + rowNum + ')');
+  }
+
+  // ---- 合計行（列ごとに自動合計） ----
+  sheet.getRange(totalRow, 3).setFormula('=SUM(C' + (headerRowNum + 1) + ':C' + lastDataRow + ')'); // 販売件数
+  sheet.getRange(totalRow, 4).setFormula('=SUM(D' + (headerRowNum + 1) + ':D' + lastDataRow + ')'); // 販売総重量
+  sheet.getRange(totalRow, 6).setFormula('=SUM(F' + (headerRowNum + 1) + ':F' + lastDataRow + ')'); // 仕入重量
+  sheet.getRange(totalRow, 7).setFormula('=SUM(G' + (headerRowNum + 1) + ':G' + lastDataRow + ')'); // 売上
+  sheet.getRange(totalRow, 10).setFormula('=SUM(J' + (headerRowNum + 1) + ':J' + lastDataRow + ')'); // 仕入金額
+  sheet.getRange(totalRow, 12).setFormula('=SUM(L' + (headerRowNum + 1) + ':L' + lastDataRow + ')'); // 業者支払い
+  sheet.getRange(totalRow, 15).setFormula('=SUM(O' + (headerRowNum + 1) + ':O' + lastDataRow + ')'); // 利益
+  sheet.getRange(totalRow, 16).setFormula('=IF(G' + totalRow + '=0,0,O' + totalRow + '/G' + totalRow + ')'); // 利益率
+  sheet.getRange(totalRow, 1, 1, tableHeaders.length).setFontWeight('bold');
+  sheet.getRange(totalRow, 1).setValue('合計');
+
+  // ---- 上段サマリーの数式（明細表の合計から計算） ----
+  sheet.getRange(2, 1).setFormula('=D' + totalRow); // 販売数量
+  sheet.getRange(2, 2).setFormula('=G' + totalRow); // 販売金額
+  sheet.getRange(2, 3).setFormula('=IF(D' + totalRow + '=0,0,ROUND(G' + totalRow + '/D' + totalRow + '))'); // 1kg単価
+  sheet.getRange(2, 4).setFormula('=J' + totalRow); // 仕入金額
+  sheet.getRange(2, 5).setFormula('=F' + totalRow); // 仕入数量
+  sheet.getRange(2, 7).setFormula('=L' + totalRow); // 販売手数料
+  sheet.getRange(2, 8).setFormula('=O' + totalRow); // 利益
+  sheet.getRange(2, 9).setFormula('=P' + totalRow); // 利益率
+  sheet.getRange(2, 9).setNumberFormat('0.0%');
+  sheet.getRange(2, 1, 1, summaryLabels.length).setFontWeight('bold').setFontSize(13);
+
+  // ---- 見やすさのための書式設定 ----
+  var firstDataRow = headerRowNum + 1;
+  var fullRange = sheet.getRange(headerRowNum, 1, totalRow - headerRowNum + 1, tableHeaders.length);
+
+  // 通貨列
+  ['G', 'H', 'I', 'J', 'L', 'M', 'N', 'O'].forEach(function (col) {
+    sheet.getRange(col + firstDataRow + ':' + col + totalRow).setNumberFormat('¥#,##0');
+  });
+  // 重量列
+  ['D', 'E', 'F'].forEach(function (col) {
+    sheet.getRange(col + firstDataRow + ':' + col + totalRow).setNumberFormat('0.00"kg"');
+  });
+  // %列
+  sheet.getRange('K' + firstDataRow + ':K' + totalRow).setNumberFormat('0.0%');
+  sheet.getRange('P' + firstDataRow + ':P' + totalRow).setNumberFormat('0.0%');
+
+  // 罫線・色分け
+  fullRange.setBorder(true, true, true, true, true, true, '#D6CBAA', SpreadsheetApp.BorderStyle.SOLID);
+  sheet.getRange(headerRowNum, 1, 1, tableHeaders.length).setBackground('#2E3B22').setFontColor('#FFFFFF').setFontWeight('bold');
+  sheet.getRange(totalRow, 1, 1, tableHeaders.length).setBackground('#F0DEB8').setFontWeight('bold');
+  sheet.getRange(firstDataRow, 1, sampleRows.length, 1).setFontWeight('bold').setBackground('#F7F3E9');
+  // 利益率が良い行を薄い緑で目立たせる（50%以上の目安）
+  var profitRange = sheet.getRange(firstDataRow, 16, sampleRows.length, 1);
+  var rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenNumberGreaterThanOrEqualTo(0.5)
+    .setBackground('#E3ECD3')
+    .setRanges([profitRange])
+    .build();
+  sheet.setConditionalFormatRules([rule]);
+
+  // 列グループの区切りを縦線で分かりやすくする（品目｜数量｜売上｜原価｜手数料｜結果）
+  [2, 3, 7, 9, 11, 15].forEach(function (colIdx) {
+    sheet.getRange(headerRowNum, colIdx, totalRow - headerRowNum + 1, 1)
+      .setBorder(null, true, null, null, null, null, '#8A5A2A', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+  });
+
+  // 上段サマリーの見た目も整える
+  sheet.getRange(1, 1, 2, summaryLabels.length).setBorder(true, true, true, true, true, true, '#D6CBAA', SpreadsheetApp.BorderStyle.SOLID);
+  sheet.getRange(2, 2).setNumberFormat('¥#,##0');
+  sheet.getRange(2, 3).setNumberFormat('¥#,##0');
+  sheet.getRange(2, 4).setNumberFormat('¥#,##0');
+  sheet.getRange(2, 5).setNumberFormat('0.00"kg"');
+  sheet.getRange(2, 1).setNumberFormat('0.00"kg"');
+  sheet.getRange(2, 7).setNumberFormat('¥#,##0');
+  sheet.getRange(2, 8).setNumberFormat('¥#,##0');
+
+  sheet.setFrozenRows(headerRowNum);
+  sheet.setFrozenColumns(1);
+
+  sheet.setColumnWidths(1, tableHeaders.length, 105);
+  sheet.setColumnWidth(1, 160);
+
+  Logger.log('経営ダッシュボード（サンプル）シートを作成しました。');
+}
+
+// 直売所の売上を、指定した月について「店舗別×品目別」に集計し、店舗ごとの合計・全店合計も返す
+function getMonthlySalesByStoreAndCrop_(userId, yearMonth) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+  if (!yearMonth) return { status: 'error', message: '対象の月を指定してください。' };
+
+  var records = classifyAllSalesRecords_().filter(function (r) { return r.date.indexOf(yearMonth) === 0; });
+
+  var storeCropData = {}; // store -> crop -> {amount, count}
+  var storeTotals = {};   // store -> {amount, count}
+  var grandAmount = 0, grandCount = 0;
+
+  records.forEach(function (r) {
+    if (!storeCropData[r.store]) storeCropData[r.store] = {};
+    if (!storeCropData[r.store][r.crop]) storeCropData[r.store][r.crop] = { amount: 0, count: 0 };
+    storeCropData[r.store][r.crop].amount += r.amount;
+    storeCropData[r.store][r.crop].count += 1;
+
+    if (!storeTotals[r.store]) storeTotals[r.store] = { amount: 0, count: 0 };
+    storeTotals[r.store].amount += r.amount;
+    storeTotals[r.store].count += 1;
+
+    grandAmount += r.amount;
+    grandCount += 1;
+  });
+
+  var stores = Object.keys(storeCropData).map(function (store) {
+    var crops = Object.keys(storeCropData[store]).map(function (crop) {
+      return { crop: crop, amount: storeCropData[store][crop].amount, count: storeCropData[store][crop].count };
+    });
+    crops.sort(function (a, b) { return b.amount - a.amount; });
+    return { store: store, crops: crops, totalAmount: storeTotals[store].amount, totalCount: storeTotals[store].count };
+  });
+  stores.sort(function (a, b) { return b.totalAmount - a.totalAmount; });
+
+  return {
+    status: 'ok', yearMonth: yearMonth, stores: stores,
+    grandAmount: grandAmount, grandCount: grandCount
+  };
+}
+
+
+// ==== 天気予報（気象庁の無料公開データを使用、PC画面のみで表示） ====
+
+// 気象庁の天気コード→日本語の簡単な説明への変換表（よく使われるものだけ）
+var JMA_WEATHER_CODE_MAP = {
+  '100': '晴れ', '101': '晴れ時々くもり', '102': '晴れ一時雨', '103': '晴れ時々雨',
+  '104': '晴れ一時雪', '105': '晴れ時々雪', '106': '晴れ一時雨か雪', '107': '晴れ時々雨か雪',
+  '110': '晴れ後時々くもり', '111': '晴れ後くもり', '112': '晴れ後一時雨', '113': '晴れ後時々雨',
+  '114': '晴れ後雨', '115': '晴れ後一時雪', '116': '晴れ後時々雪', '117': '晴れ後雪',
+  '118': '晴れ後雨か雪', '119': '晴れ後雨か雷雨',
+  '200': 'くもり', '201': 'くもり時々晴れ', '202': 'くもり一時雨', '203': 'くもり時々雨',
+  '204': 'くもり一時雪', '205': 'くもり時々雪', '206': 'くもり一時雨か雪', '207': 'くもり時々雨か雪',
+  '210': 'くもり後時々晴れ', '211': 'くもり後晴れ', '212': 'くもり後一時雨', '213': 'くもり後時々雨',
+  '214': 'くもり後雨', '215': 'くもり後一時雪', '216': 'くもり後時々雪', '217': 'くもり後雪',
+  '218': 'くもり後雨か雪', '219': 'くもり後雨か雷雨',
+  '300': '雨', '301': '雨時々晴れ', '302': '雨時々止む', '303': '雨時々雪',
+  '308': '雨で暴風を伴う', '311': '雨後晴れ', '313': '雨後くもり', '314': '雨後時々雪',
+  '315': '雨後雪', '400': '雪', '401': '雪時々晴れ', '402': '雪時々止む', '403': '雪時々雨',
+  '411': '雪後晴れ', '413': '雪後くもり', '414': '雪後雨'
+};
+
+function getJmaWeatherText_(code) {
+  return JMA_WEATHER_CODE_MAP[String(code)] || ('コード' + code);
+}
+
+// 天気コードの先頭の数字（1=晴れ系、2=くもり系、3=雨系、4=雪系）から、Tabler Iconsのクラス名を判定する
+function getJmaWeatherIcon_(code) {
+  var first = String(code).charAt(0);
+  if (first === '1') return 'ti-sun';
+  if (first === '2') return 'ti-cloud';
+  if (first === '3') return 'ti-cloud-rain';
+  if (first === '4') return 'ti-snowflake';
+  return 'ti-cloud';
+}
+
+// 気象庁の公開データ（無料・登録不要）から、山梨県の天気予報を取得する
+function getWeatherForecast_(userId) {
+  if (!isAdmin_(userId)) return { status: 'error', message: 'この画面は管理者のみ利用できます。' };
+
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'weatherForecast';
+  try {
+    var cached = cache.get(cacheKey);
+    if (cached !== null) return JSON.parse(cached);
+  } catch (e) {}
+
+  try {
+    var areaCode = '190000'; // 山梨県
+    var response = UrlFetchApp.fetch('https://www.jma.go.jp/bosai/forecast/data/forecast/' + areaCode + '.json', { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) {
+      return { status: 'error', message: '気象庁からのデータ取得に失敗しました（HTTP' + response.getResponseCode() + '）。' };
+    }
+    var data = JSON.parse(response.getContentText());
+
+    var days = [];
+
+    // ①短期（今日・明日・明後日、天気の説明文つき）
+    var shortTerm = data[0];
+    var timeDefines = shortTerm.timeSeries[0].timeDefines;
+    var weatherArea = shortTerm.timeSeries[0].areas[0];
+    var popArea = shortTerm.timeSeries[1] ? shortTerm.timeSeries[1].areas[0] : null;
+
+    timeDefines.forEach(function (dateStr, i) {
+      var d = new Date(dateStr);
+      days.push({
+        date: Utilities.formatDate(d, 'Asia/Tokyo', 'MM/dd(E)'),
+        weather: getJmaWeatherText_(weatherArea.weatherCodes[i]),
+        icon: getJmaWeatherIcon_(weatherArea.weatherCodes[i]),
+        pop: (popArea && popArea.pops && popArea.pops[i]) ? popArea.pops[i] + '%' : '-',
+        tempMin: '', tempMax: ''
+      });
+    });
+
+    // ②週間（4日目以降、気温の最高・最低つき）
+    var weekly = data[1];
+    if (weekly && weekly.timeSeries[0]) {
+      var weekDefines = weekly.timeSeries[0].timeDefines;
+      var weekWeatherArea = weekly.timeSeries[0].areas[0];
+      var weekTempArea = weekly.timeSeries[1] ? weekly.timeSeries[1].areas[0] : null;
+
+      weekDefines.forEach(function (dateStr, i) {
+        if (i === 0) return; // 週間データの1日目は短期予報と重複するのでスキップ
+        var d = new Date(dateStr);
+        days.push({
+          date: Utilities.formatDate(d, 'Asia/Tokyo', 'MM/dd(E)'),
+          weather: getJmaWeatherText_(weekWeatherArea.weatherCodes[i]),
+          icon: getJmaWeatherIcon_(weekWeatherArea.weatherCodes[i]),
+          pop: (weekWeatherArea.pops && weekWeatherArea.pops[i]) ? weekWeatherArea.pops[i] + '%' : '-',
+          tempMin: (weekTempArea && weekTempArea.tempsMin && weekTempArea.tempsMin[i]) ? weekTempArea.tempsMin[i] + '℃' : '',
+          tempMax: (weekTempArea && weekTempArea.tempsMax && weekTempArea.tempsMax[i]) ? weekTempArea.tempsMax[i] + '℃' : ''
+        });
+      });
+    }
+
+    var finalResult = { status: 'ok', areaName: shortTerm.publishingOffice + '　' + weatherArea.area.name, days: days };
+    try { cache.put(cacheKey, JSON.stringify(finalResult), 3600); } catch (e) {}
+    return finalResult;
+  } catch (e) {
+    return { status: 'error', message: '天気予報の取得中にエラーが発生しました：' + e.message };
+  }
+}
+
+// ==== ホーム画面のブロック表示・非表示設定 ====
+
+var HOME_BLOCK_KEYS = ['weather', 'sales', 'cropSummary', 'jaMail', 'nikki', 'sanchoku', 'staff'];
+
+function getDisplaySettingsSheet_() {
+  return getOrCreateOwnSheet_('表示設定', ['userId', '設定JSON']);
+}
+
+// ログインユーザーのブロック表示設定を返す（未設定の項目はすべて「表示する」、順番は既定の並びがデフォルト）
+function getDisplaySettings_(userId) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  return getCached_('displaySettings_' + userId, 600, function () {
+  var data = getDisplaySettingsSheet_().getDataRange().getValues();
+  var settings = {};
+  HOME_BLOCK_KEYS.forEach(function (key) { settings[key] = true; });
+  var order = HOME_BLOCK_KEYS.slice();
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      try {
+        var saved = JSON.parse(data[i][1]);
+        HOME_BLOCK_KEYS.forEach(function (key) { if (saved.hasOwnProperty(key)) settings[key] = saved[key]; });
+        if (Array.isArray(saved.order)) {
+          // 保存された順番のうち、現在も存在するキーだけを使い、抜けているキーは末尾に補う
+          var validOrder = saved.order.filter(function (k) { return HOME_BLOCK_KEYS.indexOf(k) !== -1; });
+          HOME_BLOCK_KEYS.forEach(function (k) { if (validOrder.indexOf(k) === -1) validOrder.push(k); });
+          order = validOrder;
+        }
+      } catch (e) {}
+      break;
+    }
+  }
+  return { status: 'ok', settings: settings, order: order };
   });
 }
-</script>
-</body>
-</html>
+
+// ログインユーザーのブロック表示設定を保存する
+function submitDisplaySettings_(userId, settings) {
+  if (!userId) return { status: 'error', message: 'ユーザー情報が取得できませんでした' };
+  var sheet = getDisplaySettingsSheet_();
+  var data = sheet.getDataRange().getValues();
+  CacheService.getScriptCache().remove('displaySettings_' + userId);
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      sheet.getRange(i + 1, 2).setValue(JSON.stringify(settings));
+      return { status: 'ok', message: '表示設定を保存しました。' };
+    }
+  }
+  sheet.appendRow([userId, JSON.stringify(settings)]);
+  return { status: 'ok', message: '表示設定を保存しました。' };
+}
+
+// 管理者マスタを手動で編集した直後などに、キャッシュされた管理者一覧をすぐ消したい場合に実行する
+function clearAdminCache() {
+  CacheService.getScriptCache().remove('adminUserIdList');
+  Logger.log('管理者一覧のキャッシュを削除しました。次回のアクセスから最新の内容が反映されます。');
+}
