@@ -48,7 +48,7 @@
   .pc-nav-header i { grid-column: 3; justify-self: end; }
   .pc-nav-icongrid {
     background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 20px;
-    display: flex; flex-wrap: wrap; gap: 28px;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 28px;
   }
   .pc-nav-group { position: relative; }
   .pc-nav-group:not(:first-child)::before {
