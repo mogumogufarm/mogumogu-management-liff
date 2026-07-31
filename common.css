@@ -42,8 +42,10 @@
   .pc-nav-wrapper { display: block; }
   .pc-nav-header {
     background: #2E3B22; color: #F7F3E9; padding: 12px 24px;
-    display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: 15px; font-weight: 700;
   }
+  .pc-nav-header span { grid-column: 2; text-align: center; }
+  .pc-nav-header i { grid-column: 3; justify-self: end; }
   .pc-nav-icongrid {
     background: #F7F3E9; border-bottom: 1px solid #D6CBAA; padding: 14px 20px;
     display: flex; flex-wrap: wrap; gap: 28px;
