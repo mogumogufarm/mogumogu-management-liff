@@ -130,12 +130,14 @@
     <p class="section-title matrix-card-normal"><i class="ti ti-tractor" aria-hidden="true"></i> 草刈り（乗用モアー）</p>
     <div id="alertBox_草刈り"></div>
     <div class="card matrix-card-normal">
+      <select id="yearSelect_草刈り" onchange="onYearChange('草刈り')" style="margin-bottom:10px; padding:7px; font-size:12px; border-radius:6px; border:1px solid #D6CBAA; font-family:inherit;"></select>
       <div class="matrix-scroll"><div id="matrix_草刈り">読み込み中...</div></div>
     </div>
 
     <p class="section-title matrix-card-normal"><i class="ti ti-scissors" aria-hidden="true"></i> 刈払い（際・法面）</p>
     <div id="alertBox_刈払い"></div>
     <div class="card matrix-card-normal">
+      <select id="yearSelect_刈払い" onchange="onYearChange('刈払い')" style="margin-bottom:10px; padding:7px; font-size:12px; border-radius:6px; border:1px solid #D6CBAA; font-family:inherit;"></select>
       <div class="matrix-scroll"><div id="matrix_刈払い">読み込み中...</div></div>
     </div>
 
@@ -177,7 +179,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
 </div>
 
 <script>
@@ -285,15 +287,35 @@ function loadAlert(type) {
   });
 }
 
+var selectedYear = {};
+
+function onYearChange(type) {
+  selectedYear[type] = document.getElementById('yearSelect_' + type).value;
+  loadMatrix(type);
+}
+
 function loadMatrix(type) {
   var el = document.getElementById('matrix_' + type);
   el.innerHTML = '<p style="font-size:13px; color:#7A7256; padding:10px;">読み込み中...</p>';
 
-  callServer({ action: 'getKusakariMatrix', userId: profile.userId, type: type }).then(function (result) {
+  callServer({ action: 'getKusakariMatrix', userId: profile.userId, type: type, year: selectedYear[type] }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B; padding:10px;">' + result.message + '</p>';
       return;
     }
+
+    var yearSel = document.getElementById('yearSelect_' + type);
+    if (yearSel.children.length !== result.years.length) {
+      yearSel.innerHTML = '';
+      result.years.forEach(function (y) {
+        var opt = document.createElement('option');
+        opt.value = y; opt.textContent = y + '年';
+        yearSel.appendChild(opt);
+      });
+    }
+    yearSel.value = result.year;
+    selectedYear[type] = result.year;
+
     if (result.fields.length === 0) {
       el.innerHTML = '<p style="font-size:13px; color:#7A7256; padding:10px;">圃場マスタに圃場が登録されていません。</p>';
       return;
