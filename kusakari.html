@@ -97,14 +97,17 @@
     .print-side-by-side { display: flex !important; gap: 16px; align-items: flex-start; }
     .print-side-by-side > div { flex: 1; min-width: 0; }
     .print-side-by-side h3 { font-size: 12px; margin: 0 0 4px; font-weight: 700; }
-    table.matrix-table { border-collapse: collapse !important; font-size: 8.5px; width: 100%; }
+    table.matrix-table { border-collapse: collapse !important; font-size: 8px; width: 100%; table-layout: fixed; }
     table.matrix-table th, table.matrix-table td {
-      border: 1px solid #000 !important; color: #000 !important; padding: 3px 4px;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      border: 1px solid #000 !important; color: #000 !important; padding: 3px 3px;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; overflow: hidden; text-overflow: ellipsis;
     }
     table.matrix-table th { background: #DDDDDD !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    table.matrix-table td.field-col, table.matrix-table th.field-col { position: static; background: #fff !important; white-space: normal; }
+    table.matrix-table td.field-col, table.matrix-table th.field-col {
+      position: static; background: #fff !important; white-space: nowrap; width: 62px; text-align: left;
+    }
     table.matrix-table th.field-col { background: #DDDDDD !important; }
+    table.matrix-table th:not(.field-col), table.matrix-table td:not(.field-col) { width: 30px; }
   }
 </style>
 </head>
