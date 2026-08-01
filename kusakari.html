@@ -74,6 +74,13 @@
   }
   .status.show { display: block; }
   .status.error { background: #8B3A2E; color: #fff; }
+  @media print {
+    @page { size: landscape; margin: 12mm; }
+    body { background: #fff; }
+    .top-nav, .tabs, #printPdfBtn, .processing-overlay, .status, p[style*="text-align:center"] { display: none !important; }
+    .card { border: none; padding: 0; }
+    table.kusakari-table th { background: #2E3B22 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 </style>
 </head>
 <body>
@@ -100,7 +107,12 @@
     </div>
 
     <div id="historyView" class="card" style="display:none;">
-      <div id="historyContent">読み込み中...</div>
+      <div class="tabs" style="margin-bottom:10px;">
+        <button class="tab-btn active" id="historyTypeMowBtn" onclick="switchHistoryType('草刈り')">草刈り</button>
+        <button class="tab-btn" id="historyTypeTrimBtn" onclick="switchHistoryType('刈払い')">刈払い</button>
+      </div>
+      <button class="record-btn" id="printPdfBtn" onclick="printHistoryPdf()" style="width:100%; padding:9px; margin-bottom:10px;"><i class="ti ti-printer" aria-hidden="true"></i> PDFで出力（横向き）</button>
+      <div id="historyContent" style="overflow-x:auto;">読み込み中...</div>
     </div>
   </div>
 
@@ -123,7 +135,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -225,32 +237,50 @@ function confirmRecord() {
   });
 }
 
+var currentHistoryType = '草刈り';
+
+function switchHistoryType(type) {
+  currentHistoryType = type;
+  document.getElementById('historyTypeMowBtn').classList.toggle('active', type === '草刈り');
+  document.getElementById('historyTypeTrimBtn').classList.toggle('active', type === '刈払い');
+  loadHistory();
+}
+
 function loadHistory() {
   var el = document.getElementById('historyContent');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getKusakariHistory', userId: profile.userId, limit: 100 }).then(function (result) {
+  callServer({ action: 'getKusakariMatrix', userId: profile.userId, type: currentHistoryType }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
     }
-    if (result.rows.length === 0) {
-      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだ記録がありません。</p>';
+    if (result.fields.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">圃場マスタに圃場が登録されていません。</p>';
       return;
     }
-    var html = '';
-    result.rows.forEach(function (r) {
-      var badgeClass = r.type === '草刈り' ? 'mow' : 'trim';
-      html += '<div class="history-row">' +
-        '<div class="history-left"><span><span class="history-type-badge ' + badgeClass + '">' + r.type + '</span><span class="field-name">' + r.field + '</span></span>' +
-        '<span class="history-meta">' + r.date + '　' + r.recordedBy + '</span></div>' +
-        '<button class="history-delete-btn" onclick="deleteHistoryRecord(' + r.rowIndex + ')">削除</button>' +
-        '</div>';
+    var maxCount = Math.max(result.maxCount, 1);
+    var html = '<table class="kusakari-table" id="matrixTable"><tr><th>圃場名</th>';
+    for (var c = 1; c <= maxCount; c++) html += '<th style="text-align:center;">' + c + '回目</th>';
+    html += '</tr>';
+    result.fields.forEach(function (field) {
+      var dates = result.matrix[field] || [];
+      html += '<tr><td class="field-name">' + field + '</td>';
+      for (var c = 0; c < maxCount; c++) {
+        html += '<td style="text-align:center;">' + (dates[c] ? dates[c].slice(5).replace('-', '/') : '') + '</td>';
+      }
+      html += '</tr>';
     });
+    html += '</table>';
     el.innerHTML = html;
   }).catch(function (err) {
     el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
+}
+
+function printHistoryPdf() {
+  document.title = currentHistoryType + '履歴';
+  window.print();
 }
 
 function deleteHistoryRecord(rowIndex) {
