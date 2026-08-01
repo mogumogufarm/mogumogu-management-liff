@@ -40,18 +40,6 @@
   .kusakari-alert-item { display: flex; justify-content: space-between; font-size: 12px; color: #6B3226; padding: 4px 0; border-top: 1px solid #E0BDB0; }
   .kusakari-alert-item:first-of-type { border-top: none; }
 
-  .field-checklist { max-height: 260px; overflow-y: auto; border: 1px solid #D6CBAA; border-radius: 8px; margin-bottom: 10px; }
-  .field-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #D6CBAA; font-size: 13px; }
-  .field-check-item:last-child { border-bottom: none; }
-  .field-check-item input { width: 17px; height: 17px; flex-shrink: 0; }
-  .field-check-item label { flex: 1; }
-  .check-all-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .check-all-btn { font-size: 11px; color: #3D5A75; background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; }
-  .date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .date-row label { font-size: 12px; font-weight: 700; color: #6B6048; white-space: nowrap; }
-  .date-row input { flex: 1; padding: 9px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
-  .record-submit-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
-
   .matrix-scroll { overflow-x: auto; border: 1px solid #D6CBAA; border-radius: 10px; }
   table.matrix-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; width: 100%; }
   table.matrix-table th, table.matrix-table td { border-right: 1px solid #D6CBAA; padding: 8px 10px; text-align: center; }
@@ -63,9 +51,28 @@
   }
   table.matrix-table th.field-col { background: #2E3B22; color: #F7F3E9; border-right: 2px solid #D6CBAA; }
   table.matrix-table tr:nth-child(even) td.field-col { background: #EFE8D8; }
-  .print-btn { width: 100%; padding: 9px; margin: 10px 0 0; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+
+  .print-btn { width: 100%; padding: 11px; margin-bottom: 14px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  .register-block-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
+  .type-select-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .type-select-btn { flex: 1; padding: 12px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .type-select-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; }
+
+  .field-checklist { max-height: 260px; overflow-y: auto; border: 1px solid #D6CBAA; border-radius: 8px; margin-bottom: 10px; }
+  .field-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #D6CBAA; font-size: 13px; }
+  .field-check-item:last-child { border-bottom: none; }
+  .field-check-item input { width: 17px; height: 17px; flex-shrink: 0; }
+  .field-check-item label { flex: 1; }
+  .check-all-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .check-all-btn { font-size: 11px; color: #3D5A75; background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; }
+  .date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .date-row label { font-size: 12px; font-weight: 700; color: #6B6048; white-space: nowrap; }
+  .date-row input { flex: 1; padding: 9px; font-size: 13px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; }
+  .record-submit-btn { width: 100%; padding: 11px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 
   .print-doc-header { display: none; }
+  .print-side-by-side { display: none; }
 
   .status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -78,21 +85,22 @@
   .status.error { background: #8B3A2E; color: #fff; }
 
   @media print {
-    @page { size: landscape; margin: 15mm; }
+    @page { size: landscape; margin: 12mm; }
     body { background: #fff; color: #000; }
-    .top-nav, .site-title, .print-btn, .kusakari-alert,
-    .card > .check-all-row, .card > .field-checklist, .card > .date-row, .card > .record-submit-btn,
+    .top-nav, .site-title, .print-btn, .kusakari-alert, .register-card,
     .processing-overlay, .status, p[style*="text-align:center"] { display: none !important; }
     .card { border: none; padding: 0; background: #fff; box-shadow: none; }
-    .section-title { display: none; }
-    .print-doc-header { display: block !important; margin-bottom: 14px; }
-    .print-doc-header h2 { font-size: 18px; margin: 0 0 4px; font-weight: 700; }
-    .print-doc-header p { font-size: 11px; color: #333; margin: 0; }
-    table.matrix-table { border: 1.5px solid #000; }
-    table.matrix-table th, table.matrix-table td { border: 1px solid #000 !important; color: #000 !important; }
+    .section-title, .matrix-card-normal { display: none !important; }
+    .print-doc-header { display: block !important; margin-bottom: 12px; }
+    .print-doc-header h2 { font-size: 17px; margin: 0 0 3px; font-weight: 700; }
+    .print-doc-header p { font-size: 10px; color: #333; margin: 0; }
+    .print-side-by-side { display: flex !important; gap: 20px; align-items: flex-start; }
+    .print-side-by-side > div { flex: 1; min-width: 0; }
+    .print-side-by-side h3 { font-size: 13px; margin: 0 0 6px; font-weight: 700; }
+    table.matrix-table { border: 1.2px solid #000; font-size: 10px; }
+    table.matrix-table th, table.matrix-table td { border: 0.8px solid #000 !important; color: #000 !important; padding: 5px 6px; }
     table.matrix-table th { background: #E8E8E8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     table.matrix-table td.field-col, table.matrix-table th.field-col { position: static; background: #fff !important; }
-    .matrix-scroll { border: none; overflow: visible; }
   }
 </style>
 </head>
@@ -110,49 +118,47 @@
 
   <div id="mainContent" style="display:none;">
 
-    <p class="section-title"><i class="ti ti-tractor" aria-hidden="true"></i> 草刈り（乗用モアー）</p>
+    <button class="print-btn" onclick="printBoth()"><i class="ti ti-printer" aria-hidden="true"></i> PDFで出力（横向き・1ページ・書類形式）</button>
+
+    <p class="section-title matrix-card-normal"><i class="ti ti-tractor" aria-hidden="true"></i> 草刈り（乗用モアー）</p>
     <div id="alertBox_草刈り"></div>
-    <div class="card">
-      <div class="check-all-row">
-        <span style="font-size:12px; font-weight:700; color:#6B6048;">対象の圃場を選ぶ</span>
-        <button class="check-all-btn" onclick="toggleCheckAll('草刈り')">全選択／解除</button>
-      </div>
-      <div class="field-checklist" id="checklist_草刈り"></div>
-      <div class="date-row">
-        <label>実施日</label>
-        <input type="date" id="date_草刈り">
-      </div>
-      <button class="record-submit-btn" onclick="submitBulk('草刈り')">まとめて記録する</button>
-    </div>
-    <div class="card">
+    <div class="card matrix-card-normal">
       <div class="matrix-scroll"><div id="matrix_草刈り">読み込み中...</div></div>
-      <button class="print-btn" onclick="printMatrix('草刈り')"><i class="ti ti-printer" aria-hidden="true"></i> PDFで出力（横向き・書類形式）</button>
     </div>
 
-    <p class="section-title"><i class="ti ti-scissors" aria-hidden="true"></i> 刈払い（際・法面）</p>
+    <p class="section-title matrix-card-normal"><i class="ti ti-scissors" aria-hidden="true"></i> 刈払い（際・法面）</p>
     <div id="alertBox_刈払い"></div>
-    <div class="card">
+    <div class="card matrix-card-normal">
+      <div class="matrix-scroll"><div id="matrix_刈払い">読み込み中...</div></div>
+    </div>
+
+    <div class="card register-card">
+      <p class="register-block-title"><i class="ti ti-square-check" aria-hidden="true"></i> 作業を登録する</p>
+      <div class="type-select-row">
+        <button class="type-select-btn active" id="typeBtn_草刈り" onclick="setRegisterType('草刈り')">草刈り</button>
+        <button class="type-select-btn" id="typeBtn_刈払い" onclick="setRegisterType('刈払い')">刈払い</button>
+      </div>
       <div class="check-all-row">
         <span style="font-size:12px; font-weight:700; color:#6B6048;">対象の圃場を選ぶ</span>
-        <button class="check-all-btn" onclick="toggleCheckAll('刈払い')">全選択／解除</button>
+        <button class="check-all-btn" onclick="toggleCheckAll()">全選択／解除</button>
       </div>
-      <div class="field-checklist" id="checklist_刈払い"></div>
+      <div class="field-checklist" id="registerChecklist"></div>
       <div class="date-row">
         <label>実施日</label>
-        <input type="date" id="date_刈払い">
+        <input type="date" id="registerDate">
       </div>
-      <button class="record-submit-btn" onclick="submitBulk('刈払い')">まとめて記録する</button>
-    </div>
-    <div class="card">
-      <div class="matrix-scroll"><div id="matrix_刈払い">読み込み中...</div></div>
-      <button class="print-btn" onclick="printMatrix('刈払い')"><i class="ti ti-printer" aria-hidden="true"></i> PDFで出力（横向き・書類形式）</button>
+      <button class="record-submit-btn" onclick="submitBulk()">まとめて記録する</button>
     </div>
 
   </div>
 
   <div class="print-doc-header" id="printDocHeader">
-    <h2>もぐもぐ農園　<span id="printDocTitle"></span>記録簿</h2>
+    <h2>もぐもぐ農園　草刈り・刈払い記録簿</h2>
     <p id="printDocDate"></p>
+  </div>
+  <div class="print-side-by-side" id="printSideBySide">
+    <div><h3>草刈り</h3><div id="printMatrix_草刈り"></div></div>
+    <div><h3>刈払い</h3><div id="printMatrix_刈払い"></div></div>
   </div>
 
   <div class="processing-overlay" id="processingOverlay" style="display:none;">
@@ -164,7 +170,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.04</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.05</p>
 </div>
 
 <script>
@@ -178,6 +184,8 @@ initNavDrawer('kusakari.html');
 var KUSAKARI_TYPES = ['草刈り', '刈払い'];
 var MIN_COLUMNS = { '草刈り': 7, '刈払い': 3 };
 var fieldNamesList = [];
+var lastMatrixHtml = {};
+var currentRegisterType = '草刈り';
 
 function todayStr() {
   var d = new Date();
@@ -188,28 +196,36 @@ function loadFieldOptions() {
   return callServer({ action: 'getFieldList', userId: profile.userId }).then(function (result) {
     if (result.status !== 'ok') return;
     fieldNamesList = result.fields.map(function (f) { return f.name; });
-    KUSAKARI_TYPES.forEach(function (type) {
-      var el = document.getElementById('checklist_' + type);
-      var html = '';
-      fieldNamesList.forEach(function (name, idx) {
-        var id = 'chk_' + type + '_' + idx;
-        html += '<div class="field-check-item"><input type="checkbox" id="' + id + '" value="' + name.replace(/"/g, '&quot;') + '"><label for="' + id + '">' + name + '</label></div>';
-      });
-      el.innerHTML = html;
-    });
+    renderChecklist();
   });
 }
 
-function toggleCheckAll(type) {
-  var boxes = document.querySelectorAll('#checklist_' + type + ' input[type="checkbox"]');
+function renderChecklist() {
+  var el = document.getElementById('registerChecklist');
+  var html = '';
+  fieldNamesList.forEach(function (name, idx) {
+    var id = 'chk_' + idx;
+    html += '<div class="field-check-item"><input type="checkbox" id="' + id + '" value="' + name.replace(/"/g, '&quot;') + '"><label for="' + id + '">' + name + '</label></div>';
+  });
+  el.innerHTML = html;
+}
+
+function setRegisterType(type) {
+  currentRegisterType = type;
+  document.getElementById('typeBtn_草刈り').classList.toggle('active', type === '草刈り');
+  document.getElementById('typeBtn_刈払い').classList.toggle('active', type === '刈払い');
+}
+
+function toggleCheckAll() {
+  var boxes = document.querySelectorAll('#registerChecklist input[type="checkbox"]');
   var allChecked = Array.prototype.every.call(boxes, function (b) { return b.checked; });
   boxes.forEach(function (b) { b.checked = !allChecked; });
 }
 
-function submitBulk(type) {
-  var boxes = document.querySelectorAll('#checklist_' + type + ' input[type="checkbox"]:checked');
+function submitBulk() {
+  var boxes = document.querySelectorAll('#registerChecklist input[type="checkbox"]:checked');
   var fields = Array.prototype.map.call(boxes, function (b) { return b.value; });
-  var date = document.getElementById('date_' + type).value;
+  var date = document.getElementById('registerDate').value;
 
   if (fields.length === 0) {
     alert('圃場を1つ以上選んでください。');
@@ -220,17 +236,17 @@ function submitBulk(type) {
     return;
   }
 
-  var ok = confirm(fields.length + '件の圃場について、' + date + 'に' + type + 'を実施したとして記録します。よろしいですか？');
+  var ok = confirm(fields.length + '件の圃場について、' + date + 'に' + currentRegisterType + 'を実施したとして記録します。よろしいですか？');
   if (!ok) return;
 
   showProcessing('記録中...');
-  callServer({ action: 'submitKusakariRecordsBulk', userId: profile.userId, fields: fields, type: type, date: date }).then(function (result) {
+  callServer({ action: 'submitKusakariRecordsBulk', userId: profile.userId, fields: fields, type: currentRegisterType, date: date }).then(function (result) {
     hideProcessing();
     alert(result.message);
     if (result.status === 'ok') {
-      document.querySelectorAll('#checklist_' + type + ' input[type="checkbox"]').forEach(function (b) { b.checked = false; });
-      document.getElementById('date_' + type).value = todayStr();
-      loadTypeData(type);
+      document.querySelectorAll('#registerChecklist input[type="checkbox"]').forEach(function (b) { b.checked = false; });
+      document.getElementById('registerDate').value = todayStr();
+      loadTypeData(currentRegisterType);
     }
   }).catch(function (err) {
     hideProcessing();
@@ -276,7 +292,7 @@ function loadMatrix(type) {
       return;
     }
     var colCount = Math.max(result.maxCount, MIN_COLUMNS[type] || 3);
-    var html = '<table class="matrix-table" id="matrixTable_' + type + '"><tr><th class="field-col">圃場名</th>';
+    var html = '<table class="matrix-table"><tr><th class="field-col">圃場名</th>';
     for (var c = 1; c <= colCount; c++) html += '<th>' + c + '回目</th>';
     html += '</tr>';
     result.fields.forEach(function (field) {
@@ -289,33 +305,18 @@ function loadMatrix(type) {
     });
     html += '</table>';
     el.innerHTML = html;
+    lastMatrixHtml[type] = html;
   }).catch(function (err) {
     el.innerHTML = '<p style="font-size:13px; color:#C0392B; padding:10px;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
-function printMatrix(type) {
-  document.title = type + '記録簿';
-  document.getElementById('printDocTitle').textContent = type;
+function printBoth() {
+  document.title = '草刈り・刈払い記録簿';
   document.getElementById('printDocDate').textContent = '作成日：' + todayStr();
-
-  KUSAKARI_TYPES.forEach(function (t) {
-    var table = document.getElementById('matrixTable_' + t);
-    if (!table) return;
-    var wrapCard = table.closest('.card');
-    if (wrapCard) wrapCard.style.display = (t === type) ? '' : 'none';
-  });
-
+  document.getElementById('printMatrix_草刈り').innerHTML = lastMatrixHtml['草刈り'] || '';
+  document.getElementById('printMatrix_刈払い').innerHTML = lastMatrixHtml['刈払い'] || '';
   window.print();
-
-  setTimeout(function () {
-    KUSAKARI_TYPES.forEach(function (t) {
-      var table = document.getElementById('matrixTable_' + t);
-      if (!table) return;
-      var wrapCard = table.closest('.card');
-      if (wrapCard) wrapCard.style.display = '';
-    });
-  }, 500);
 }
 
 if (typeof liff === 'undefined') {
@@ -335,9 +336,9 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     if (result.status === 'ok') {
       document.getElementById('mainContent').style.display = 'block';
-      document.getElementById('date_草刈り').value = todayStr();
-      document.getElementById('date_刈払い').value = todayStr();
-      loadFieldOptions().then(loadAll);
+      document.getElementById('registerDate').value = todayStr();
+      loadFieldOptions();
+      loadAll();
     } else {
       document.getElementById('blockedCard').style.display = 'block';
     }
