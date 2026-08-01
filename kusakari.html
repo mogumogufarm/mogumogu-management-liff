@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>草刈り管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="common.css">
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #EFE8D8;
+    color: #2E3B22;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 16px 40px; }
+  .top-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #E3ECD3; color: #3E5A1F;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .tab-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
+
+  table.kusakari-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.kusakari-table th { background: #2E3B22; color: #F7F3E9; text-align: left; padding: 8px 8px; font-weight: 700; }
+  table.kusakari-table th.num { text-align: right; }
+  table.kusakari-table td { padding: 9px 8px; }
+  table.kusakari-table tr.row-danger td { background: #F0DAD0; }
+  table.kusakari-table tr.row-warn td { background: #F0DEB8; }
+  table.kusakari-table tr.row-ok td { background: #E3ECD3; }
+  table.kusakari-table tr.row-none td { background: #EAE0E8; }
+  table.kusakari-table tr + tr td { border-top: 4px solid #EFE8D8; }
+  .field-name { font-weight: 700; color: #2E3B22; }
+  .sprinkler-icon { color: #3D5A75; font-size: 12px; margin-left: 3px; }
+  .elapsed-num { font-weight: 700; }
+  .record-btn { padding: 5px 10px; border: none; border-radius: 6px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
+
+  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #D6CBAA; font-size: 12px; }
+  .history-row:last-child { border-bottom: none; }
+  .history-left { display: flex; flex-direction: column; gap: 2px; }
+  .history-type-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-right: 6px; }
+  .history-type-badge.mow { background: #E3ECD3; color: #3E5A1F; }
+  .history-type-badge.trim { background: #DCE6EA; color: #3D5A75; }
+  .history-meta { color: #A69B7A; font-size: 11px; }
+  .history-delete-btn { padding: 4px 10px; border: 1px solid #E0BDB0; border-radius: 6px; background: #fff; color: #8B3A2E; font-family: inherit; font-size: 11px; cursor: pointer; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
+  .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 400px; width: 100%; }
+  .modal-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 0 0 14px; }
+  .modal-box label { font-size: 12px; font-weight: 700; color: #6B6048; display: block; margin-bottom: 6px; }
+  .modal-box input[type="date"] { width: 100%; padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #D6CBAA; font-family: inherit; margin-bottom: 16px; }
+  .modal-confirm-btn { width: 100%; padding: 11px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .modal-cancel-btn { width: 100%; padding: 9px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; margin-top: 8px; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #8B3A2E; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav">
+    <div id="navHamburgerSlot"></div>
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+  </div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-cut" aria-hidden="true"></i></span>草刈り・刈払い管理</h1>
+
+  <div id="blockedCard" class="card" style="text-align:center; display:none;">
+    <p style="font-weight:700; color:#8B3A2E;">この画面は管理者のみ利用できます</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabMowBtn" onclick="switchTab('草刈り')">草刈り一覧</button>
+      <button class="tab-btn" id="tabTrimBtn" onclick="switchTab('刈払い')">刈払い一覧</button>
+      <button class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">履歴</button>
+    </div>
+
+    <div id="listView" class="card">
+      <div id="listContent">読み込み中...</div>
+    </div>
+
+    <div id="historyView" class="card" style="display:none;">
+      <div id="historyContent">読み込み中...</div>
+    </div>
+  </div>
+
+  <div id="recordModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeRecordModal();">
+    <div class="modal-box">
+      <p class="modal-title" id="recordModalTitle"></p>
+      <label>実施日</label>
+      <input type="date" id="recordDateInput">
+      <button class="modal-confirm-btn" onclick="confirmRecord()">記録する</button>
+      <button class="modal-cancel-btn" onclick="closeRecordModal()">キャンセル</button>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">読み込み中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentIdToken = null;
+initNavDrawer('kusakari.html');
+
+var currentTab = '草刈り';
+var pendingRecordField = null;
+var pendingRecordType = null;
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabMowBtn').classList.toggle('active', tab === '草刈り');
+  document.getElementById('tabTrimBtn').classList.toggle('active', tab === '刈払い');
+  document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+  document.getElementById('listView').style.display = (tab === 'history') ? 'none' : 'block';
+  document.getElementById('historyView').style.display = (tab === 'history') ? 'block' : 'none';
+
+  if (tab === 'history') {
+    loadHistory();
+  } else {
+    loadList(tab);
+  }
+}
+
+function loadList(type) {
+  var el = document.getElementById('listContent');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getKusakariStatus', userId: profile.userId, type: type }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">圃場マスタに圃場が登録されていません。</p>';
+      return;
+    }
+    var html = '<table class="kusakari-table"><tr><th>圃場名</th><th>前回</th><th class="num">経過</th><th></th></tr>';
+    result.rows.forEach(function (r) {
+      var rowClass = 'row-none';
+      var elapsedLabel = '未記録';
+      if (r.elapsedDays !== null) {
+        elapsedLabel = r.elapsedDays + '日';
+        rowClass = r.elapsedDays >= 30 ? 'row-danger' : (r.elapsedDays >= 14 ? 'row-warn' : 'row-ok');
+      }
+      var sprinklerHtml = r.hasSprinkler ? '<i class="ti ti-droplet sprinkler-icon" aria-hidden="true"></i>' : '';
+      html += '<tr class="' + rowClass + '">' +
+        '<td><span class="field-name">' + r.field + '</span>' + sprinklerHtml + '</td>' +
+        '<td>' + (r.lastDate || '-') + '</td>' +
+        '<td class="num elapsed-num">' + elapsedLabel + '</td>' +
+        '<td><button class="record-btn" onclick="openRecordModal(\'' + r.field.replace(/'/g, "\\'") + '\', \'' + type + '\')">記録する</button></td>' +
+        '</tr>';
+    });
+    html += '</table>';
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function openRecordModal(field, type) {
+  pendingRecordField = field;
+  pendingRecordType = type;
+  document.getElementById('recordModalTitle').textContent = field + 'の' + type + 'を記録';
+  var today = new Date();
+  var yyyy = today.getFullYear();
+  var mm = String(today.getMonth() + 1).padStart(2, '0');
+  var dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('recordDateInput').value = yyyy + '-' + mm + '-' + dd;
+  document.getElementById('recordModal').style.display = 'flex';
+}
+
+function closeRecordModal() {
+  document.getElementById('recordModal').style.display = 'none';
+}
+
+function confirmRecord() {
+  var date = document.getElementById('recordDateInput').value;
+  if (!date) {
+    alert('日付を選んでください。');
+    return;
+  }
+  showProcessing('記録中...');
+  callServer({ action: 'submitKusakariRecord', userId: profile.userId, field: pendingRecordField, type: pendingRecordType, date: date }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      closeRecordModal();
+      loadList(pendingRecordType);
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadHistory() {
+  var el = document.getElementById('historyContent');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getKusakariHistory', userId: profile.userId, limit: 100 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだ記録がありません。</p>';
+      return;
+    }
+    var html = '';
+    result.rows.forEach(function (r) {
+      var badgeClass = r.type === '草刈り' ? 'mow' : 'trim';
+      html += '<div class="history-row">' +
+        '<div class="history-left"><span><span class="history-type-badge ' + badgeClass + '">' + r.type + '</span><span class="field-name">' + r.field + '</span></span>' +
+        '<span class="history-meta">' + r.date + '　' + r.recordedBy + '</span></div>' +
+        '<button class="history-delete-btn" onclick="deleteHistoryRecord(' + r.rowIndex + ')">削除</button>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function deleteHistoryRecord(rowIndex) {
+  var ok = confirm('この記録を削除します。よろしいですか？');
+  if (!ok) return;
+  showProcessing('削除中...');
+  callServer({ action: 'deleteKusakariRecord', userId: profile.userId, rowIndex: rowIndex }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') loadHistory();
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    currentIdToken = liff.getIDToken();
+    return callServer({ action: 'checkAdmin', userId: p.userId });
+  }).then(function (result) {
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    if (result.status === 'ok') {
+      document.getElementById('mainContent').style.display = 'block';
+      loadList('草刈り');
+    } else {
+      document.getElementById('blockedCard').style.display = 'block';
+    }
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var msg = (err && err.message) ? err.message : String(err);
+    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
+      try { liff.logout(); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + msg;
+  });
+}
+</script>
+</body>
+</html>
