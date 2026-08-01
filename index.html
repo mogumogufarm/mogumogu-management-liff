@@ -177,9 +177,8 @@
 <div class="wrap">
   <div class="mobile-page-header mobile-header-row">
     <div id="navHamburgerSlot"></div>
-    <p class="eyebrow" style="margin:0;">もぐもぐ農園</p>
+    <div id="mobileLogoSlot"></div>
   </div>
-  <h1 class="site-title mobile-page-header">運営管理システム</h1>
 
   <div id="displaySettingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeDisplaySettingsModal();">
     <div class="modal-box">
@@ -418,6 +417,16 @@
     </div>
       </div>
     </div>
+
+    <div class="block-card" id="blockKusakari">
+      <div class="block-header">草刈り・刈払い管理</div>
+      <div class="block-body">
+        <div id="kusakariHomeList">
+          <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
+        </div>
+        <a href="kusakari.html" style="display:block; text-align:center; font-size:12px; color:#3D5A75; margin-top:8px;">すべて見る →</a>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -430,7 +439,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.59</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.61</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -438,6 +447,7 @@ var LIFF_ID = '2010745560-GD4XbdoK';
 var currentUserId = null;
 var currentIdToken = null;
 initNavDrawer('index.html');
+document.getElementById('mobileLogoSlot').innerHTML = MOGUMOGU_LOGO_SVG_LIGHTBG;
 
 var homeVarietyByCrop = {};
 var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
@@ -672,7 +682,8 @@ var DISPLAY_BLOCK_MAP = {
   nikki: { elId: 'blockNikki', label: '農園日誌' },
   sanchoku: { elId: 'blockSanchoku', label: '産直サイトの受注' },
   jaMail: { elId: 'blockJaMail', label: 'JA南アルプス指導メール' },
-  staff: { elId: 'blockStaff', label: 'スタッフ・人件費' }
+  staff: { elId: 'blockStaff', label: 'スタッフ・人件費' },
+  kusakari: { elId: 'blockKusakari', label: '草刈り・刈払い管理' }
 };
 var lastDisplaySettings = null;
 var lastDisplayOrder = Object.keys(DISPLAY_BLOCK_MAP);
@@ -791,6 +802,32 @@ function loadWeatherForecast() {
     result.days.forEach(function (d) {
       var tempHtml = (d.tempMin || d.tempMax) ? (d.tempMin + '〜' + d.tempMax) : '';
       html += '<div class="weather-row"><span class="weather-date">' + d.date + '</span><i class="ti ' + d.icon + ' weather-icon" aria-hidden="true"></i><span class="weather-desc">' + d.weather + '　降水' + d.pop + '</span><span class="weather-temp">' + tempHtml + '</span></div>';
+    });
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function loadKusakariHome() {
+  var el = document.getElementById('kusakariHomeList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getKusakariHomeSummary', userId: currentUserId, limit: 5 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">圃場が登録されていません。</p>';
+      return;
+    }
+    var html = '';
+    result.rows.forEach(function (r) {
+      var label = r.elapsedDays === null ? '未記録' : r.elapsedDays + '日経過';
+      var color = r.elapsedDays === null ? '#6A4A5E' : (r.elapsedDays >= 30 ? '#8B3A2E' : (r.elapsedDays >= 14 ? '#8A5A2A' : '#3E5A1F'));
+      var sprinklerHtml = r.hasSprinkler ? '<i class="ti ti-droplet" style="color:#3D5A75; font-size:11px; margin-left:3px;" aria-hidden="true"></i>' : '';
+      html += '<div class="crop-row"><span>' + r.field + sprinklerHtml + '<span class="crop-row-sub">（' + r.type + '）</span></span><span style="color:' + color + '; font-weight:700;">' + label + '</span></div>';
     });
     el.innerHTML = html;
   }).catch(function (err) {
@@ -1048,6 +1085,7 @@ if (typeof liff === 'undefined') {
       loadCropSummary();
       loadJaMailList();
       loadNikkiRecent();
+      loadKusakariHome();
       loadWeatherForecast();
       loadDisplaySettings();
       if (new URLSearchParams(window.location.search).get('openSettings') === '1') {
