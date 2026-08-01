@@ -34,6 +34,11 @@
   .tab-btn { flex: 1; padding: 10px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
   .tab-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
 
+  .kusakari-alert { background: #F0DAD0; border: 1px solid #D9A88F; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+  .kusakari-alert-title { font-size: 13px; font-weight: 700; color: #8B3A2E; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+  .kusakari-alert-item { display: flex; justify-content: space-between; font-size: 12px; color: #6B3226; padding: 4px 0; border-top: 1px solid #E0BDB0; }
+  .kusakari-alert-item:first-of-type { border-top: none; }
+
   table.kusakari-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.kusakari-table th { background: #2E3B22; color: #F7F3E9; text-align: left; padding: 8px 8px; font-weight: 700; }
   table.kusakari-table th.num { text-align: right; }
@@ -135,7 +140,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -178,7 +183,16 @@ function loadList(type) {
       el.innerHTML = '<p style="font-size:13px; color:#7A7256;">圃場マスタに圃場が登録されていません。</p>';
       return;
     }
-    var html = '<table class="kusakari-table"><tr><th>圃場名</th><th>前回</th><th class="num">経過</th><th></th></tr>';
+    var overdueFields = result.rows.filter(function (r) { return r.elapsedDays !== null && r.elapsedDays >= 30; });
+    var html = '';
+    if (overdueFields.length > 0) {
+      html += '<div class="kusakari-alert"><p class="kusakari-alert-title"><i class="ti ti-alert-triangle" aria-hidden="true"></i> ' + overdueFields.length + '件、30日以上経過しています</p>';
+      overdueFields.forEach(function (r) {
+        html += '<div class="kusakari-alert-item"><span>' + r.field + '</span><span>' + r.elapsedDays + '日経過</span></div>';
+      });
+      html += '</div>';
+    }
+    html += '<table class="kusakari-table"><tr><th>圃場名</th><th>前回</th><th class="num">経過</th><th></th></tr>';
     result.rows.forEach(function (r) {
       var rowClass = 'row-none';
       var elapsedLabel = '未記録';
