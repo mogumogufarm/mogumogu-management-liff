@@ -179,7 +179,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.06</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.07</p>
 </div>
 
 <script>
@@ -320,7 +320,8 @@ function loadMatrix(type) {
       el.innerHTML = '<p style="font-size:13px; color:#7A7256; padding:10px;">圃場マスタに圃場が登録されていません。</p>';
       return;
     }
-    var colCount = Math.max(result.maxCount, MIN_COLUMNS[type] || 3);
+    var minCol = (type === '草刈り') ? 7 : 3;
+    var colCount = Math.max(Number(result.maxCount) || 0, minCol);
     var html = '<table class="matrix-table"><tr><th class="field-col">圃場名</th>';
     for (var c = 1; c <= colCount; c++) html += '<th>' + c + '回目</th>';
     html += '</tr>';
