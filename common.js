@@ -46,6 +46,7 @@ var NAV_LINKS = [
   ] },
   { group: '記録・日誌', items: [
     { href: 'nikki.html', label: '農園日誌', icon: 'ti-notebook' },
+    { href: 'kusakari.html', label: '草刈り・刈払い管理', icon: 'ti-cut' },
     { href: 'ja-mail.html', label: 'JA指導メール', icon: 'ti-mail' }
   ] },
   { group: '管理', items: [
@@ -55,6 +56,30 @@ var NAV_LINKS = [
     { action: 'openDisplaySettings', label: '表示設定', icon: 'ti-adjustments' }
   ] }
 ];
+
+// スマホ版など、明るい背景用のロゴ
+var MOGUMOGU_LOGO_SVG_LIGHTBG =
+  '<svg width="180" height="38" viewBox="0 0 424 88" style="vertical-align:middle;">' +
+  '<defs><style>@import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap");</style></defs>' +
+  '<text x="212" y="14" text-anchor="middle" font-size="13" fill="#6B6048" font-family="\'M PLUS Rounded 1c\',sans-serif" font-weight="500">山梨県南アルプス果実</text>' +
+  '<circle cx="76" cy="56" r="16" fill="#5B2E1F"/>' +
+  '<circle cx="108" cy="56" r="16" fill="#3E6B22"/>' +
+  '<circle cx="140" cy="56" r="16" fill="#C0392B"/>' +
+  '<text x="170" y="67" font-size="30" font-weight="800" fill="#2E3B22" font-family="\'M PLUS Rounded 1c\',sans-serif">もぐもぐ農園</text>' +
+  '<text x="212" y="82" text-anchor="middle" font-size="12" fill="#7A7256" font-family="\'M PLUS Rounded 1c\',sans-serif" font-weight="500">運営管理システム</text>' +
+  '</svg>';
+
+// 濃緑ヘッダー用のロゴ（PC版のpc-nav-headerで使用。文字色を白系に調整）
+var MOGUMOGU_LOGO_SVG_DARKBG =
+  '<svg width="220" height="46" viewBox="0 0 424 88" style="vertical-align:middle;">' +
+  '<defs><style>@import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap");</style></defs>' +
+  '<text x="212" y="14" text-anchor="middle" font-size="13" fill="#D6CBAA" font-family="\'M PLUS Rounded 1c\',sans-serif" font-weight="500">山梨県南アルプス果実</text>' +
+  '<circle cx="76" cy="56" r="16" fill="#C97B5F"/>' +
+  '<circle cx="108" cy="56" r="16" fill="#8FBF6A"/>' +
+  '<circle cx="140" cy="56" r="16" fill="#E0776A"/>' +
+  '<text x="170" y="67" font-size="30" font-weight="800" fill="#F7F3E9" font-family="\'M PLUS Rounded 1c\',sans-serif">もぐもぐ農園</text>' +
+  '<text x="212" y="82" text-anchor="middle" font-size="12" fill="#D6CBAA" font-family="\'M PLUS Rounded 1c\',sans-serif" font-weight="500">運営管理システム</text>' +
+  '</svg>';
 
 function initNavDrawer(currentFile) {
   var overlay = document.createElement('div');
@@ -124,7 +149,7 @@ function buildPcTopNav(currentFile) {
   wrapper.id = 'pcNavWrapper';
 
   wrapper.innerHTML =
-    '<div class="pc-nav-header"><span>もぐもぐ農園　運営管理システム</span><i class="ti ti-user-circle" aria-hidden="true"></i></div>' +
+    '<div class="pc-nav-header"><span>' + MOGUMOGU_LOGO_SVG_DARKBG + '</span><i class="ti ti-user-circle" aria-hidden="true"></i></div>' +
     '<div class="pc-nav-icongrid" id="pcNavIconGrid"></div>' +
     '<div class="pc-nav-subitem-row" id="pcNavSubRow"></div>';
 
