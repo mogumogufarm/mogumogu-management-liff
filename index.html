@@ -38,25 +38,23 @@
   .block-card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; overflow: hidden; margin: 16px 0; }
 
   .variety-highlight {
-    background: linear-gradient(135deg, #4A2E6B 0%, #6B2E5B 100%);
-    border-radius: 16px; padding: 18px 16px; margin: 20px 0;
-    box-shadow: 0 6px 20px rgba(74,46,107,0.35);
+    background: #F7F3E9; border: 2px solid #2E3B22; border-radius: 16px; padding: 18px 16px; margin: 20px 0;
   }
   .variety-highlight-title {
-    color: #F3E6F5; font-size: 15px; font-weight: 700; text-align: center; margin: 0 0 14px;
+    color: #2E3B22; font-size: 15px; font-weight: 700; text-align: center; margin: 0 0 14px;
     letter-spacing: 0.5px;
   }
   .variety-highlight-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .variety-card {
-    flex: 1; min-width: 140px; background: rgba(255,255,255,0.12); border-radius: 12px;
-    padding: 14px 10px; text-align: center; border: 1px solid rgba(255,255,255,0.25);
+    flex: 1; min-width: 140px; background: #fff; border-radius: 12px;
+    padding: 14px 10px; text-align: center; border: 1px solid #D6CBAA;
   }
-  .variety-card-name { color: #F3E6F5; font-size: 13px; font-weight: 700; margin: 0 0 6px; }
-  .variety-card-count { color: #fff; font-size: 26px; font-weight: 800; margin: 0; line-height: 1.1; }
+  .variety-card-name { color: #6B6048; font-size: 12px; font-weight: 700; margin: 0 0 6px; }
+  .variety-card-count { color: #8B3A2E; font-size: 28px; font-weight: 800; margin: 0; line-height: 1.1; }
   .variety-card-count span { font-size: 13px; font-weight: 500; }
-  .variety-card-kg { color: #E8D8EC; font-size: 12px; margin: 4px 0 6px; }
-  .variety-card-amount { color: #FFE9A8; font-size: 16px; font-weight: 700; margin: 0; }
-  .variety-card-wakeari { color: #D8C4DC; font-size: 10px; margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.3); }
+  .variety-card-kg { color: #6B6048; font-size: 12px; margin: 4px 0 6px; }
+  .variety-card-amount { color: #2E3B22; font-size: 16px; font-weight: 700; margin: 0; }
+  .variety-card-wakeari { color: #8A5A2A; font-size: 10px; margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed #D6CBAA; }
   @media (min-width: 900px) {
     .dashboard-grid { columns: 2; column-gap: 16px; }
     .dashboard-grid .block-card { margin: 0 0 16px; break-inside: avoid; }
@@ -272,7 +270,7 @@
   <div id="varietyHighlight" class="variety-highlight">
     <p class="variety-highlight-title" id="varietyHighlightTitle">予約販売数</p>
     <div class="variety-highlight-row" id="varietyHighlightRow">
-      <p style="color:#fff; font-size:13px; text-align:center; width:100%;">読み込み中...</p>
+      <p style="color:#6B6048; font-size:13px; text-align:center; width:100%;">読み込み中...</p>
     </div>
   </div>
 
@@ -467,7 +465,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.62</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.63</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -844,7 +842,7 @@ function loadVarietyHighlight() {
 
   callServer({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) }).then(function (result) {
     if (result.status !== 'ok') {
-      el.innerHTML = '<p style="color:#fff; font-size:13px; text-align:center; width:100%;">' + result.message + '</p>';
+      el.innerHTML = '<p style="color:#6B6048; font-size:13px; text-align:center; width:100%;">' + result.message + '</p>';
       return;
     }
     var html = '';
@@ -856,13 +854,13 @@ function loadVarietyHighlight() {
         '<p class="variety-card-kg">' + s.weightKg.toLocaleString() + 'kg</p>' +
         '<p class="variety-card-amount">¥' + s.amount.toLocaleString() + '</p>';
       if (s.wakeariCount > 0) {
-        html += '<p class="variety-card-wakeari">うち訳あり：' + s.wakeariCount + '件　' + s.wakeariWeightKg.toLocaleString() + 'kg　¥' + s.wakeariAmount.toLocaleString() + '</p>';
+        html += '<p class="variety-card-wakeari">うち訳あり・家庭用：' + s.wakeariCount + '件　' + s.wakeariWeightKg.toLocaleString() + 'kg　¥' + s.wakeariAmount.toLocaleString() + '</p>';
       }
       html += '</div>';
     });
     el.innerHTML = html;
   }).catch(function (err) {
-    el.innerHTML = '<p style="color:#fff; font-size:13px; text-align:center; width:100%;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+    el.innerHTML = '<p style="color:#6B6048; font-size:13px; text-align:center; width:100%;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
