@@ -466,7 +466,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.65</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.66</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -903,8 +903,10 @@ function loadKusakariHome() {
       var label = r.elapsedDays === null ? '未記録' : r.elapsedDays + '日経過';
       var color = r.elapsedDays === null ? '#6A4A5E' : (r.elapsedDays >= 30 ? '#8B3A2E' : (r.elapsedDays >= 14 ? '#8A5A2A' : '#3E5A1F'));
       var sprinklerHtml = r.hasSprinkler ? '<i class="ti ti-droplet" style="color:#3D5A75; font-size:11px; margin-left:3px;" aria-hidden="true"></i>' : '';
-      var typeIcon = r.type === '草刈り' ? 'ti-tractor' : 'ti-scissors';
-      html += '<div class="crop-row"><span>' + r.field + sprinklerHtml + ' <i class="ti ' + typeIcon + '" style="font-size:11px; color:#7A7256; margin-left:3px;" aria-hidden="true"></i></span><span style="color:' + color + '; font-weight:700;">' + label + '</span></div>';
+      var typeBadge = r.type === '草刈り'
+        ? '<span class="ja-mail-badge" style="background:#E3ECD3; color:#3E5A1F;">草刈り</span>'
+        : '<span class="ja-mail-badge" style="background:#DCE6EA; color:#3D5A75;">刈払い</span>';
+      html += '<div class="crop-row"><span>' + typeBadge + r.field + sprinklerHtml + '</span><span style="color:' + color + '; font-weight:700;">' + label + '</span></div>';
     });
     el.innerHTML = html;
   }).catch(function (err) {
