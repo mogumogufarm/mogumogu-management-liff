@@ -110,6 +110,7 @@
   .crop-mode-btn { flex: 1; padding: 8px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 12px; cursor: pointer; }
   .crop-mode-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; font-weight: 700; }
   .crop-row-sub { font-size: 11px; color: #7A7256; font-weight: 400; margin-left: 4px; }
+  .crop-icon-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
   .crop-row-qty { font-size: 10px; color: #A69B7A; font-weight: 400; }
   .ja-mail-row { padding: 10px 4px; border-bottom: 1px solid #D6CBAA; cursor: pointer; }
   .nikki-home-type-label { font-size: 11px; font-weight: 700; color: #7A7256; margin: 12px 0 4px; }
@@ -445,7 +446,7 @@
     </div>
 
     <div class="block-card" id="blockKusakari">
-      <div class="block-header">草刈り・刈払い管理</div>
+      <div class="block-header"><i class="ti ti-cut" aria-hidden="true" style="margin-right:6px;"></i>草刈り・刈払い管理</div>
       <div class="block-body">
         <div id="kusakariHomeList">
           <p style="font-size:13px; color:#7A7256;">読み込み中...</p>
@@ -465,7 +466,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.63</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.64</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -595,7 +596,7 @@ function renderCropSummary() {
   var html = '';
   if (cropMode === 'crop') {
     result.rows.forEach(function (r) {
-      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'crop\', \'' + r.crop + '\')"><span>' + r.crop + '（タップで詳細）</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
+      html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'crop\', \'' + r.crop + '\')"><span>' + buildCropIcon(r.crop) + r.crop + '（タップで詳細）</span><span>¥' + r.amount.toLocaleString() + '</span></div>';
     });
   } else {
     result.varietyRows.forEach(function (r) {
@@ -604,7 +605,7 @@ function renderCropSummary() {
         .map(function (src) { return src + '×' + r.countBySource[src]; })
         .join('　');
       html += '<div class="crop-row crop-row-clickable" onclick="openCropDetailModal(\'variety\', \'' + key.replace(/'/g, "\\'") + '\')">' +
-        '<span>' + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span>' +
+        '<span>' + buildCropIcon(r.variety) + r.variety + '<span class="crop-row-sub">（' + r.crop + '）</span>' +
         '<br><span class="crop-row-qty">' + r.weightKg.toLocaleString() + 'kg　' + r.count + '件　' + sourceBreakdown + '</span></span>' +
         '<span>¥' + r.amount.toLocaleString() + '</span></div>';
     });
@@ -691,6 +692,26 @@ var JA_MAIL_CROP_COLORS = {
   '葡萄': { bg: '#E3ECD3', fg: '#3E5A1F' },
   '柿': { bg: '#F0DEB8', fg: '#8A5A2A' }
 };
+
+// 品目・品種名（巨峰やピオーネのような品種名も含む）に応じた色付きの丸アイコンを作る
+var CROP_ICON_KEYWORD_MAP = [
+  { keywords: ['さくらんぼ', '佐藤錦', '紅秀峰'], color: '#8B3A2E' },
+  { keywords: ['もも', '桃', 'あかつき', '日川白鳳'], color: '#8A5A2A' },
+  { keywords: ['スモモ', '太陽', '貴陽'], color: '#6A4A5E' },
+  { keywords: ['葡萄', 'ぶどう', '巨峰', 'ピオーネ', 'シャインマスカット'], color: '#3E5A1F' },
+  { keywords: ['柿', 'あんぽ', '平核無'], color: '#8A5A2A' }
+];
+function buildCropIcon(name) {
+  var color = '#A69B7A';
+  for (var i = 0; i < CROP_ICON_KEYWORD_MAP.length; i++) {
+    var entry = CROP_ICON_KEYWORD_MAP[i];
+    for (var j = 0; j < entry.keywords.length; j++) {
+      if (String(name).indexOf(entry.keywords[j]) !== -1) { color = entry.color; break; }
+    }
+    if (color !== '#A69B7A') break;
+  }
+  return '<span class="crop-icon-dot" style="background:' + color + ';"></span>';
+}
 
 function buildJaMailBadges(subject) {
   var html = '';
@@ -849,7 +870,7 @@ function loadVarietyHighlight() {
     result.varieties.forEach(function (v) {
       var s = result.summary[v];
       html += '<div class="variety-card">' +
-        '<p class="variety-card-name">' + v + '</p>' +
+        '<p class="variety-card-name">' + buildCropIcon(v) + v + '</p>' +
         '<p class="variety-card-count">' + s.count + '<span>点</span></p>' +
         '<p class="variety-card-kg">' + s.weightKg.toLocaleString() + 'kg</p>' +
         '<p class="variety-card-amount">¥' + s.amount.toLocaleString() + '</p>';
@@ -882,7 +903,8 @@ function loadKusakariHome() {
       var label = r.elapsedDays === null ? '未記録' : r.elapsedDays + '日経過';
       var color = r.elapsedDays === null ? '#6A4A5E' : (r.elapsedDays >= 30 ? '#8B3A2E' : (r.elapsedDays >= 14 ? '#8A5A2A' : '#3E5A1F'));
       var sprinklerHtml = r.hasSprinkler ? '<i class="ti ti-droplet" style="color:#3D5A75; font-size:11px; margin-left:3px;" aria-hidden="true"></i>' : '';
-      html += '<div class="crop-row"><span>' + r.field + sprinklerHtml + '<span class="crop-row-sub">（' + r.type + '）</span></span><span style="color:' + color + '; font-weight:700;">' + label + '</span></div>';
+      var typeIcon = r.type === '草刈り' ? 'ti-tractor' : 'ti-scissors';
+      html += '<div class="crop-row"><span>' + r.field + sprinklerHtml + ' <i class="ti ' + typeIcon + '" style="font-size:11px; color:#7A7256; margin-left:3px;" aria-hidden="true"></i></span><span style="color:' + color + '; font-weight:700;">' + label + '</span></div>';
     });
     el.innerHTML = html;
   }).catch(function (err) {
@@ -1003,7 +1025,7 @@ function loadSanchokuSummary() {
         }
         html += '<table class="sanchoku-table"><thead><tr><th>品種</th><th>数量</th><th>件数</th><th>合計</th><th>金額</th></tr></thead><tbody>';
         p.rows.forEach(function (r) {
-          html += '<tr><td>' + r.variety + '</td><td>' + r.qtyLabel + '</td><td>' + r.count + '件</td><td>' + r.weightKg + 'kg</td>' +
+          html += '<tr><td>' + buildCropIcon(r.variety) + r.variety + '</td><td>' + r.qtyLabel + '</td><td>' + r.count + '件</td><td>' + r.weightKg + 'kg</td>' +
             '<td>' + (r.hasUnfilled ? '<span class="sanchoku-unfilled">¥' + r.amount.toLocaleString() + '＋未入力</span>' : '¥' + r.amount.toLocaleString()) + '</td></tr>';
         });
         html += '<tr class="total-row"><td>合計</td><td></td><td>' + p.totalCount + '件</td><td>' + p.totalWeight + 'kg</td>' +
@@ -1047,7 +1069,7 @@ function loadHomeStockStatus() {
         var lowClass = it.remaining <= 0 ? ' low' : '';
         html +=
           '<div class="stock-row">' +
-          '<div class="stock-row-top"><span class="stock-variety">' + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
+          '<div class="stock-row-top"><span class="stock-variety">' + buildCropIcon(it.variety) + it.variety + '<span class="stock-crop">（' + it.crop + '）</span></span>' +
           '<span class="stock-remaining' + lowClass + '">残り' + it.remaining + '個</span></div>' +
           '<div class="stock-sub">入荷' + it.incoming + '個　－　販売' + it.sold + '個</div></div>';
       });
