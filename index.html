@@ -466,7 +466,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.64</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.65</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -695,22 +695,22 @@ var JA_MAIL_CROP_COLORS = {
 
 // 品目・品種名（巨峰やピオーネのような品種名も含む）に応じた色付きの丸アイコンを作る
 var CROP_ICON_KEYWORD_MAP = [
-  { keywords: ['さくらんぼ', '佐藤錦', '紅秀峰'], color: '#8B3A2E' },
-  { keywords: ['もも', '桃', 'あかつき', '日川白鳳'], color: '#8A5A2A' },
-  { keywords: ['スモモ', '太陽', '貴陽'], color: '#6A4A5E' },
-  { keywords: ['葡萄', 'ぶどう', '巨峰', 'ピオーネ', 'シャインマスカット'], color: '#3E5A1F' },
-  { keywords: ['柿', 'あんぽ', '平核無'], color: '#8A5A2A' }
+  { keywords: ['さくらんぼ', '佐藤錦', '紅秀峰'], crop: 'さくらんぼ', bg: '#F0DAD0', fg: '#8B3A2E' },
+  { keywords: ['もも', '桃', 'あかつき', '日川白鳳'], crop: 'もも', bg: '#F0DEB8', fg: '#8A5A2A' },
+  { keywords: ['スモモ', '太陽', '貴陽'], crop: 'スモモ', bg: '#EAE0E8', fg: '#6A4A5E' },
+  { keywords: ['葡萄', 'ぶどう', '巨峰', 'ピオーネ', 'シャインマスカット'], crop: '葡萄', bg: '#E3ECD3', fg: '#3E5A1F' },
+  { keywords: ['柿', 'あんぽ', '平核無'], crop: '柿', bg: '#F0DEB8', fg: '#8A5A2A' }
 ];
 function buildCropIcon(name) {
-  var color = '#A69B7A';
   for (var i = 0; i < CROP_ICON_KEYWORD_MAP.length; i++) {
     var entry = CROP_ICON_KEYWORD_MAP[i];
     for (var j = 0; j < entry.keywords.length; j++) {
-      if (String(name).indexOf(entry.keywords[j]) !== -1) { color = entry.color; break; }
+      if (String(name).indexOf(entry.keywords[j]) !== -1) {
+        return '<span class="ja-mail-badge" style="background:' + entry.bg + '; color:' + entry.fg + ';">' + entry.crop + '</span>';
+      }
     }
-    if (color !== '#A69B7A') break;
   }
-  return '<span class="crop-icon-dot" style="background:' + color + ';"></span>';
+  return '';
 }
 
 function buildJaMailBadges(subject) {
