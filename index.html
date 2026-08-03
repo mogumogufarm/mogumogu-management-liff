@@ -55,6 +55,11 @@
   .variety-card-kg { color: #6B6048; font-size: 12px; margin: 4px 0 6px; }
   .variety-card-amount { color: #2E3B22; font-size: 16px; font-weight: 700; margin: 0; }
   .variety-card-wakeari { color: #8A5A2A; font-size: 10px; margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed #D6CBAA; }
+  .variety-tv-link {
+    text-align: center; font-size: 12px; color: #2E3B22; text-decoration: none; font-weight: 700;
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed #D6CBAA;
+  }
+  .variety-tv-link:hover { color: #8B3A2E; }
   @media (min-width: 900px) {
     .dashboard-grid { columns: 2; column-gap: 16px; }
     .dashboard-grid .block-card { margin: 0 0 16px; break-inside: avoid; }
@@ -273,6 +278,7 @@
     <div class="variety-highlight-row" id="varietyHighlightRow">
       <p style="color:#6B6048; font-size:13px; text-align:center; width:100%;">読み込み中...</p>
     </div>
+    <a href="sales-display.html" class="pc-only-block variety-tv-link"><i class="ti ti-device-tv" aria-hidden="true"></i> テレビ表示用の画面を開く</a>
   </div>
 
     <div class="dashboard-grid">
@@ -466,7 +472,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.66</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.67</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
