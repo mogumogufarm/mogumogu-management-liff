@@ -35,10 +35,11 @@
     padding: 2.5vw 2vw; text-align: center; flex: 1; max-width: 30vw;
   }
   .disp-card-name { color: #6B6048; font-size: 2vw; font-weight: 700; margin-bottom: 1vw; }
-  .disp-card-count { color: #8B3A2E; font-size: 8vw; font-weight: 900; line-height: 1; }
-  .disp-card-count span { font-size: 2.5vw; font-weight: 700; }
-  .disp-card-kg { color: #6B6048; font-size: 2vw; margin: 1vw 0; }
+  .disp-card-kg-big { color: #8B3A2E; font-size: 8vw; font-weight: 900; line-height: 1; }
+  .disp-card-kg-big span { font-size: 2.5vw; font-weight: 700; }
+  .disp-card-count { color: #6B6048; font-size: 2vw; margin: 1vw 0; }
   .disp-card-amount { color: #2E3B22; font-size: 3vw; font-weight: 900; }
+  .disp-card-diff { color: #3E5A1F; font-size: 1.8vw; font-weight: 700; margin-top: 1vw; }
   .disp-card-wakeari { color: #8A5A2A; font-size: 1.3vw; margin-top: 1.5vw; padding-top: 1vw; border-top: 0.15vw dashed #D6CBAA; }
   #updatedAt { color: #A69B7A; font-size: 1.3vw; margin-top: 2.5vw; }
   #flashOverlay {
@@ -122,7 +123,7 @@ function initLiff() {
     currentUserId = p.userId;
     currentIdToken = liff.getIDToken();
     loadAndShow();
-    setInterval(loadAndShow, 5 * 60 * 1000); // 5分おきに自動更新
+    setInterval(loadAndShow, 60 * 1000); // 1分おきに自動更新
   }).catch(function (err) {
     if (err === 'LOGIN_REDIRECT') return;
     document.getElementById('titleText').textContent = '読み込みエラー：' + (err && err.message ? err.message : err);
@@ -158,9 +159,10 @@ function loadAndShow() {
 
       html += '<div class="disp-card">' +
         '<p class="disp-card-name">' + v + '</p>' +
-        '<p class="disp-card-count">' + s.count + '<span>点</span></p>' +
-        '<p class="disp-card-kg">' + s.weightKg.toLocaleString() + 'kg</p>' +
-        '<p class="disp-card-amount">￥' + s.amount.toLocaleString() + '</p>';
+        '<p class="disp-card-kg-big">' + s.weightKg.toLocaleString() + '<span>kg</span></p>' +
+        '<p class="disp-card-count">' + s.count + '点</p>' +
+        '<p class="disp-card-amount">￥' + s.amount.toLocaleString() + '</p>' +
+        '<p class="disp-card-diff">前日＋' + s.todayCount + '件</p>';
       if (s.wakeariCount > 0) {
         html += '<p class="disp-card-wakeari">うち訳あり・家庭用：' + s.wakeariCount + '件　' + s.wakeariWeightKg.toLocaleString() + 'kg　￥' + s.wakeariAmount.toLocaleString() + '</p>';
       }
