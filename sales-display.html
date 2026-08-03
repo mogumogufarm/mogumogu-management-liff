@@ -46,8 +46,8 @@
     display: none; align-items: center; justify-content: center;
   }
   #flashOverlay p { color: #8B3A2E; font-size: 6vw; font-weight: 900; }
-  #flashOverlay.show { display: flex; animation: flashPulse 1.2s ease; }
-  @keyframes flashPulse { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+  #flashOverlay.show { display: flex; animation: flashPulse 10s ease; }
+  @keyframes flashPulse { 0% { opacity: 0; } 5% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; } }
 </style>
 </head>
 <body>
@@ -90,21 +90,28 @@ function startDisplay() {
 }
 
 // Web Audio APIで、外部音声ファイルを使わずに簡単なチャイム音を鳴らす
+function playTone(freq, start, dur, type, vol) {
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(vol || 0.3, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(start);
+  osc.stop(start + dur);
+}
+
+// ゲーム風レベルアップ音（ピコピコ上昇していく、達成感のあるタイプ）
 function playChime() {
   if (!audioCtx) return;
   var now = audioCtx.currentTime;
-  [880, 1108, 1318].forEach(function (freq, i) {
-    var osc = audioCtx.createOscillator();
-    var gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, now + i * 0.12);
-    gain.gain.exponentialRampToValueAtTime(0.3, now + i * 0.12 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.5);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(now + i * 0.12);
-    osc.stop(now + i * 0.12 + 0.5);
+  [262, 330, 392, 440, 523, 659, 784, 880, 1046].forEach(function (freq, i) {
+    playTone(freq, now + i * 0.13, 0.18, 'square', 0.12);
   });
+  playTone(1318, now + 1.3, 3.2, 'square', 0.14);
+  playTone(1568, now + 1.3, 3.2, 'square', 0.10);
 }
 
 function initLiff() {
@@ -170,6 +177,10 @@ function loadAndShow() {
       flash.classList.remove('show');
       void flash.offsetWidth;
       flash.classList.add('show');
+      clearTimeout(window.__flashHideTimer);
+      window.__flashHideTimer = setTimeout(function () {
+        flash.classList.remove('show');
+      }, 10000);
     }
   }).catch(function (err) {
     document.getElementById('titleText').textContent = '通信エラー：' + (err && err.message ? err.message : err);
