@@ -12,7 +12,7 @@
   html, body {
     width: 100%; height: 100%; overflow: hidden;
     font-family: 'Noto Sans JP', sans-serif;
-    background: #1A1610;
+    background: #000;
   }
   #startOverlay {
     position: fixed; inset: 0; background: #2E3B22; display: flex; flex-direction: column;
@@ -22,26 +22,34 @@
   #startOverlay span { color: #D6CBAA; font-size: 1.5vw; margin-top: 1vw; }
 
   #display {
-    width: 100vw; height: 100vh; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 3vw;
+    width: 100vw; height: 100vh; background: #000; padding: 1.5vw;
+    display: flex; gap: 1.5vw;
   }
-  #titleText {
-    color: #F7F3E9; font-size: 4.5vw; font-weight: 900; letter-spacing: 0.3vw;
-    margin-bottom: 3vw; text-align: center;
-  }
-  #cardsRow { display: flex; gap: 2.5vw; width: 100%; justify-content: center; }
+  #leftCol { flex: 1; display: flex; flex-direction: column; gap: 1.2vw; min-width: 0; }
   .disp-card {
-    background: #F7F3E9; border: 0.5vw solid #2E3B22; border-radius: 2vw;
-    padding: 2.5vw 2vw; text-align: center; flex: 1; max-width: 30vw;
+    flex: 1; background: #F7F3E9; border: 0.3vw solid #2E3B22; border-radius: 1.4vw;
+    display: flex; align-items: center; padding: 0 2vw; gap: 1.5vw; min-height: 0;
   }
-  .disp-card-name { color: #6B6048; font-size: 2vw; font-weight: 700; margin-bottom: 1vw; }
-  .disp-card-kg-big { color: #8B3A2E; font-size: 8vw; font-weight: 900; line-height: 1; }
-  .disp-card-kg-big span { font-size: 2.5vw; font-weight: 700; }
-  .disp-card-count { color: #6B6048; font-size: 2vw; margin: 1vw 0; }
-  .disp-card-amount { color: #2E3B22; font-size: 3vw; font-weight: 900; }
-  .disp-card-diff { color: #3E5A1F; font-size: 1.8vw; font-weight: 700; margin-top: 1vw; }
-  .disp-card-wakeari { color: #8A5A2A; font-size: 1.3vw; margin-top: 1.5vw; padding-top: 1vw; border-top: 0.15vw dashed #D6CBAA; }
-  #updatedAt { color: #A69B7A; font-size: 1.3vw; margin-top: 2.5vw; }
+  .disp-card-name { font-size: 2.4vw; font-weight: 700; color: #2E3B22; width: 11vw; flex-shrink: 0; }
+  .disp-card-kg { font-size: 8.2vw; font-weight: 900; color: #2E3B22; line-height: 1; white-space: nowrap; }
+  .disp-card-kg span { font-size: 2.4vw; font-weight: 700; }
+  .disp-card-right { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .disp-card-count { font-size: 2.3vw; color: #2E3B22; margin-bottom: 0.4vw; }
+  .disp-card-amount { font-size: 2.7vw; font-weight: 700; color: #8B3A2E; }
+  .disp-card-diff { font-size: 1.6vw; color: #3E5A1F; font-weight: 700; margin-top: 0.5vw; white-space: nowrap; }
+
+  #rightCol {
+    width: 32%; background: #111; border-radius: 1.4vw; padding: 1.6vw; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  #rightCol h2 { color: #F7F3E9; font-size: 1.6vw; font-weight: 700; text-align: center; margin-bottom: 1.2vw; }
+  #orderLogList { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 0.9vw; }
+  .order-log-item {
+    color: #F7F3E9; font-size: 1.35vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .order-log-item .order-log-site { color: #8FBF6A; }
+  .order-log-item .order-log-time { color: #A69B7A; margin-right: 0.5vw; }
+
   #flashOverlay {
     position: fixed; inset: 0; background: rgba(255,255,255,0.85); z-index: 500;
     display: none; align-items: center; justify-content: center;
@@ -59,9 +67,11 @@
 </div>
 
 <div id="display" style="display:none;">
-  <p id="titleText">読み込み中...</p>
-  <div id="cardsRow"></div>
-  <p id="updatedAt"></p>
+  <div id="leftCol"></div>
+  <div id="rightCol">
+    <h2>📋 注文ログ</h2>
+    <div id="orderLogList"></div>
+  </div>
 </div>
 
 <div id="flashOverlay"><p id="flashText">新しい注文が入りました！</p></div>
@@ -90,7 +100,6 @@ function startDisplay() {
   initLiff();
 }
 
-// Web Audio APIで、外部音声ファイルを使わずに簡単なチャイム音を鳴らす
 function playTone(freq, start, dur, type, vol) {
   var osc = audioCtx.createOscillator();
   var gain = audioCtx.createGain();
@@ -126,7 +135,7 @@ function initLiff() {
     setInterval(loadAndShow, 60 * 1000); // 1分おきに自動更新
   }).catch(function (err) {
     if (err === 'LOGIN_REDIRECT') return;
-    document.getElementById('titleText').textContent = '読み込みエラー：' + (err && err.message ? err.message : err);
+    document.getElementById('leftCol').innerHTML = '<p style="color:#fff;">読み込みエラー：' + (err && err.message ? err.message : err) + '</p>';
   });
 }
 
@@ -141,37 +150,29 @@ function loadAndShow() {
   var year = new Date().getFullYear();
   callServer({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) }).then(function (result) {
     if (result.status !== 'ok') {
-      document.getElementById('titleText').textContent = result.message;
+      document.getElementById('leftCol').innerHTML = '<p style="color:#fff;">' + result.message + '</p>';
       return;
     }
-    document.getElementById('titleText').textContent = year + '年　予約販売数';
 
-    var totalCountNow = 0;
     var isFirstLoad = Object.keys(lastCounts).length === 0;
     var increased = false;
 
     var html = '';
     result.varieties.forEach(function (v) {
       var s = result.summary[v];
-      totalCountNow += s.count;
       if (!isFirstLoad && (lastCounts[v] === undefined || s.count > lastCounts[v])) increased = true;
       lastCounts[v] = s.count;
 
       html += '<div class="disp-card">' +
         '<p class="disp-card-name">' + v + '</p>' +
-        '<p class="disp-card-kg-big">' + s.weightKg.toLocaleString() + '<span>kg</span></p>' +
+        '<p class="disp-card-kg">' + s.weightKg.toLocaleString() + '<span>kg</span></p>' +
+        '<div class="disp-card-right">' +
         '<p class="disp-card-count">' + s.count + '点</p>' +
         '<p class="disp-card-amount">￥' + s.amount.toLocaleString() + '</p>' +
-        '<p class="disp-card-diff">前日＋' + s.todayCount + '件</p>';
-      if (s.wakeariCount > 0) {
-        html += '<p class="disp-card-wakeari">うち訳あり・家庭用：' + s.wakeariCount + '件　' + s.wakeariWeightKg.toLocaleString() + 'kg　￥' + s.wakeariAmount.toLocaleString() + '</p>';
-      }
-      html += '</div>';
+        '<p class="disp-card-diff">前日＋' + s.todayCount + '件　＋' + s.todayWeightKg.toLocaleString() + 'kg</p>' +
+        '</div></div>';
     });
-    document.getElementById('cardsRow').innerHTML = html;
-
-    var now = new Date();
-    document.getElementById('updatedAt').textContent = '更新：' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('leftCol').innerHTML = html;
 
     if (increased) {
       playChime();
@@ -185,7 +186,22 @@ function loadAndShow() {
       }, 10000);
     }
   }).catch(function (err) {
-    document.getElementById('titleText').textContent = '通信エラー：' + (err && err.message ? err.message : err);
+    document.getElementById('leftCol').innerHTML = '<p style="color:#fff;">通信エラー：' + (err && err.message ? err.message : err) + '</p>';
+  });
+
+  loadOrderLog();
+}
+
+function loadOrderLog() {
+  callServer({ action: 'getRecentSanchokuOrders', userId: currentUserId, limit: 12 }).then(function (result) {
+    if (result.status !== 'ok') return;
+    var el = document.getElementById('orderLogList');
+    var html = '';
+    result.rows.forEach(function (r, idx) {
+      html += '<p class="order-log-item" style="opacity:' + Math.max(1 - idx * 0.07, 0.35) + ';">' +
+        '<span class="order-log-time">' + r.label + '</span>「' + r.item + '」<span class="order-log-site">(' + r.site + ')</span></p>';
+    });
+    el.innerHTML = html || '<p class="order-log-item" style="opacity:0.5;">まだ注文がありません</p>';
   });
 }
 </script>
