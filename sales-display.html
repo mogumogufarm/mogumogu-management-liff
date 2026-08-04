@@ -88,13 +88,26 @@ var currentIdToken = null;
 var lastCounts = {};
 var audioCtx = null;
 
-function callServer(payload) {
+function callServer(payload, retriesLeft) {
+  if (retriesLeft === undefined) retriesLeft = 2;
   payload.idToken = currentIdToken;
   return fetch(GAS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
-  }).then(function (res) { return res.json(); });
+  }).then(function (res) { return res.text(); }).then(function (text) {
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // GASの起動が遅い時など、JSONではない応答が返ってくることがあるため、少し待って再試行する
+      if (retriesLeft > 0) {
+        return new Promise(function (resolve) {
+          setTimeout(function () { resolve(callServer(payload, retriesLeft - 1)); }, 4000);
+        });
+      }
+      throw new Error('サーバーの応答が正しく読み取れませんでした（しばらくすると復旧することがあります）');
+    }
+  });
 }
 
 function startDisplay() {
