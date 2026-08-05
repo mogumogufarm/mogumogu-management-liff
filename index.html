@@ -1149,16 +1149,29 @@ if (typeof liff === 'undefined') {
   document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
 } else {
   showProcessing('読み込み中...しばらくお待ちください');
+  var __t0 = performance.now();
+  var __tInit, __tProfile, __tCheckAdmin;
   withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    __tInit = Math.round(performance.now() - __t0);
     if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
     return withTimeout(liff.getProfile(), 10000);
   }).then(function (p) {
+    __tProfile = Math.round(performance.now() - __t0);
     currentIdToken = liff.getIDToken();
     return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
+      __tCheckAdmin = Math.round(performance.now() - __t0);
       return { result: result, userId: p.userId };
     });
   }).then(function (data) {
     hideProcessing();
+    var __panel = document.createElement('div');
+    __panel.style.cssText = 'position:fixed; bottom:10px; left:10px; z-index:9999; background:#2E3B22; color:#F7F3E9; font-family:monospace; font-size:12px; padding:10px 14px; border-radius:8px;';
+    __panel.innerHTML = '<p style="margin:0 0 4px; font-weight:bold;">初期化の内訳</p>' +
+      '<div>liff.init：' + __tInit + 'ms</div>' +
+      '<div>getProfileまで：' + __tProfile + 'ms（+' + (__tProfile - __tInit) + 'ms）</div>' +
+      '<div>checkAdminまで：' + __tCheckAdmin + 'ms（+' + (__tCheckAdmin - __tProfile) + 'ms）</div>' +
+      '<button onclick="this.parentNode.remove()" style="margin-top:6px; width:100%; padding:3px; font-size:11px;">閉じる</button>';
+    document.body.appendChild(__panel);
     document.getElementById('initStatus').style.display = 'none';
     if (data.result.status === 'ok') {
       document.getElementById('menu').style.display = 'block';
