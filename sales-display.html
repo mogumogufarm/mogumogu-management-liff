@@ -33,15 +33,15 @@
     display: flex; align-items: center; padding: 0 1.4vw; gap: 1vw; min-height: 0; min-width: 0; overflow: hidden;
   }
   .disp-card-name {
-    font-size: 1.3vw; font-weight: 700; color: #3E5A1F; background: #E3ECD3; border-radius: 0.7vw;
-    width: 7vw; flex-shrink: 0; text-align: center; padding: 0.6vw 0.2vw; line-height: 1.25;
+    font-size: 1.7vw; font-weight: 700; color: #3E5A1F; background: #E3ECD3; border-radius: 0.9vw;
+    width: 9vw; flex-shrink: 0; text-align: center; padding: 0.8vw 0.3vw; line-height: 1.3;
   }
-  .disp-card-kg { font-size: 6vw; font-weight: 900; color: #8B3A2E; line-height: 1; white-space: nowrap; flex: 1; min-width: 0; overflow: hidden; }
-  .disp-card-kg span { font-size: 1.9vw; font-weight: 700; }
+  .disp-card-kg { font-size: 7.5vw; font-weight: 900; color: #8B3A2E; line-height: 1; white-space: nowrap; flex: 1; min-width: 0; overflow: hidden; }
+  .disp-card-kg span { font-size: 2.2vw; font-weight: 700; }
   .disp-card-right { margin-left: auto; text-align: right; flex-shrink: 0; }
-  .disp-card-count { font-size: 1.8vw; color: #2E3B22; margin-bottom: 0.3vw; }
-  .disp-card-amount { font-size: 2.1vw; font-weight: 700; color: #8B3A2E; }
-  .disp-card-diff { font-size: 1.2vw; color: #3E5A1F; font-weight: 700; margin-top: 0.4vw; white-space: nowrap; }
+  .disp-card-count { font-size: 2.2vw; color: #2E3B22; margin-bottom: 0.4vw; }
+  .disp-card-amount { font-size: 2.6vw; font-weight: 700; color: #8B3A2E; }
+  .disp-card-diff { font-size: 1.5vw; color: #3E5A1F; font-weight: 700; margin-top: 0.5vw; white-space: nowrap; }
 
   /* 直売所・総合計用のコンパクトなカード */
   .mini-card {
@@ -61,7 +61,7 @@
   .grand-total-card .mini-card-sub { color: #F7F3E9; }
 
   #rightCol {
-    width: 32%; background: #111; border-radius: 1.4vw; padding: 1.6vw; overflow: hidden;
+    width: 22%; background: #111; border-radius: 1.4vw; padding: 1.6vw; overflow: hidden;
     display: flex; flex-direction: column;
   }
   #rightCol h2 { color: #F7F3E9; font-size: 1.6vw; font-weight: 700; text-align: center; margin-bottom: 1.2vw; }
@@ -90,12 +90,7 @@
 
 <div id="display" style="display:none;">
   <div id="leftCol">
-    <p class="section-label">産直サイト・直売注文</p>
-    <div class="cards-row" id="sanchokuCardsRow"></div>
-    <p class="section-label">直売所（道の駅・い～なとうぶ）</p>
-    <div class="cards-row" id="chokubaiCardsRow" style="flex:0.55;"></div>
-    <p class="section-label">総合計</p>
-    <div class="cards-row" id="grandTotalCardsRow" style="flex:0.55;"></div>
+    <div class="cards-row" id="sanchokuCardsRow" style="flex:1;"></div>
   </div>
   <div id="rightCol">
     <h2>📋 注文ログ</h2>
@@ -195,13 +190,7 @@ var lastChokubaiSummary = null;
 function loadAndShow() {
   var year = new Date().getFullYear();
 
-  var sanchokuPromise = callServer({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) });
-  var chokubaiPromise = callServer({ action: 'getChokubaiSalesVarietySummary', userId: currentUserId, year: String(year) });
-
-  Promise.all([sanchokuPromise, chokubaiPromise]).then(function (results) {
-    var sanchokuResult = results[0];
-    var chokubaiResult = results[1];
-
+  callServer({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) }).then(function (sanchokuResult) {
     if (sanchokuResult.status !== 'ok') {
       document.getElementById('sanchokuCardsRow').innerHTML = '<p style="color:#fff;">' + sanchokuResult.message + '</p>';
       return;
@@ -228,22 +217,6 @@ function loadAndShow() {
     });
     document.getElementById('sanchokuCardsRow').innerHTML = html;
 
-    if (chokubaiResult.status === 'ok') {
-      lastChokubaiSummary = chokubaiResult;
-      var cHtml = '';
-      chokubaiResult.varieties.forEach(function (v) {
-        var s = chokubaiResult.summary[v];
-        cHtml += '<div class="mini-card">' +
-          '<p class="mini-card-name">' + v + '</p>' +
-          '<p class="mini-card-kg">' + s.weightKg.toLocaleString() + '<span>kg</span></p>' +
-          '<p class="mini-card-sub">' + s.count + '点　￥' + s.amount.toLocaleString() + '</p>' +
-          '</div>';
-      });
-      document.getElementById('chokubaiCardsRow').innerHTML = cHtml;
-    }
-
-    renderGrandTotal();
-
     if (increased) {
       playChime();
       var flash = document.getElementById('flashOverlay');
@@ -260,31 +233,6 @@ function loadAndShow() {
   });
 
   loadOrderLog();
-}
-
-function renderGrandTotal() {
-  if (!lastSanchokuSummary) return;
-  var varieties = lastSanchokuSummary.varieties;
-  var grandAmount = 0;
-  var html = '';
-  varieties.forEach(function (v) {
-    var s1 = lastSanchokuSummary.summary[v] || { weightKg: 0, count: 0, amount: 0 };
-    var s2 = (lastChokubaiSummary && lastChokubaiSummary.summary[v]) || { weightKg: 0, count: 0, amount: 0 };
-    var totalKg = Math.round((s1.weightKg + s2.weightKg) * 100) / 100;
-    var totalCount = s1.count + s2.count;
-    var totalAmount = s1.amount + s2.amount;
-    grandAmount += totalAmount;
-    html += '<div class="mini-card">' +
-      '<p class="mini-card-name">' + v + '</p>' +
-      '<p class="mini-card-kg">' + totalKg.toLocaleString() + '<span>kg</span></p>' +
-      '<p class="mini-card-sub">' + totalCount + '点　￥' + totalAmount.toLocaleString() + '</p>' +
-      '</div>';
-  });
-  html += '<div class="grand-total-card">' +
-    '<p class="mini-card-name">全体合計</p>' +
-    '<p class="mini-card-kg">￥' + grandAmount.toLocaleString() + '</p>' +
-    '</div>';
-  document.getElementById('grandTotalCardsRow').innerHTML = html;
 }
 
 function loadOrderLog() {
