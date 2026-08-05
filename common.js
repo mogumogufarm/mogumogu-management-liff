@@ -48,6 +48,7 @@ var NAV_LINKS = [
     { href: 'nikki.html', label: '農園日誌', icon: 'ti-notebook' },
     { href: 'kusakari.html', label: '草刈り・刈払い管理', icon: 'ti-cut' },
     { href: 'documents.html', label: '資料アップロード', icon: 'ti-file-upload' },
+    { href: 'chokubai-order.html', label: '直売注文', icon: 'ti-shopping-cart' },
     { href: 'ja-mail.html', label: 'JA指導メール', icon: 'ti-mail' }
   ] },
   { group: '管理', items: [
