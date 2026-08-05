@@ -132,6 +132,7 @@
       </div>
       <div class="store-tabs" id="historyStoreTabs"></div>
       <div class="store-tabs" id="historyCropTabs" style="display:none;"></div>
+      <div class="store-tabs" id="historyCropStoreFilter" style="display:none;"></div>
       <div id="historyList">店舗を選んでください</div>
     </div>
 
@@ -162,7 +163,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.22</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.23</p>
 </div>
 
 <script>
@@ -530,6 +531,7 @@ function loadStockStatus() {
 
 var historyStore = null;
 var historyCrop = null;
+var historyCropStoreFilter = null;
 var historyMode = 'store';
 var historyCropInit = false;
 var HISTORY_CROPS = ['さくらんぼ', 'もも', 'スモモ', '葡萄', '柿'];
@@ -540,13 +542,33 @@ function switchHistoryMode(mode) {
   document.getElementById('historyModeCropBtn').classList.toggle('active', mode === 'crop');
   document.getElementById('historyStoreTabs').style.display = (mode === 'store') ? 'flex' : 'none';
   document.getElementById('historyCropTabs').style.display = (mode === 'crop') ? 'flex' : 'none';
+  document.getElementById('historyCropStoreFilter').style.display = (mode === 'crop') ? 'flex' : 'none';
 
   if (mode === 'crop' && !historyCropInit) {
     historyCropInit = true;
     if (!historyCrop) historyCrop = HISTORY_CROPS[0];
+    if (!historyCropStoreFilter) historyCropStoreFilter = 'すべて';
     renderCropTabsForHistory();
+    renderCropStoreFilter();
   }
   loadDailyHistory();
+}
+
+function renderCropStoreFilter() {
+  var container = document.getElementById('historyCropStoreFilter');
+  container.innerHTML = '';
+  ['すべて'].concat(STORES).forEach(function (store) {
+    var btn = document.createElement('button');
+    btn.className = 'store-tab-btn' + (store === historyCropStoreFilter ? ' active' : '');
+    btn.textContent = store;
+    btn.onclick = function () {
+      historyCropStoreFilter = store;
+      Array.prototype.forEach.call(container.children, function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      loadDailyHistory();
+    };
+    container.appendChild(btn);
+  });
 }
 
 function renderCropTabsForHistory() {
@@ -583,7 +605,7 @@ function loadDailyHistory() {
 
   if (historyMode === 'crop') {
     if (!historyCrop) return;
-    callServer({ action: 'getDailyCropHistory', userId: profile.userId, crop: historyCrop }).then(function (result) {
+    callServer({ action: 'getDailyCropHistory', userId: profile.userId, crop: historyCrop, store: historyCropStoreFilter }).then(function (result) {
       if (result.status !== 'ok') {
         el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
         return;
