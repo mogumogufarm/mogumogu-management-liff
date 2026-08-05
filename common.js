@@ -10,6 +10,41 @@ function callServer(payload) {
   }).then(function (res) { return res.json(); });
 }
 
+// 複数のアクションを1回のリクエストにまとめて呼び出す（同時に何本もリクエストを投げるより速いことが多い）
+// requests: [{ action: 'xxx', ...そのアクション固有のパラメータ }, ...]
+// 戻り値：各リクエストに対応する結果の配列（順番はrequestsと同じ）
+function callServerBatch(requests) {
+  return callServer({ action: 'batch', requests: requests }).then(function (result) {
+    if (result.status !== 'ok') throw new Error(result.message || 'batch呼び出しに失敗しました');
+    return result.results;
+  });
+}
+
+// callServerの「自動バッチ化」版：同じタイミング（同期的な処理の中）で呼ばれた複数の呼び出しを、
+// 自動的に1回のbatchリクエストにまとめて送る。呼び出し側のコードはcallServerと同じ感覚のまま使える。
+var __autoBatchQueue = null;
+var __autoBatchTimer = null;
+function callServerAutoBatched(payload) {
+  return new Promise(function (resolve, reject) {
+    if (!__autoBatchQueue) __autoBatchQueue = [];
+    __autoBatchQueue.push({ payload: payload, resolve: resolve, reject: reject });
+
+    if (__autoBatchTimer) clearTimeout(__autoBatchTimer);
+    __autoBatchTimer = setTimeout(function () {
+      var queue = __autoBatchQueue;
+      __autoBatchQueue = null;
+      __autoBatchTimer = null;
+
+      var requests = queue.map(function (item) { return item.payload; });
+      callServerBatch(requests).then(function (results) {
+        results.forEach(function (result, i) { queue[i].resolve(result); });
+      }).catch(function (err) {
+        queue.forEach(function (item) { item.reject(err); });
+      });
+    }, 0);
+  });
+}
+
 function withTimeout(promise, ms, label) {
   return Promise.race([
     promise,
