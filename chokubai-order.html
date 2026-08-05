@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>直売注文</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="common.css">
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #EFE8D8;
+    color: #2E3B22;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 24px 16px 40px; }
+  .top-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .top-nav a { font-size: 12px; color: #7A7256; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .site-title { font-size: 18px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+  .site-title .icon-badge {
+    width: 32px; height: 32px; border-radius: 9px; background: #E3ECD3; color: #3E5A1F;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .card { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 700; color: #2E3B22; margin: 0 0 12px; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px 4px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; font-weight: 700; }
+  .tab-btn.active { background: #2E3B22; border-color: #2E3B22; color: #fff; }
+
+  label.field-label { font-size: 12px; font-weight: 700; color: #6B6048; display: block; margin-bottom: 6px; }
+  input[type="text"], input[type="tel"], textarea, select {
+    width: 100%; padding: 10px; font-size: 14px; border-radius: 8px; border: 1px solid #D6CBAA;
+    font-family: inherit; margin-bottom: 14px; resize: vertical;
+  }
+  textarea { min-height: 60px; }
+  input[type="file"] { width: 100%; margin-bottom: 14px; font-size: 13px; }
+
+  .choice-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .choice-btn {
+    flex: 1; min-width: 80px; padding: 10px 6px; border: 1px solid #D6CBAA; border-radius: 8px;
+    background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; text-align: center;
+  }
+  .choice-btn.active { background: #3E5A1F; border-color: #3E5A1F; color: #fff; font-weight: 700; }
+
+  .price-row { display: flex; gap: 10px; }
+  .price-row > div { flex: 1; }
+
+  .zip-row { display: flex; gap: 8px; align-items: flex-start; }
+  .zip-row input { flex: 1; }
+  .zip-lookup-btn { padding: 10px 14px; border: none; border-radius: 8px; background: #3D5A75; color: #fff; font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; height: 41px; margin-bottom: 14px; }
+
+  .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  .order-row { background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .order-row.shipped { opacity: 0.55; }
+  .order-row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .order-variety-badge { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: inline-block; background: #E3ECD3; color: #3E5A1F; }
+  .order-row-date { font-size: 11px; color: #A69B7A; }
+  .order-row-body { font-size: 13px; color: #4A4738; line-height: 1.7; }
+  .order-file-link { font-size: 12px; color: #3D5A75; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .order-row-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .order-edit-btn, .order-ship-btn { flex: 1; padding: 8px; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; text-align: center; }
+  .order-edit-btn { border: 1px solid #D6CBAA; background: #fff; color: #6B6048; }
+  .order-ship-btn { border: none; background: #2E3B22; color: #fff; }
+  .order-ship-btn.shipped-active { background: #8A8676; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
+  .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .modal-title { font-size: 15px; font-weight: 700; color: #2E3B22; margin: 0 0 14px; }
+  .modal-confirm-btn { width: 100%; padding: 11px; border: none; border-radius: 8px; background: #2E3B22; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .modal-cancel-btn { width: 100%; padding: 9px; border: 1px solid #D6CBAA; border-radius: 8px; background: #fff; color: #6B6048; font-family: inherit; font-size: 13px; cursor: pointer; margin-top: 8px; }
+
+  .status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 480px; z-index: 2000;
+    padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; display: none; white-space: pre-line; overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+  }
+  .status.show { display: block; }
+  .status.error { background: #8B3A2E; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-nav">
+    <div id="navHamburgerSlot"></div>
+    <a href="index.html"><i class="ti ti-arrow-left" aria-hidden="true"></i> ホームへ戻る</a>
+  </div>
+  <h1 class="site-title"><span class="icon-badge"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>直売注文</h1>
+
+  <div id="mainContent" style="display:none;">
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabNewBtn" onclick="switchTab('new')">新規登録</button>
+      <button class="tab-btn" id="tabListBtn" onclick="switchTab('list')">注文一覧</button>
+    </div>
+
+    <div id="newView">
+      <div class="card">
+        <p class="card-title">品種</p>
+        <div class="choice-row" id="varietyChoiceRow"></div>
+
+        <p class="card-title">重量</p>
+        <div class="choice-row" id="weightChoiceRow"></div>
+        <input type="text" id="weightManualInput" placeholder="手入力の場合、kg数を入力（例：1.5）" style="display:none;">
+
+        <p class="card-title">種別</p>
+        <div class="choice-row" id="typeChoiceRow"></div>
+
+        <p class="card-title">代金</p>
+        <div class="price-row">
+          <div>
+            <label class="field-label">商品代金（空欄なら自動計算）</label>
+            <input type="text" id="orderProductPrice" placeholder="例：3000">
+          </div>
+          <div>
+            <label class="field-label">送料</label>
+            <input type="text" id="orderShippingFee" placeholder="例：800">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">お客様情報</p>
+        <label class="field-label">お名前</label>
+        <input type="text" id="custName" placeholder="山田 太郎">
+
+        <label class="field-label">郵便番号</label>
+        <div class="zip-row">
+          <input type="text" id="custZip" placeholder="1234567（ハイフン無しでOK）">
+          <button class="zip-lookup-btn" onclick="lookupZipcode()">住所を検索</button>
+        </div>
+
+        <label class="field-label">都道府県</label>
+        <input type="text" id="custPrefecture" placeholder="自動入力されます（手動修正も可）">
+
+        <label class="field-label">住所（市区町村・番地など）</label>
+        <input type="text" id="custAddress" placeholder="残りの住所を入力">
+
+        <label class="field-label">電話番号</label>
+        <input type="tel" id="custPhone" placeholder="090-0000-0000">
+
+        <label class="field-label">添付ファイル（写真・領収書など）</label>
+        <input type="file" id="custFile">
+
+        <label class="field-label">備考</label>
+        <textarea id="custNote" placeholder="自由に記入"></textarea>
+
+        <button class="submit-btn" onclick="submitOrder()">登録する</button>
+      </div>
+    </div>
+
+    <div id="listView" style="display:none;">
+      <div id="orderList">読み込み中...</div>
+    </div>
+
+  </div>
+
+  <div id="editModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeEditModal();">
+    <div class="modal-box">
+      <p class="modal-title">注文を編集</p>
+      <label class="field-label">品種</label>
+      <select id="editVariety">
+        <option value="巨峰">巨峰</option>
+        <option value="ピオーネ">ピオーネ</option>
+        <option value="シャインマスカット">シャインマスカット</option>
+      </select>
+      <label class="field-label">重量(kg)</label>
+      <input type="text" id="editWeight">
+      <label class="field-label">種別</label>
+      <select id="editType">
+        <option value="通常房">通常房</option>
+        <option value="訳あり房">訳あり房</option>
+        <option value="贈答用箱">贈答用箱</option>
+      </select>
+      <label class="field-label">商品代金</label>
+      <input type="text" id="editProductPrice">
+      <label class="field-label">送料</label>
+      <input type="text" id="editShippingFee">
+      <label class="field-label">お名前</label>
+      <input type="text" id="editName">
+      <label class="field-label">郵便番号</label>
+      <input type="text" id="editZip">
+      <label class="field-label">都道府県</label>
+      <input type="text" id="editPrefecture">
+      <label class="field-label">住所</label>
+      <input type="text" id="editAddress">
+      <label class="field-label">電話番号</label>
+      <input type="text" id="editPhone">
+      <label class="field-label">備考</label>
+      <textarea id="editNote"></textarea>
+      <button class="modal-confirm-btn" onclick="confirmEdit()">保存する</button>
+      <button class="modal-cancel-btn" onclick="closeEditModal()">キャンセル</button>
+    </div>
+  </div>
+
+  <div class="processing-overlay" id="processingOverlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingText">読み込み中...</p>
+    </div>
+  </div>
+
+  <div class="status" id="initStatus" style="display:none;"></div>
+
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
+var LIFF_ID = '2010745560-GD4XbdoK';
+
+var profile = null;
+var currentIdToken = null;
+initNavDrawer('chokubai-order.html');
+
+var VARIETIES = ['巨峰', 'ピオーネ', 'シャインマスカット'];
+var WEIGHT_OPTIONS = ['1kg', '2kg', '4kg', '手入力'];
+var TYPE_OPTIONS = ['通常房', '訳あり房', '贈答用箱'];
+
+var selectedVariety = null;
+var selectedWeight = null;
+var selectedType = null;
+var editingRowIndex = null;
+
+function renderChoiceButtons() {
+  var vHtml = '';
+  VARIETIES.forEach(function (v) {
+    vHtml += '<button type="button" class="choice-btn" data-v="' + v + '" onclick="selectChoice(\'variety\', \'' + v + '\')">' + v + '</button>';
+  });
+  document.getElementById('varietyChoiceRow').innerHTML = vHtml;
+
+  var wHtml = '';
+  WEIGHT_OPTIONS.forEach(function (w) {
+    wHtml += '<button type="button" class="choice-btn" data-v="' + w + '" onclick="selectChoice(\'weight\', \'' + w + '\')">' + w + '</button>';
+  });
+  document.getElementById('weightChoiceRow').innerHTML = wHtml;
+
+  var tHtml = '';
+  TYPE_OPTIONS.forEach(function (t) {
+    tHtml += '<button type="button" class="choice-btn" data-v="' + t + '" onclick="selectChoice(\'type\', \'' + t + '\')">' + t + '</button>';
+  });
+  document.getElementById('typeChoiceRow').innerHTML = tHtml;
+}
+
+function selectChoice(kind, value) {
+  var rowId = kind === 'variety' ? 'varietyChoiceRow' : (kind === 'weight' ? 'weightChoiceRow' : 'typeChoiceRow');
+  var row = document.getElementById(rowId);
+  Array.prototype.forEach.call(row.children, function (btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-v') === value);
+  });
+  if (kind === 'variety') selectedVariety = value;
+  if (kind === 'weight') {
+    selectedWeight = value;
+    document.getElementById('weightManualInput').style.display = (value === '手入力') ? 'block' : 'none';
+  }
+  if (kind === 'type') selectedType = value;
+}
+
+function switchTab(tab) {
+  document.getElementById('tabNewBtn').classList.toggle('active', tab === 'new');
+  document.getElementById('tabListBtn').classList.toggle('active', tab === 'list');
+  document.getElementById('newView').style.display = (tab === 'new') ? 'block' : 'none';
+  document.getElementById('listView').style.display = (tab === 'list') ? 'block' : 'none';
+  if (tab === 'list') loadOrderList();
+}
+
+function lookupZipcode() {
+  var zip = document.getElementById('custZip').value.replace(/[^0-9]/g, '');
+  if (zip.length !== 7) {
+    alert('郵便番号は7桁の数字で入力してください。');
+    return;
+  }
+  fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + zip)
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data.results || data.results.length === 0) {
+        alert('該当する住所が見つかりませんでした。手入力してください。');
+        return;
+      }
+      var r = data.results[0];
+      document.getElementById('custPrefecture').value = r.address1;
+      document.getElementById('custAddress').value = r.address2 + r.address3;
+    }).catch(function () {
+      alert('住所検索に失敗しました。手入力してください。');
+    });
+}
+
+function fileToBase64(file) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () { resolve(reader.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function submitOrder() {
+  if (!selectedVariety) { alert('品種を選んでください。'); return; }
+  var weightKg = null;
+  if (selectedWeight === '手入力') {
+    weightKg = Number(document.getElementById('weightManualInput').value);
+    if (!weightKg) { alert('重量を入力してください。'); return; }
+  } else if (selectedWeight) {
+    weightKg = Number(selectedWeight.replace('kg', ''));
+  } else {
+    alert('重量を選んでください。');
+    return;
+  }
+  var name = document.getElementById('custName').value.trim();
+  if (!name) { alert('お名前を入力してください。'); return; }
+
+  var data = {
+    variety: selectedVariety, weightKg: weightKg, orderType: selectedType || '',
+    productPrice: document.getElementById('orderProductPrice').value.trim(),
+    shippingFee: document.getElementById('orderShippingFee').value.trim(),
+    name: name, zipcode: document.getElementById('custZip').value.trim(),
+    prefecture: document.getElementById('custPrefecture').value.trim(),
+    address: document.getElementById('custAddress').value.trim(),
+    phone: document.getElementById('custPhone').value.trim(),
+    note: document.getElementById('custNote').value.trim()
+  };
+
+  var fileInput = document.getElementById('custFile');
+  var file = fileInput.files[0];
+
+  showProcessing('登録中...');
+  var proceed = file ? fileToBase64(file) : Promise.resolve(null);
+  proceed.then(function (base64) {
+    return callServer({
+      action: 'submitChokubaiOrder', userId: profile.userId, data: data,
+      fileBase64: base64, fileName: file ? file.name : '', mimeType: file ? file.type : ''
+    });
+  }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      selectedVariety = null; selectedWeight = null; selectedType = null;
+      renderChoiceButtons();
+      document.getElementById('weightManualInput').value = '';
+      document.getElementById('weightManualInput').style.display = 'none';
+      document.getElementById('orderProductPrice').value = '';
+      document.getElementById('orderShippingFee').value = '';
+      document.getElementById('custName').value = '';
+      document.getElementById('custZip').value = '';
+      document.getElementById('custPrefecture').value = '';
+      document.getElementById('custAddress').value = '';
+      document.getElementById('custPhone').value = '';
+      document.getElementById('custNote').value = '';
+      fileInput.value = '';
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function loadOrderList() {
+  var el = document.getElementById('orderList');
+  el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
+
+  callServer({ action: 'getChokubaiOrderList', userId: profile.userId, limit: 100 }).then(function (result) {
+    if (result.status !== 'ok') {
+      el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
+      return;
+    }
+    if (result.rows.length === 0) {
+      el.innerHTML = '<p style="font-size:13px; color:#7A7256;">まだ注文がありません。</p>';
+      return;
+    }
+    var html = '';
+    result.rows.forEach(function (r) {
+      var total = (Number(r.productPrice) || 0) + (Number(r.shippingFee) || 0);
+      html += '<div class="order-row' + (r.shipped ? ' shipped' : '') + '">' +
+        '<div class="order-row-top">' +
+        '<span class="order-variety-badge">' + r.variety + '</span>' +
+        '<span class="order-row-date">' + r.date + '</span>' +
+        '</div>' +
+        '<div class="order-row-body">' +
+        r.weightKg + 'kg　' + (r.orderType || '-') + '<br>' +
+        '商品代金￥' + (r.productPrice ? Number(r.productPrice).toLocaleString() : '-') + '　送料￥' + (r.shippingFee ? Number(r.shippingFee).toLocaleString() : '0') + '　計￥' + total.toLocaleString() + '<br>' +
+        '<b>' + r.name + '</b>様　' + r.phone + '<br>' +
+        '〒' + r.zipcode + '　' + r.prefecture + r.address +
+        (r.note ? '<br>備考：' + r.note : '') +
+        (r.attachmentUrl ? '<br><a class="order-file-link" href="' + r.attachmentUrl + '" target="_blank"><i class="ti ti-paperclip" aria-hidden="true"></i>' + r.attachmentName + '</a>' : '') +
+        '</div>' +
+        '<div class="order-row-actions">' +
+        '<button class="order-edit-btn" onclick="openEditModal(' + r.rowIndex + ')"><i class="ti ti-edit" aria-hidden="true"></i> 編集</button>' +
+        '<button class="order-ship-btn' + (r.shipped ? ' shipped-active' : '') + '" onclick="toggleShipped(' + r.rowIndex + ', ' + (!r.shipped) + ')">' +
+        (r.shipped ? '発送済み' : '発送する') + '</button>' +
+        '</div></div>';
+    });
+    el.innerHTML = html;
+    window.__chokubaiOrderRows = result.rows;
+  }).catch(function (err) {
+    el.innerHTML = '<p style="font-size:13px; color:#C0392B;">通信エラーが発生しました：' + (err && err.message ? err.message : err) + '</p>';
+  });
+}
+
+function toggleShipped(rowIndex, shipped) {
+  showProcessing('更新中...');
+  callServer({ action: 'toggleChokubaiOrderShipped', userId: profile.userId, rowIndex: rowIndex, shipped: shipped }).then(function (result) {
+    hideProcessing();
+    if (result.status === 'ok') loadOrderList();
+    else alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function openEditModal(rowIndex) {
+  var row = (window.__chokubaiOrderRows || []).filter(function (r) { return r.rowIndex === rowIndex; })[0];
+  if (!row) return;
+  editingRowIndex = rowIndex;
+  document.getElementById('editVariety').value = row.variety;
+  document.getElementById('editWeight').value = row.weightKg;
+  document.getElementById('editType').value = row.orderType;
+  document.getElementById('editProductPrice').value = row.productPrice;
+  document.getElementById('editShippingFee').value = row.shippingFee;
+  document.getElementById('editName').value = row.name;
+  document.getElementById('editZip').value = row.zipcode;
+  document.getElementById('editPrefecture').value = row.prefecture;
+  document.getElementById('editAddress').value = row.address;
+  document.getElementById('editPhone').value = row.phone;
+  document.getElementById('editNote').value = row.note;
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function confirmEdit() {
+  var data = {
+    variety: document.getElementById('editVariety').value,
+    weightKg: document.getElementById('editWeight').value,
+    orderType: document.getElementById('editType').value,
+    productPrice: document.getElementById('editProductPrice').value,
+    shippingFee: document.getElementById('editShippingFee').value,
+    name: document.getElementById('editName').value,
+    zipcode: document.getElementById('editZip').value,
+    prefecture: document.getElementById('editPrefecture').value,
+    address: document.getElementById('editAddress').value,
+    phone: document.getElementById('editPhone').value,
+    note: document.getElementById('editNote').value
+  };
+  showProcessing('保存中...');
+  callServer({ action: 'updateChokubaiOrder', userId: profile.userId, rowIndex: editingRowIndex, data: data }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') {
+      closeEditModal();
+      loadOrderList();
+    }
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+if (typeof liff === 'undefined') {
+  document.getElementById('initStatus').className = 'status show error';
+  document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
+} else {
+  showProcessing('読み込み中...しばらくお待ちください');
+  withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
+    return withTimeout(liff.getProfile(), 10000);
+  }).then(function (p) {
+    profile = p;
+    currentIdToken = liff.getIDToken();
+    hideProcessing();
+    document.getElementById('initStatus').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    renderChoiceButtons();
+  }).catch(function (err) {
+    if (err === 'LOGIN_REDIRECT') return;
+    var msg = (err && err.message) ? err.message : String(err);
+    if (msg.indexOf('revoked') !== -1 || msg.indexOf('token') !== -1 || msg.indexOf('expired') !== -1) {
+      try { liff.logout(); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+    hideProcessing();
+    var el = document.getElementById('initStatus');
+    el.className = 'status show error';
+    el.textContent = '初期化エラー：' + msg;
+  });
+}
+</script>
+</body>
+</html>
