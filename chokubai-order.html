@@ -70,6 +70,13 @@
   .order-edit-btn { border: 1px solid #D6CBAA; background: #fff; color: #6B6048; }
   .order-ship-btn { border: none; background: #2E3B22; color: #fff; }
   .order-ship-btn.shipped-active { background: #8A8676; }
+  .shipped-stamp {
+    position: absolute; top: 10px; right: 10px; width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid #C0392B; color: #C0392B; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900; transform: rotate(-15deg); opacity: 0.85;
+    font-family: serif; letter-spacing: 1px; pointer-events: none;
+  }
+  .order-row { position: relative; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2500; padding: 20px; }
   .modal-box { background: #F7F3E9; border-radius: 16px; padding: 20px; max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto; }
@@ -132,7 +139,7 @@
       </div>
 
       <div class="card">
-        <p class="card-title">お客様情報</p>
+        <p class="card-title" style="display:flex; justify-content:space-between; align-items:center;">お客様情報 <button type="button" onclick="clearCustomerInfo()" style="font-size:11px; color:#3D5A75; background:none; border:none; cursor:pointer; text-decoration:underline; font-family:inherit;">別のお客様に切り替える</button></p>
         <label class="field-label">お名前</label>
         <input type="text" id="custName" placeholder="山田 太郎">
 
@@ -216,7 +223,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.02</p>
 </div>
 
 <script>
@@ -308,6 +315,15 @@ function lookupZipcode() {
     });
 }
 
+function clearCustomerInfo() {
+  document.getElementById('custName').value = '';
+  document.getElementById('custZip').value = '';
+  document.getElementById('custPrefecture').value = '';
+  document.getElementById('custAddress').value = '';
+  document.getElementById('custPhone').value = '';
+  document.getElementById('custFile').value = '';
+}
+
 function fileToBase64(file) {
   return new Promise(function (resolve, reject) {
     var reader = new FileReader();
@@ -368,13 +384,9 @@ function submitOrder() {
       document.getElementById('weightManualInput').style.display = 'none';
       document.getElementById('orderProductPrice').value = '';
       document.getElementById('orderShippingFee').value = '';
-      document.getElementById('custName').value = '';
-      document.getElementById('custZip').value = '';
-      document.getElementById('custPrefecture').value = '';
-      document.getElementById('custAddress').value = '';
-      document.getElementById('custPhone').value = '';
       document.getElementById('custNote').value = '';
       fileInput.value = '';
+      // お客様情報（氏名・住所・電話番号など）は、同じお客様が続けて注文する場合に備えて、あえてクリアしない
     }
   }).catch(function (err) {
     hideProcessing();
@@ -400,6 +412,7 @@ function loadOrderList() {
       var total = ((Number(r.productPrice) || 0) + (Number(r.shippingFee) || 0));
       var isCancelled = r.status === 'キャンセル';
       html += '<div class="order-row' + (r.shipped ? ' shipped' : '') + '">' +
+        (r.shipped ? '<div class="shipped-stamp">発送済</div>' : '') +
         '<div class="order-row-top">' +
         '<span class="order-variety-badge">' + r.variety + '</span>' +
         (isCancelled ? '<span style="background:#F0DAD0; color:#8B3A2E; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px;">キャンセル済み</span>' : '') +
