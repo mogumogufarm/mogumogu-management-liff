@@ -112,6 +112,9 @@
         <div class="choice-row" id="weightChoiceRow"></div>
         <input type="text" id="weightManualInput" placeholder="手入力の場合、kg数を入力（例：1.5）" style="display:none;">
 
+        <p class="card-title">数量（箱数）</p>
+        <select id="orderBoxCount"></select>
+
         <p class="card-title">種別</p>
         <div class="choice-row" id="typeChoiceRow"></div>
 
@@ -175,6 +178,8 @@
       </select>
       <label class="field-label">重量(kg)</label>
       <input type="text" id="editWeight">
+      <label class="field-label">箱数</label>
+      <input type="text" id="editBoxCount">
       <label class="field-label">種別</label>
       <select id="editType">
         <option value="通常房">通常房</option>
@@ -211,7 +216,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.00</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.01</p>
 </div>
 
 <script>
@@ -230,6 +235,15 @@ var selectedVariety = null;
 var selectedWeight = null;
 var selectedType = null;
 var editingRowIndex = null;
+
+function renderBoxCountOptions() {
+  var sel = document.getElementById('orderBoxCount');
+  var html = '';
+  for (var i = 1; i <= 100; i++) {
+    html += '<option value="' + i + '">' + i + '箱</option>';
+  }
+  sel.innerHTML = html;
+}
 
 function renderChoiceButtons() {
   var vHtml = '';
@@ -319,7 +333,7 @@ function submitOrder() {
   if (!name) { alert('お名前を入力してください。'); return; }
 
   var data = {
-    variety: selectedVariety, weightKg: weightKg, orderType: selectedType || '',
+    variety: selectedVariety, weightKg: weightKg, boxCount: document.getElementById('orderBoxCount').value, orderType: selectedType || '',
     productPrice: document.getElementById('orderProductPrice').value.trim(),
     shippingFee: document.getElementById('orderShippingFee').value.trim(),
     name: name, zipcode: document.getElementById('custZip').value.trim(),
@@ -341,10 +355,15 @@ function submitOrder() {
     });
   }).then(function (result) {
     hideProcessing();
-    alert(result.message);
+    if (result.status === 'ok') {
+      alert(result.message + '\n\n続けて次の注文を入力できます。');
+    } else {
+      alert(result.message);
+    }
     if (result.status === 'ok') {
       selectedVariety = null; selectedWeight = null; selectedType = null;
       renderChoiceButtons();
+      document.getElementById('orderBoxCount').value = '1';
       document.getElementById('weightManualInput').value = '';
       document.getElementById('weightManualInput').style.display = 'none';
       document.getElementById('orderProductPrice').value = '';
@@ -378,14 +397,16 @@ function loadOrderList() {
     }
     var html = '';
     result.rows.forEach(function (r) {
-      var total = (Number(r.productPrice) || 0) + (Number(r.shippingFee) || 0);
+      var total = ((Number(r.productPrice) || 0) + (Number(r.shippingFee) || 0));
+      var isCancelled = r.status === 'キャンセル';
       html += '<div class="order-row' + (r.shipped ? ' shipped' : '') + '">' +
         '<div class="order-row-top">' +
         '<span class="order-variety-badge">' + r.variety + '</span>' +
+        (isCancelled ? '<span style="background:#F0DAD0; color:#8B3A2E; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px;">キャンセル済み</span>' : '') +
         '<span class="order-row-date">' + r.date + '</span>' +
         '</div>' +
-        '<div class="order-row-body">' +
-        r.weightKg + 'kg　' + (r.orderType || '-') + '<br>' +
+        '<div class="order-row-body' + (isCancelled ? '" style="text-decoration:line-through; opacity:0.6;' : '') + '">' +
+        r.weightKg + 'kg × ' + (r.boxCount || 1) + '箱　' + (r.orderType || '-') + '<br>' +
         '商品代金￥' + (r.productPrice ? Number(r.productPrice).toLocaleString() : '-') + '　送料￥' + (r.shippingFee ? Number(r.shippingFee).toLocaleString() : '0') + '　計￥' + total.toLocaleString() + '<br>' +
         '<b>' + r.name + '</b>様　' + r.phone + '<br>' +
         '〒' + r.zipcode + '　' + r.prefecture + r.address +
@@ -394,8 +415,11 @@ function loadOrderList() {
         '</div>' +
         '<div class="order-row-actions">' +
         '<button class="order-edit-btn" onclick="openEditModal(' + r.rowIndex + ')"><i class="ti ti-edit" aria-hidden="true"></i> 編集</button>' +
-        '<button class="order-ship-btn' + (r.shipped ? ' shipped-active' : '') + '" onclick="toggleShipped(' + r.rowIndex + ', ' + (!r.shipped) + ')">' +
-        (r.shipped ? '発送済み' : '発送する') + '</button>' +
+        (isCancelled ? '' :
+          '<button class="order-ship-btn' + (r.shipped ? ' shipped-active' : '') + '" onclick="toggleShipped(' + r.rowIndex + ', ' + (!r.shipped) + ')">' +
+          (r.shipped ? '発送済み' : '発送する') + '</button>' +
+          '<button class="order-edit-btn" style="color:#8B3A2E; border-color:#E0BDB0;" onclick="cancelOrder(' + r.rowIndex + ')"><i class="ti ti-x" aria-hidden="true"></i> キャンセル</button>'
+        ) +
         '</div></div>';
     });
     el.innerHTML = html;
@@ -406,11 +430,29 @@ function loadOrderList() {
 }
 
 function toggleShipped(rowIndex, shipped) {
+  if (shipped) {
+    var ok = confirm('この注文を「発送済み」にします。よろしいですか？');
+    if (!ok) return;
+  }
   showProcessing('更新中...');
   callServer({ action: 'toggleChokubaiOrderShipped', userId: profile.userId, rowIndex: rowIndex, shipped: shipped }).then(function (result) {
     hideProcessing();
     if (result.status === 'ok') loadOrderList();
     else alert(result.message);
+  }).catch(function (err) {
+    hideProcessing();
+    alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
+  });
+}
+
+function cancelOrder(rowIndex) {
+  var ok = confirm('この注文をキャンセルします。テレビ表示の集計からも除外されます。よろしいですか？');
+  if (!ok) return;
+  showProcessing('処理中...');
+  callServer({ action: 'cancelChokubaiOrder', userId: profile.userId, rowIndex: rowIndex }).then(function (result) {
+    hideProcessing();
+    alert(result.message);
+    if (result.status === 'ok') loadOrderList();
   }).catch(function (err) {
     hideProcessing();
     alert('通信エラーが発生しました：' + (err && err.message ? err.message : err));
@@ -423,6 +465,7 @@ function openEditModal(rowIndex) {
   editingRowIndex = rowIndex;
   document.getElementById('editVariety').value = row.variety;
   document.getElementById('editWeight').value = row.weightKg;
+  document.getElementById('editBoxCount').value = row.boxCount || 1;
   document.getElementById('editType').value = row.orderType;
   document.getElementById('editProductPrice').value = row.productPrice;
   document.getElementById('editShippingFee').value = row.shippingFee;
@@ -443,6 +486,7 @@ function confirmEdit() {
   var data = {
     variety: document.getElementById('editVariety').value,
     weightKg: document.getElementById('editWeight').value,
+    boxCount: document.getElementById('editBoxCount').value,
     orderType: document.getElementById('editType').value,
     productPrice: document.getElementById('editProductPrice').value,
     shippingFee: document.getElementById('editShippingFee').value,
@@ -482,6 +526,7 @@ if (typeof liff === 'undefined') {
     document.getElementById('initStatus').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
     renderChoiceButtons();
+    renderBoxCountOptions();
   }).catch(function (err) {
     if (err === 'LOGIN_REDIRECT') return;
     var msg = (err && err.message) ? err.message : String(err);
