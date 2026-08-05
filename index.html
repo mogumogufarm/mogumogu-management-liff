@@ -486,7 +486,7 @@ var homeVarietyByCrop = {};
 var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
 
 function loadHomeVarietyList() {
-  callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
+  callServerAutoBatched({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       console.error('品種一覧の取得に失敗：', result.message);
       return;
@@ -580,7 +580,7 @@ function loadCropSummary() {
   var el = document.getElementById('cropSummaryList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">集計中...</p>';
 
-  callServer({ action: 'getYearlyCropSummary', userId: currentUserId, year: year }).then(function (result) {
+  callServerAutoBatched({ action: 'getYearlyCropSummary', userId: currentUserId, year: year }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
@@ -743,7 +743,7 @@ var lastDisplayOrder = Object.keys(DISPLAY_BLOCK_MAP);
 var editingDisplayOrder = [];
 
 function loadDisplaySettings() {
-  callServer({ action: 'getDisplaySettings', userId: currentUserId }).then(function (result) {
+  callServerAutoBatched({ action: 'getDisplaySettings', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') return;
     lastDisplaySettings = result.settings;
     lastDisplayOrder = result.order || Object.keys(DISPLAY_BLOCK_MAP);
@@ -846,7 +846,7 @@ function loadWeatherForecast() {
   var el = document.getElementById('weatherContent');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getWeatherForecast', userId: currentUserId }).then(function (result) {
+  callServerAutoBatched({ action: 'getWeatherForecast', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
@@ -867,7 +867,7 @@ function loadVarietyHighlight() {
   document.getElementById('varietyHighlightTitle').textContent = year + '年　予約販売数';
   var el = document.getElementById('varietyHighlightRow');
 
-  callServer({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) }).then(function (result) {
+  callServerAutoBatched({ action: 'getSanchokuVarietySummary', userId: currentUserId, year: String(year) }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="color:#6B6048; font-size:13px; text-align:center; width:100%;">' + result.message + '</p>';
       return;
@@ -895,7 +895,7 @@ function loadKusakariHome() {
   var el = document.getElementById('kusakariHomeList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getKusakariHomeSummary', userId: currentUserId, limit: 5 }).then(function (result) {
+  callServerAutoBatched({ action: 'getKusakariHomeSummary', userId: currentUserId, limit: 5 }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
@@ -924,7 +924,7 @@ function loadNikkiRecent() {
   var el = document.getElementById('nikkiRecentList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getRecentNikkiByType', userId: currentUserId, limitPerType: 3 }).then(function (result) {
+  callServerAutoBatched({ action: 'getRecentNikkiByType', userId: currentUserId, limitPerType: 3 }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
@@ -952,7 +952,7 @@ function loadJaMailList() {
   var el = document.getElementById('jaMailList');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getJaMailList', userId: currentUserId, limit: 10 }).then(function (result) {
+  callServerAutoBatched({ action: 'getJaMailList', userId: currentUserId, limit: 10 }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#C0392B;">' + result.message + '</p>';
       return;
@@ -1010,7 +1010,7 @@ function loadSanchokuSummary() {
   var el = document.getElementById('sanchokuSummary');
   el.innerHTML = '<p style="font-size:13px; color:#7A7256;">読み込み中...</p>';
 
-  callServer({ action: 'getSanchokuMonthlySummary', userId: currentUserId }).then(function (result) {
+  callServerAutoBatched({ action: 'getSanchokuMonthlySummary', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       el.innerHTML = '<p style="font-size:13px; color:#8B3A2E;">' + result.message + '</p>';
       return;
@@ -1055,7 +1055,7 @@ function loadHomeStockStatus() {
     document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#7A7256;">読み込み中...</p>';
   });
 
-  callServer({ action: 'getStockStatus', userId: currentUserId }).then(function (result) {
+  callServerAutoBatched({ action: 'getStockStatus', userId: currentUserId }).then(function (result) {
     if (result.status !== 'ok') {
       Object.values(storeIdMap).forEach(function (id) {
         document.getElementById(id).innerHTML = '<p style="font-size:12px; color:#8B3A2E;">' + result.message + '</p>';
@@ -1110,19 +1110,19 @@ function confirmClearStock(store) {
 }
 
 function loadStats(userId) {
-  callServer({ action: 'getStaffMonthlyStatus', userId: userId }).then(function (result) {
+  callServerAutoBatched({ action: 'getStaffMonthlyStatus', userId: userId }).then(function (result) {
     if (result.status !== 'ok') return;
     document.getElementById('statStaffCount').textContent = result.staff.length + '人';
   });
 
-  callServer({ action: 'getExpenseSummary', userId: userId }).then(function (result) {
+  callServerAutoBatched({ action: 'getExpenseSummary', userId: userId }).then(function (result) {
     if (result.status !== 'ok') return;
     document.getElementById('expThisMonth').textContent = '¥' + result.thisMonth.toLocaleString();
     document.getElementById('expLastMonth').textContent = '¥' + result.lastMonth.toLocaleString();
     document.getElementById('expYearTotal').textContent = '¥' + result.yearTotal.toLocaleString();
   });
 
-  callServer({ action: 'getSalesSummary', userId: userId }).then(function (result) {
+  callServerAutoBatched({ action: 'getSalesSummary', userId: userId }).then(function (result) {
     if (result.status !== 'ok') return;
     var idMap = { '道の駅しらね': 'shirane', 'い～なとうぶ竜王店': 'ryuo', 'い～なとうぶ昭和店': 'showa' };
     var today = new Date();
@@ -1149,29 +1149,16 @@ if (typeof liff === 'undefined') {
   document.getElementById('initStatus').textContent = 'LIFF SDKの読み込みに失敗しました。開き直してください。';
 } else {
   showProcessing('読み込み中...しばらくお待ちください');
-  var __t0 = performance.now();
-  var __tInit, __tProfile, __tCheckAdmin;
   withTimeout(liff.init({ liffId: LIFF_ID }), 10000).then(function () {
-    __tInit = Math.round(performance.now() - __t0);
     if (!liff.isLoggedIn()) { liff.login(); return Promise.reject('LOGIN_REDIRECT'); }
     return withTimeout(liff.getProfile(), 10000);
   }).then(function (p) {
-    __tProfile = Math.round(performance.now() - __t0);
     currentIdToken = liff.getIDToken();
     return callServer({ action: 'checkAdmin', userId: p.userId }).then(function (result) {
-      __tCheckAdmin = Math.round(performance.now() - __t0);
       return { result: result, userId: p.userId };
     });
   }).then(function (data) {
     hideProcessing();
-    var __panel = document.createElement('div');
-    __panel.style.cssText = 'position:fixed; bottom:10px; left:10px; z-index:9999; background:#2E3B22; color:#F7F3E9; font-family:monospace; font-size:12px; padding:10px 14px; border-radius:8px;';
-    __panel.innerHTML = '<p style="margin:0 0 4px; font-weight:bold;">初期化の内訳</p>' +
-      '<div>liff.init：' + __tInit + 'ms</div>' +
-      '<div>getProfileまで：' + __tProfile + 'ms（+' + (__tProfile - __tInit) + 'ms）</div>' +
-      '<div>checkAdminまで：' + __tCheckAdmin + 'ms（+' + (__tCheckAdmin - __tProfile) + 'ms）</div>' +
-      '<button onclick="this.parentNode.remove()" style="margin-top:6px; width:100%; padding:3px; font-size:11px;">閉じる</button>';
-    document.body.appendChild(__panel);
     document.getElementById('initStatus').style.display = 'none';
     if (data.result.status === 'ok') {
       document.getElementById('menu').style.display = 'block';
