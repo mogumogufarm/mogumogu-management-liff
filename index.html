@@ -472,7 +472,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.68</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.69</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -1163,17 +1163,28 @@ if (typeof liff === 'undefined') {
     if (data.result.status === 'ok') {
       document.getElementById('menu').style.display = 'block';
       currentUserId = data.userId;
-      loadStats(data.userId);
-      loadHomeVarietyList();
-      loadHomeStockStatus();
-      loadSanchokuSummary();
-      loadCropSummary();
-      loadJaMailList();
-      loadNikkiRecent();
-      loadKusakariHome();
-      loadVarietyHighlight();
-      loadWeatherForecast();
-      loadDisplaySettings();
+
+      // 表示設定を先に取得し、非表示にしているブロックはそもそもデータを読み込まないようにする（余計なリクエストを減らすため）
+      callServer({ action: 'getDisplaySettings', userId: currentUserId }).then(function (dsResult) {
+        var settings = (dsResult.status === 'ok') ? dsResult.settings : {};
+        lastDisplaySettings = settings;
+        lastDisplayOrder = (dsResult.status === 'ok' && dsResult.order) ? dsResult.order : Object.keys(DISPLAY_BLOCK_MAP);
+
+        if (settings.sales !== false) {
+          loadStats(currentUserId);
+          loadHomeVarietyList();
+          loadHomeStockStatus();
+        }
+        if (settings.sanchoku !== false) loadSanchokuSummary();
+        if (settings.cropSummary !== false) loadCropSummary();
+        if (settings.jaMail !== false) loadJaMailList();
+        if (settings.nikki !== false) loadNikkiRecent();
+        if (settings.kusakari !== false) loadKusakariHome();
+        if (settings.weather !== false) loadWeatherForecast();
+        loadVarietyHighlight();
+        applyDisplaySettings();
+      });
+
       if (new URLSearchParams(window.location.search).get('openSettings') === '1') {
         setTimeout(openDisplaySettingsModal, 300);
       }
