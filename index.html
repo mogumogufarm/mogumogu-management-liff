@@ -472,7 +472,7 @@
 
   <div class="status" id="initStatus" style="display:none;"></div>
 
-  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.69</p>
+  <p style="text-align:center; font-size:10px; color:#A69B7A; margin-top:20px;">v1.70</p>
 
 <script>
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbznmvwCK8JdC-BsXRjcaTNj6lhm_11EyPW4xv_fSaXmxt6FsZzFFPG2FLk7wsLuSROItA/exec';
@@ -484,6 +484,7 @@ document.getElementById('mobileLogoSlot').innerHTML = MOGUMOGU_LOGO_SVG_LIGHTBG;
 
 var homeVarietyByCrop = {};
 var STORE_KEYS = ['shirane', 'ryuo', 'showa'];
+var STORE_NAME_MAP = { shirane: '道の駅しらね', ryuo: 'い～なとうぶ竜王店', showa: 'い～なとうぶ昭和店' };
 
 function loadHomeVarietyList() {
   callServer({ action: 'getVarietyList', userId: currentUserId }).then(function (result) {
@@ -504,10 +505,26 @@ function loadHomeVarietyList() {
         cropSel.appendChild(opt);
       });
       onStockCropChangeFor(key);
+      preselectLastSoldVariety(key);
     });
   }).catch(function (err) {
     console.error('通信エラー：', err);
   });
+}
+
+// 在庫登録フォームを、その店舗で直近に売れた品目・品種で初期選択しておく
+function preselectLastSoldVariety(key) {
+  var store = STORE_NAME_MAP[key];
+  if (!store) return;
+  callServer({ action: 'getLastSoldVarietyForStore', userId: currentUserId, store: store }).then(function (result) {
+    if (result.status !== 'ok' || !result.variety) return;
+    var cropSel = document.getElementById('cropInput-' + key);
+    if (!cropSel || !result.crop) return;
+    cropSel.value = result.crop;
+    onStockCropChangeFor(key);
+    var varietySel = document.getElementById('varietyInput-' + key);
+    if (varietySel) varietySel.value = result.variety;
+  }).catch(function () {});
 }
 
 function onStockCropChangeFor(key) {
