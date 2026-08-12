@@ -169,33 +169,9 @@
   .stock-remaining.low { color: #8B3A2E; }
   .stock-sub { font-size: 11px; color: #7A7256; }
 
-  .menu-list { display: flex; flex-direction: column; gap: 8px; }
   @media (min-width: 900px) {
-    .menu-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .menu-item { flex-direction: column; align-items: flex-start; text-align: left; }
+    #menu .nav-icon-grid { grid-template-columns: repeat(4, 1fr); }
   }
-  .menu-item {
-    display: flex; align-items: center; gap: 12px;
-    background: #F7F3E9; border: 1px solid #D6CBAA; border-radius: 12px; padding: 14px 16px;
-    text-decoration: none; color: inherit;
-  }
-  .menu-item.disabled { opacity: 0.5; pointer-events: none; }
-  .menu-icon-badge {
-    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 20px;
-  }
-  .menu-text-title { font-weight: 500; font-size: 14px; margin: 0; }
-  .menu-text-sub { font-size: 12px; color: #7A7256; margin: 0; }
-  .menu-tag {
-    margin-left: auto; font-size: 10px; color: #7A7256; white-space: nowrap;
-  }
-
-  .badge-blue { background: #DCE6EA; color: #3D5A75; }
-  .badge-teal { background: #DCEAE0; color: #2E5A4A; }
-  .badge-amber { background: #F0DEB8; color: #8A5A2A; }
-  .badge-purple { background: #EAE0E8; color: #6A4A5E; }
-  .badge-green { background: #E3ECD3; color: #3E5A1F; }
-  .badge-red { background: #F0DAD0; color: #8B3A2E; }
 </style>
 </head>
 <body>
@@ -219,56 +195,37 @@
 
   <div id="menu" class="mobile-page-header" style="display:none;">
     <p class="section-label">メニュー</p>
-    <div class="menu-list">
-      <a class="menu-item" href="staff-management.html">
-        <span class="menu-icon-badge badge-blue"><i class="ti ti-users" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">スタッフ管理</p>
-          <p class="menu-text-sub">今月の勤怠状況・過去の給与履歴</p>
-        </span>
+    <div class="nav-icon-grid on-light">
+      <a class="nav-grid-item" href="staff-management.html">
+        <span class="nav-grid-icon nav-icon-color-blue"><i class="ti ti-users" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">スタッフ管理</span>
       </a>
-      <a class="menu-item" href="https://liff.line.me/2010745560-uXP5sKwZ">
-        <span class="menu-icon-badge badge-teal"><i class="ti ti-calendar-time" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">シフト管理</p>
-          <p class="menu-text-sub">確定・急募・名簿の管理（タイムカード側）</p>
+      <a class="nav-grid-item" href="https://liff.line.me/2010745560-uXP5sKwZ">
+        <span class="nav-grid-icon-wrap">
+          <span class="nav-grid-icon nav-icon-color-teal"><i class="ti ti-calendar-time" aria-hidden="true"></i></span>
+          <span class="nav-grid-ext-badge"><i class="ti ti-external-link" aria-hidden="true"></i></span>
         </span>
-        <i class="ti ti-external-link" style="color:#7A7256; font-size:16px;" aria-hidden="true"></i>
+        <span class="nav-grid-label">シフト管理</span>
       </a>
-      <a class="menu-item" href="sales-management.html">
-        <span class="menu-icon-badge badge-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">直売所売上集計</p>
-          <p class="menu-text-sub">道の駅しらね・い～なとうぶ</p>
-        </span>
+      <a class="nav-grid-item" href="sales-management.html">
+        <span class="nav-grid-icon nav-icon-color-amber"><i class="ti ti-shopping-cart" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">直売所売上集計</span>
       </a>
-      <a class="menu-item" href="sanchoku-management.html">
-        <span class="menu-icon-badge badge-green"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">産直サイト集計</p>
-          <p class="menu-text-sub">食べチョク・ポケマル・アウル・BASE</p>
-        </span>
+      <a class="nav-grid-item" href="sanchoku-management.html">
+        <span class="nav-grid-icon nav-icon-color-green"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">産直サイト集計</span>
       </a>
-      <a class="menu-item" href="nikki.html">
-        <span class="menu-icon-badge badge-purple"><i class="ti ti-notebook" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">農園日誌</p>
-          <p class="menu-text-sub">防除・生育記録・メモをまとめて記録</p>
-        </span>
+      <a class="nav-grid-item" href="nikki.html">
+        <span class="nav-grid-icon nav-icon-color-purple"><i class="ti ti-notebook" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">農園日誌</span>
       </a>
-      <a class="menu-item" href="ja-kyousen.html">
-        <span class="menu-icon-badge badge-amber"><i class="ti ti-file-invoice" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">JA共選・丸統 取り込み</p>
-          <p class="menu-text-sub">市況速報・荷受票・精算通知書の読み取り</p>
-        </span>
+      <a class="nav-grid-item" href="ja-kyousen.html">
+        <span class="nav-grid-icon nav-icon-color-amber"><i class="ti ti-file-invoice" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">JA共選・丸統<br>取り込み</span>
       </a>
-      <a class="menu-item" href="ja-mail.html">
-        <span class="menu-icon-badge badge-blue"><i class="ti ti-mail" aria-hidden="true"></i></span>
-        <span>
-          <p class="menu-text-title">JA南アルプス指導メール</p>
-          <p class="menu-text-sub">JAからのお知らせ一覧</p>
-        </span>
+      <a class="nav-grid-item" href="ja-mail.html">
+        <span class="nav-grid-icon nav-icon-color-blue"><i class="ti ti-mail" aria-hidden="true"></i></span>
+        <span class="nav-grid-label">JA南アルプス<br>指導メール</span>
       </a>
     </div>
   </div>
