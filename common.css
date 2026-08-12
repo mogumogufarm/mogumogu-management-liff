@@ -32,6 +32,48 @@
 .nav-drawer-link.current { background: rgba(255,255,255,0.1); font-weight: 700; }
 .nav-drawer-link i { font-size: 15px; }
 
+/* ==== グリッド型メニュー（角丸アイコン＋下にラベルを並べる、スマホのアプリ一覧風の表示） ====
+   ハンバーガーメニュー（暗い背景）と、ホーム画面のメニュー欄（明るい背景）の両方で使う共通部品。
+   明るい背景で使う場合は .nav-icon-grid に "on-light" を追加する。 */
+.nav-icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 4px; margin: 2px 0 14px; }
+.nav-grid-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; background: none; border: none; font-family: inherit;
+  cursor: pointer; padding: 4px 2px; border-radius: 10px; -webkit-tap-highlight-color: transparent;
+}
+.nav-grid-item:active { background: rgba(255,255,255,0.08); }
+.nav-icon-grid.on-light .nav-grid-item:active { background: rgba(0,0,0,0.05); }
+.nav-grid-icon-wrap { position: relative; }
+.nav-grid-icon {
+  width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.nav-grid-ext-badge {
+  position: absolute; top: -3px; right: -3px; width: 17px; height: 17px; border-radius: 50%;
+  background: #2E3B22; color: #F7F3E9; font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-icon-grid.on-light .nav-grid-ext-badge { background: #2E3B22; color: #F7F3E9; }
+.nav-grid-label { font-size: 11px; line-height: 1.3; text-align: center; color: #F7F3E9; }
+.nav-icon-grid.on-light .nav-grid-label { color: #2E3B22; }
+.nav-grid-item.current .nav-grid-icon { box-shadow: 0 0 0 2px #F7F3E9; }
+.nav-icon-grid.on-light .nav-grid-item.current .nav-grid-icon { box-shadow: 0 0 0 2px #2E3B22; }
+.nav-grid-item.current .nav-grid-label { font-weight: 700; }
+
+.nav-grid-subrow { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; }
+.nav-grid-subitem {
+  font-size: 11px; padding: 4px 10px; border-radius: 12px;
+  background: rgba(255,255,255,0.12); color: #F7F3E9; text-decoration: none;
+}
+.nav-grid-subitem.current { background: #F7F3E9; color: #2E3B22; font-weight: 700; }
+
+.nav-icon-color-blue { background: #DCE6EA; color: #3D5A75; }
+.nav-icon-color-teal { background: #DCEAE0; color: #2E5A4A; }
+.nav-icon-color-amber { background: #F0DEB8; color: #8A5A2A; }
+.nav-icon-color-purple { background: #EAE0E8; color: #6A4A5E; }
+.nav-icon-color-green { background: #E3ECD3; color: #3E5A1F; }
+.nav-icon-color-red { background: #F0DAD0; color: #8B3A2E; }
+
 /* PC・タブレット幅では、モバイル用ドロワーは使わず、上部ヘッダー＋タブ＋アイコングリッドに切り替える */
 .pc-nav-wrapper { display: none; }
 @media (min-width: 900px) {
