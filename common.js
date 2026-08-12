@@ -63,34 +63,34 @@ function hideProcessing() {
 // ==== 共通ナビゲーションメニュー（ハンバーガー＋スライド式、PCでは常時表示のサイドバー） ====
 var NAV_LINKS = [
   { group: '売上・在庫', items: [
-    { href: 'index.html', label: 'ホーム', icon: 'ti-home' },
-    { href: 'sales-management.html', label: '直売所売上管理', icon: 'ti-shopping-cart', children: [
+    { href: 'index.html', label: 'ホーム', icon: 'ti-home', color: 'green' },
+    { href: 'sales-management.html', label: '直売所売上管理', icon: 'ti-shopping-cart', color: 'amber', children: [
       { href: 'sales-management.html?tab=progress', label: '本日の売上' },
       { href: 'sales-management.html?tab=history', label: '日別推移' },
       { href: 'sales-management.html?tab=monthly', label: '月別集計' },
       { href: 'sales-management.html?tab=stock', label: '在庫管理' }
     ] },
-    { href: 'sanchoku-management.html', label: '産直サイト集計', icon: 'ti-building-store', children: [
+    { href: 'sanchoku-management.html', label: '産直サイト集計', icon: 'ti-building-store', color: 'green', children: [
       { href: 'sanchoku-management.html?tab=today', label: '本日の受注' },
       { href: 'sanchoku-management.html?tab=history', label: '日別推移' },
       { href: 'sanchoku-management.html?tab=unfilled', label: '金額未入力' }
     ] }
   ] },
   { group: 'JA・丸統', items: [
-    { href: 'ja-kyousen.html', label: 'JA共選・丸統 取り込み', icon: 'ti-file-invoice' }
+    { href: 'ja-kyousen.html', label: 'JA共選・丸統 取り込み', icon: 'ti-file-invoice', color: 'amber' }
   ] },
   { group: '記録・日誌', items: [
-    { href: 'nikki.html', label: '農園日誌', icon: 'ti-notebook' },
-    { href: 'kusakari.html', label: '草刈り・刈払い管理', icon: 'ti-cut' },
-    { href: 'documents.html', label: '資料アップロード', icon: 'ti-file-upload' },
-    { href: 'chokubai-order.html', label: '直売注文', icon: 'ti-shopping-cart' },
-    { href: 'ja-mail.html', label: 'JA指導メール', icon: 'ti-mail' }
+    { href: 'nikki.html', label: '農園日誌', icon: 'ti-notebook', color: 'purple' },
+    { href: 'kusakari.html', label: '草刈り・刈払い管理', icon: 'ti-cut', color: 'teal' },
+    { href: 'documents.html', label: '資料アップロード', icon: 'ti-file-upload', color: 'blue' },
+    { href: 'chokubai-order.html', label: '直売注文', icon: 'ti-shopping-cart', color: 'red' },
+    { href: 'ja-mail.html', label: 'JA指導メール', icon: 'ti-mail', color: 'blue' }
   ] },
   { group: '管理', items: [
-    { href: 'staff-management.html', label: 'スタッフ管理', icon: 'ti-users' }
+    { href: 'staff-management.html', label: 'スタッフ管理', icon: 'ti-users', color: 'blue' }
   ] },
   { group: '設定', items: [
-    { action: 'openDisplaySettings', label: '表示設定', icon: 'ti-adjustments' }
+    { action: 'openDisplaySettings', label: '表示設定', icon: 'ti-adjustments', color: 'teal' }
   ] }
 ];
 
@@ -131,21 +131,30 @@ function initNavDrawer(currentFile) {
   var currentFullPath = currentFile + window.location.search;
   NAV_LINKS.forEach(function (group) {
     html += '<p class="nav-drawer-group-label">' + group.group + '</p>';
+    html += '<div class="nav-icon-grid">';
+    var subHtml = '';
     group.items.forEach(function (item) {
+      var colorClass = 'nav-icon-color-' + (item.color || 'blue');
       if (item.action) {
-        html += '<a class="nav-drawer-link" href="#" onclick="handleNavAction(\'' + item.action + '\'); return false;"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+        html += '<button type="button" class="nav-grid-item" onclick="handleNavAction(\'' + item.action + '\'); return false;">' +
+          '<span class="nav-grid-icon ' + colorClass + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i></span>' +
+          '<span class="nav-grid-label">' + item.label + '</span></button>';
         return;
       }
       var itemBaseFile = item.href.split('?')[0];
       var isCurrent = itemBaseFile === currentFile;
-      html += '<a class="nav-drawer-link' + (isCurrent ? ' current' : '') + '" href="' + item.href + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i>' + item.label + '</a>';
+      html += '<a class="nav-grid-item' + (isCurrent ? ' current' : '') + '" href="' + item.href + '">' +
+        '<span class="nav-grid-icon ' + colorClass + '"><i class="ti ' + item.icon + '" aria-hidden="true"></i></span>' +
+        '<span class="nav-grid-label">' + item.label + '</span></a>';
       if (item.children && isCurrent) {
         item.children.forEach(function (child) {
           var isChildCurrent = child.href === currentFullPath;
-          html += '<a class="nav-drawer-link nav-drawer-sublink' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
+          subHtml += '<a class="nav-grid-subitem' + (isChildCurrent ? ' current' : '') + '" href="' + child.href + '">' + child.label + '</a>';
         });
       }
     });
+    html += '</div>';
+    if (subHtml) html += '<div class="nav-grid-subrow">' + subHtml + '</div>';
   });
   drawer.innerHTML = html;
 
